@@ -1,0 +1,68 @@
+###############################################
+# Root .gitignore for EVE Frontier Visualizer #
+###############################################
+
+# Python / Build
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.eggs/
+.env
+.venv
+dist/
+build/
+
+# SQLite / Local Data (do NOT commit large static DB)
+data/static.db
+data/**/*.db
+*.db
+!blender_addon/tests/fixtures/*.db  # allow tiny test fixtures
+
+# Blender backup / temp files
+*.blend1
+*.blend2
+*.blend@(*).blend
+*.blend.tmp
+*.blend\n
+
+# Renders / Outputs
+renders/
+exports/
+*.png
+*.exr
+*.jpg
+*.jpeg
+*.tiff
+*.mp4
+*.mov
+
+# Logs / Caches
+*.log
+.cache/
+.mypy_cache/
+.pytest_cache/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Node / Frontend (if added later)
+node_modules/
+
+# Coverage / Reports
+htmlcov/
+.coverage*
+
+# Ruff / Pytest artifacts
+.ruff_cache/
+
+# Misc
+*.bak
+*.old
