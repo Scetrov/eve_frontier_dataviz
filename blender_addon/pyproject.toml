@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eve-frontier-visualizer"
+version = "0.1.0"
+description = "Blender data visualization add-on for EVE Frontier static DB"
+authors = [{name="Your Name"}]
+license = {text = "MIT"}
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.4",
+  "ruff>=0.5.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E203", "E266", "E501"]
+per-file-ignores = {"addon/__init__.py" = ["F401"]}
+
+[tool.ruff.lint.isort]
+known-first-party = ["addon"]
+force-single-line = false

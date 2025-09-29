@@ -1,0 +1,39 @@
+# Python / Build
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+.env
+.venv
+
+# Blender
+*.blend1
+*.blend2
+*.blend@(*).blend
+*.blend.tmp
+*.blend\n
+*.DS_Store
+
+# Logs / Caches
+*.log
+.cache/
+.mypy_cache/
+.pytest_cache/
+
+# Local data (large SQLite DB not committed)
+../data/static.db
+/static.db
+*.db
+!tests/fixtures/*.db  # allow small fixture DBs
+
+# Renders / Outputs
+renders/
+exports/
+*.png
+*.exr
+*.mp4
+
+# IDE
+.vscode/
+.idea/
