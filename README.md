@@ -1,5 +1,7 @@
 # EVE Frontier 3D Data Visualizer (Blender Add-on)
 
+[![CI](https://github.com/Scetrov/eve_frontier_dataviz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Scetrov/eve_frontier_dataviz/actions/workflows/ci.yml)
+
 This repository contains a Blender add-on and supporting Python tooling to visualize astronomical / game world data stored in `data/static.db` inside a 3D scene. It focuses on representing systems, planets, moons, stations, and other entities with procedural shaders that encode metrics (counts, categorical codes, characters of names) into colors, emission, shape modifiers, or geometry node inputs.
 
 ## ✨ Core Goals
@@ -107,7 +109,24 @@ Details and dataclasses: see `docs/DATA_MODEL.md`.
 
 ## 🛡 License
 
-Choose a license (MIT / Apache-2.0 / etc.) and update `pyproject.toml` and this section.
+Licensed under the MIT License. See `LICENSE` for full text.
+
+## 🧹 Pre-commit Hooks
+
+This repo ships a `.pre-commit-config.yaml` that runs Ruff (lint & format), the custom markdown linter, and the test suite.
+
+Install & enable:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+Run manually on all files:
+
+```bash
+pre-commit run --all-files
+```
 
 ## 🙌 Contributions
 

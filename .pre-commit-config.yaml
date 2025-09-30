@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+  - repo: local
+    hooks:
+      - id: markdown-lint
+        name: markdown-lint (custom subset)
+        entry: python blender_addon/scripts/markdown_lint.py
+        language: system
+        pass_filenames: false
+      - id: pytest
+        name: pytest (fast suite)
+        entry: pytest -q
+        language: system
+        pass_filenames: false
+        stages: [commit]
