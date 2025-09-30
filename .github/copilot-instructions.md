@@ -1,113 +1,73 @@
-# Copilot Instructions for This Repository
+## AI Contribution Guide (Project-Specific)
 
-These guidelines tell AI assistants how to operate within this Blender data visualization project.
+Focused, repo-tailored rules for assisting on the EVE Frontier Blender data visualizer. Keep edits minimal, deterministic, and aligned with current scaffold (some modules still stubs).
 
-## Core Intent
+### Core Purpose
 
-Transform structured data from a large SQLite database (`data/static.db`, excluded from VCS) into a 3D hierarchical scene in Blender with multiple switchable visualization (shader/material) strategies.
+SQLite (`data/static.db`, ignored) -> pure-Python entity graph (`data_loader.py`) -> Blender scene objects (future `scene_builder.py`) -> switchable visualization strategies (materials) via registry (`shader_registry.py`).
 
-## Architectural Pillars
+### Layer Boundaries (Do NOT cross)
 
-1. Separation of Concerns:
-   - Data access (`data_loader.py`) contains NO Blender API imports—pure Python for testability.
-   - Scene construction (`scene_builder.py`) isolates object & collection creation.
-   - Visualization strategies live behind a registry (`shader_registry.py`).
-2. Extensibility:
-   - Add new shader strategies by subclassing `BaseShaderStrategy`.
-   - Keep each strategy deterministic & idempotent (re-applying should not duplicate materials).
-3. Performance:
-   - Prefer instancing or shared materials where possible.
-   - Batch DB reads; avoid per-row transactions.
-4. Non-destructive Updates:
-   - Scene rebuild should optionally clear previous generated collections.
-   - Shader application updates materials only on managed objects.
+1. Data layer (`data_loader.py`): no `bpy` imports; fast, unit tested (`tests/test_data_loader.py`).
+2. Scene layer (`scene_builder.py` – pending): creates `EVE_*` collections & object hierarchy.
+3. Visualization layer (`shader_registry.py`, `shaders_builtin.py`): strategy objects mutate / assign materials only.
+4. UI / Ops (`operators.py`, `panels.py`, `preferences.py`): orchestrate user actions; keep heavy work out of draw callbacks.
 
-## File Responsibilities
 
-| File                       | Purpose                                                          |
-| -------------------------- | ---------------------------------------------------------------- |
-| `addon/__init__.py`        | Add-on metadata, register/unregister, menu/panel bootstrap.      |
-| `addon/preferences.py`     | Add-on preferences (DB path, scale factor, caching toggle).      |
-| `addon/operators.py`       | Blender operators: load data, build scene, apply shader, export. |
-| `addon/panels.py`          | UI Panels for user interaction.                                  |
-| `addon/data_loader.py`     | Pure Python DB -> in-memory dataclasses.                         |
-| `addon/scene_builder.py`   | Create collections & objects from loaded data.                   |
-| `addon/materials.py`       | Material / node creation helpers.                                |
-| `addon/shader_registry.py` | Base class + registry mechanisms.                                |
-| `addon/shaders_builtin.py` | Built-in example strategies.                                     |
-| `addon/utils.py`           | Logging, color ramps, hashing, shared helpers.                   |
-| `scripts/export_batch.py`  | Headless batch rendering entry point.                            |
-| `scripts/dev_reload.py`    | Developer convenience reload script.                             |
 
-## Data Model (Conceptual)
+### Key Conventions
+- Collections: `EVE_Systems`, `EVE_Planets`, `EVE_Moons` (list lives in `operators._generated_collection_names`).
+- Material prefix: `EVE_` + StrategyID (e.g. `EVE_NameFirstCharHue`). Reuse or copy intelligently; never explode counts each run.
+- Strategy registry: decorate subclass with `@register_strategy` (see `shaders_builtin.py`). UI order via `order` attr.
+- Object grouping passed to strategies as `objects_by_type` dict (currently only `systems` filled; plan for `planets`, `moons`).
+- Dataclasses use `slots=True`; extend by adding fields + new table fetch in loader in bulk, not row-by-row.
 
-Represent entities via lightweight dataclasses:
-
-```python
-@dataclass
-class System: id: int; name: str; x: float; y: float; z: float; security: float; planets: list
-@dataclass
-class Planet: id: int; system_id: int; name: str; orbit_index: int; planet_type: str; moons: list
-@dataclass
-class Moon: id: int; planet_id: int; name: str; orbit_index: int
-```
-
-## Shader Strategy Contract
+### Strategy Contract (Minimal)
 
 ```python
 class BaseShaderStrategy:
-    id: str  # unique key
-    label: str
-    def build(self, context, objects_by_type: dict):
-        """Create or update materials and assign to objects.
-        objects_by_type: {"systems": [...], "planets": [...], "moons": [...]} (Blender objects)
-        """
+    id: str; label: str; order: int = 1000
+    def build(self, context, objects_by_type: dict): ...  # assign/update materials
 ```
 
-Return value optional; should log actions. Strategies may create node groups & reuse them.
+Idempotent: running twice must not create duplicate materials. Derive variant material names deterministically (e.g. base + key like first letter / child count).
 
-## Naming Conventions
+### Performance & Safety Guidelines
+- Batch SELECTs (see planet/moon fetching pattern with IN (...) batching in `data_loader.py`).
+- Cache: loader keyed by (file path, size, mtime, limit). Respect `enable_cache` param when adding features.
+- Do not traverse or mutate global Blender data outside targeted `EVE_*` objects/collections.
+- Wrap potentially large loops with cheap lookups (e.g. precompute maps) rather than repeated searches.
 
-- Generated collections prefixed with `EVE_`.
-- Generated materials prefixed with `EVE_` + strategy id.
-- Custom properties: store lightweight metadata under `obj["eve_meta"]` dict.
+### When Extending
 
-## Avoid
+1. New entity/table: add dataclass + single bulk fetch + parent linking (mirror existing planets/moons pattern). Update docs if finalized.
+2. New strategy: implement in new module or `shaders_builtin.py`, register, ensure material reuse, document in `docs/SHADERS.md`.
+3. Scene builder (future work): centralize object creation there; avoid putting creation logic into operators or strategies.
+4. New operator: register in `operators.register()`, surface in `panels.py`. Use `report({...}, msg)` for user feedback.
 
-- Hard-coding file system absolute paths.
-- Creating duplicate materials each run.
-- Running heavy DB queries in the main thread during UI draws.
 
-## Testing Guidance
 
-- Add pure-Python tests for `data_loader.py` once a `/tests` directory exists.
-- Mock minimal rows to validate hierarchy assembly & attribute mapping.
+### Testing & Tooling
+- Run tests: `pytest` (only pure Python modules). Add new loader tests w/ fixtures under `tests/fixtures` (add SQL -> load -> assert hierarchy lengths).
+- Lint: `ruff check .` (config in `pyproject.toml`). Keep imports minimal; avoid adding heavy deps.
 
-## Roadmap Hooks for AI
+### Common Pitfalls to Avoid
+- Adding `bpy` import to `data_loader.py` (breaks headless tests).
+- Creating a new material for every object without a reuse key.
+- Querying DB per row instead of one bulk query with IN clause.
+- Forgetting to sort strategies (set `order` to control UI listing).
+- Hard-coding absolute file paths; rely on user preference for DB path.
 
-When implementing tasks:
+### Practical Examples
+- Variant material naming (see `ChildCountEmission`: `EVE_ChildCountEmission_{child_count}`).
+- Hue mapping (see `NameFirstCharHue`: first letter -> HSV hue -> emission color node).
+- Bulk linking pattern: build parent maps then attach children (`planet_map`, `system_map`). Reproduce this pattern for new hierarchies.
 
-1. Search for existing strategy patterns before adding new ones.
-2. If adding new operators, ensure they are registered & appear in panel.
-3. Maintain backward compatibility for preference property names.
-4. Use feature flags in preferences for experimental behavior.
+### Lightweight Roadmap Awareness
+Scene builder + geometry nodes instancing not implemented yet—keep contributions forward-compatible (avoid baking hierarchy logic into strategies/operators).
 
-## Style
-
-- Prefer `ruff` / `black` formatting (to be added).
-- Type annotate public functions.
-
-## Incremental Additions
-
-When expanding:
-
-- Implement base scaffold first (`__init__`, registry, loader stub) before advanced optimizations.
-- Document any new shader in `docs/SHADERS.md`.
-
-## Example Extension Idea
-
-Add a strategy mapping the second letter of the system name to metallic + roughness values for subtle classification.
+### If Unsure
+Prefer adding a small, isolated helper (e.g. in future `utils.py`) over inlining repeated logic. Keep public API additions documented briefly in corresponding `docs/*.md` file.
 
 ---
-
-These instructions should help AI contributors make coherent, minimal-diff, well-structured changes.
+Questions or ambiguous areas? Highlight them in PR or ask for clarification before broad refactors.

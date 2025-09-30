@@ -45,28 +45,29 @@ data/static.db (ignored)    # Large real dataset (not in repo)
 ## 🔧 Installation (Development Mode)
 
 1. Ensure the SQLite database exists at `data/static.db` (or set a custom path in Add-on Preferences inside Blender).
-1. (Optional) Create a virtual environment & install dev deps:
+2. (Optional) Create a virtual environment & install dev deps:
 
 ```bash
 pip install -e .[dev]
 ```
 
-1. Zip the add-on directory or point Blender at it directly:
+3. Zip the add-on directory or point Blender at it directly:
 
 ```bash
 python -m zipfile -c eve_frontier_visualizer.zip blender_addon/addon
 ```
 
-1. In Blender: Edit > Preferences > Add-ons > Install… → choose the zip (or copy folder into scripts/addons) and enable it (`EVE Frontier: Data Visualizer`).
-1. Open the 3D Viewport > N panel > "EVE Frontier" tab.
+4. In Blender: Edit > Preferences > Add-ons > Install… → choose the zip (or copy folder into scripts/addons) and enable it (`EVE Frontier: Data Visualizer`).
+5. Open the 3D Viewport > N panel > "EVE Frontier" tab.
+
 
 ## 🚀 Usage Workflow
 
 1. Set DB path in Add-on Preferences if not default.
-1. Click "Load / Refresh Data" (currently stub until `scene_builder` implemented).
-1. Click "Build Scene" to generate placeholder / future real objects.
-1. Pick and apply a visualization strategy (e.g. `NameFirstCharHue`).
-1. (Optional) Batch export renders:
+2. Click "Load / Refresh Data" (currently stub until `scene_builder` implemented).
+3. Click "Build Scene" to generate placeholder / future real objects.
+4. Pick and apply a visualization strategy (e.g. `NameFirstCharHue`).
+5. (Optional) Batch export renders:
 
 ```bash
 blender -b your_scene.blend -P blender_addon/scripts/export_batch.py -- --modes NameFirstCharHue ChildCountEmission
@@ -75,10 +76,11 @@ blender -b your_scene.blend -P blender_addon/scripts/export_batch.py -- --modes 
 ## 🧩 Adding a New Shader Strategy
 
 1. Subclass `BaseShaderStrategy` in `shaders_builtin.py` or a new module.
-1. Decorate with `@register_strategy`.
-1. Implement `build(context, objects_by_type)`.
-1. Re-open panel & apply strategy.
-1. Document in `docs/SHADERS.md`.
+2. Decorate with `@register_strategy`.
+3. Implement `build(context, objects_by_type)`.
+4. Re-open panel & apply strategy.
+5. Document in `docs/SHADERS.md`.
+
 
 ## 🗃 Data Expectations (Example Tables)
 
