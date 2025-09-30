@@ -31,8 +31,7 @@ def lint_file(path: Path) -> List[str]:
     # Track ordered list blocks
     in_ol = False
     expected_num = None
-    ol_start_line = None
-    last_was_list = False
+    # Tracking variables (some removed to satisfy linter if unused)
     in_fence = False
 
     def is_list_line(idx: int) -> bool:
@@ -66,7 +65,6 @@ def lint_file(path: Path) -> List[str]:
             if not in_ol:
                 in_ol = True
                 expected_num = num
-                ol_start_line = line_no
                 # MD032: blank before list (unless BOF)
                 if i > 0 and lines[i - 1].strip() != "":
                     issues.append(f"{path}:{line_no}: MD032 list not preceded by blank line")
@@ -77,7 +75,7 @@ def lint_file(path: Path) -> List[str]:
                         issues.append(
                             f"{path}:{line_no}: MD029 ordered list item expected {expected_num} got {num}"
                         )
-            last_was_list = True
+            # mark that we're in an ordered list (state retained by in_ol/expected_num)
             continue
 
         # If we reach here and were in an ordered list, we may be exiting it
@@ -85,19 +83,19 @@ def lint_file(path: Path) -> List[str]:
             # Blank line terminates ordered list cleanly
             in_ol = False
             expected_num = None
-            last_was_list = False
+            # reset state after blank line
             continue
         elif in_ol and stripped != "" and not is_list_line(i):
             # list terminated without blank line after
             issues.append(f"{path}:{line_no}: MD032 list not followed by blank line")
             in_ol = False
             expected_num = None
-            last_was_list = False
+            # reset state after non-list content without blank line
         elif in_ol and stripped == "":
             # blank line resets state
             in_ol = False
             expected_num = None
-            last_was_list = False
+            # state cleared
 
     # finalize if file ends during list without trailing blank line (acceptable by many linters, but enforce)
     if in_ol:
