@@ -71,3 +71,5 @@ Add new dataclasses & tables (e.g. Stations, Belts):
 2. Fetch table with minimal SELECT.
 3. Link into parent entity attribute.
 4. Update `objects_by_type` keys and strategies that can leverage new data.
+
+Following these guides helps to keep the project organized.
