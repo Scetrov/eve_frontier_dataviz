@@ -111,14 +111,23 @@ class EVE_OT_build_scene(Operator):
         return {"FINISHED"}
 
 
+def _strategy_items(self, context):  # pragma: no cover - Blender runtime usage
+    try:
+        return [(s.id, s.label, "") for s in get_strategies()] or [("__none__", "None", "")]
+    except Exception:
+        return [("__error__", "(error)", "Failed to enumerate strategies")]
+
+
 class EVE_OT_apply_shader(Operator):
     bl_idname = "eve.apply_shader"
     bl_label = "Apply Visualization"
     bl_description = "Apply selected shader strategy to generated objects"
 
-    strategy_id = bpy.props.EnumProperty(
+    # Use a named callback to avoid lambda serialization / registration edge cases.
+    strategy_id: bpy.props.EnumProperty = bpy.props.EnumProperty(  # type: ignore[assignment]
         name="Strategy",
-        items=lambda self, context: [(s.id, s.label, "") for s in get_strategies()],
+        description="Shader / visualization strategy to apply",
+        items=_strategy_items,
     )
 
     def execute(self, context):  # noqa: D401
@@ -142,6 +151,9 @@ def register():  # pragma: no cover - Blender runtime usage
     bpy.utils.register_class(EVE_OT_load_data)
     bpy.utils.register_class(EVE_OT_build_scene)
     bpy.utils.register_class(EVE_OT_apply_shader)
+    # Fallback: ensure strategy_id exists (rare, but protects against failed EnumProperty registration)
+    if not hasattr(EVE_OT_apply_shader, "strategy_id"):
+        EVE_OT_apply_shader.strategy_id = bpy.props.StringProperty(name="Strategy")  # type: ignore[attr-defined]
 
 
 def unregister():  # pragma: no cover - Blender runtime usage

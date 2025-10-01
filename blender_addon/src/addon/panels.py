@@ -23,7 +23,12 @@ class EVE_PT_main(Panel):
         strategies = get_strategies()
         if strategies:
             op = row.operator("eve.apply_shader", text="Apply", icon="MATERIAL")
-            op.strategy_id = strategies[0].id
+            # Guard against missing property if registration hiccup occurred.
+            if hasattr(op, "strategy_id") and strategies:
+                try:
+                    op.strategy_id = strategies[0].id
+                except Exception:
+                    pass
         else:
             row.label(text="No strategies registered")
 
