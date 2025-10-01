@@ -1,4 +1,3 @@
-import math
 import os
 
 import bmesh
@@ -616,62 +615,69 @@ class EVE_OT_viewport_fit_systems(Operator):
 
         xs = [o.location.x for o in objs]
         ys = [o.location.y for o in objs]
-        zs = [o.location.z for o in objs]
+        # We only care about XY for a top view; Z span irrelevant for ortho top fill
         min_x, max_x = min(xs), max(xs)
         min_y, max_y = min(ys), max(ys)
-        min_z, max_z = min(zs), max(zs)
         size_x = max_x - min_x
         size_y = max_y - min_y
-        size_z = max_z - min_z
-        # Fallback sizes
-        if size_x <= 0 and size_y <= 0 and size_z <= 0:
-            size_x = size_y = size_z = 1.0
-        center = (
-            (min_x + max_x) * 0.5,
-            (min_y + max_y) * 0.5,
-            (min_z + max_z) * 0.5,
-        )
+        if size_x <= 0 and size_y <= 0:
+            size_x = size_y = 1.0
 
-        # Diagonal extent for conservative fit
-        diag = math.sqrt(size_x * size_x + size_y * size_y + size_z * size_z)
-        if diag <= 0:
-            diag = 1.0
-
-        # Approximate horizontal FOV for typical viewport lens (50mm ~ 39.6° HFOV on 36mm sensor)
-        # Blender's region_3d.lens is in mm; we extrapolate if accessible for more accuracy.
-        def compute_distance(region3d):
-            lens_mm = getattr(region3d, "lens", 50.0)
-            # Assume 36mm sensor width; HFOV = 2*atan(36/(2*lens))
-            hfov = 2.0 * math.degrees(math.atan(36.0 / (2.0 * max(1.0, lens_mm))))
-            # Use max of XY plane span for horizontal fit
-            horiz_span = max(size_x, size_y, 0.001)
-            # Distance so that half horizontal span fits in half FOV: d = (span/2)/tan(FOV/2)
-            d = (horiz_span * 0.5) / math.tan(math.radians(hfov * 0.5))
-            # Add padding; also ensure covers Z extent
-            # Compare with vertical requirement (approx assuming 24mm sensor height)
-            vfov = 2.0 * math.degrees(math.atan(24.0 / (2.0 * max(1.0, lens_mm))))
-            vert_span = max(size_z, 0.001)
-            d_vert = (vert_span * 0.5) / math.tan(math.radians(vfov * 0.5))
-            d = max(d, d_vert)
-            return d * 1.15  # small padding
+        # User wants viewport filled even if origin ends up off-center, so we bias
+        # to keep full bounding box inside view while not insisting the world origin sits in center.
+        # We'll place view pivot at bbox center for simplicity (robust) but orthographic zoom
+        # will guarantee fill regardless of origin offset.
+        center_xy = ((min_x + max_x) * 0.5, (min_y + max_y) * 0.5)
 
         framed = False
         for area in context.screen.areas:
             if area.type != "VIEW_3D":
                 continue
+            region = None
+            for r in area.regions:
+                if r.type == "WINDOW":
+                    region = r
+                    break
             for space in area.spaces:
                 if space.type != "VIEW_3D":
                     continue
                 region3d = space.region_3d
-                # Preserve current rotation; only move pivot & distance
-                dist = compute_distance(region3d)
-                region3d.view_location = center
-                region3d.view_distance = dist
+                # Switch to top orthographic view via operator for correctness (if context allows)
+                if region:
+                    override = {
+                        "window": context.window,
+                        "screen": context.screen,
+                        "area": area,
+                        "region": region,
+                        "space_data": space,
+                    }
+                    try:
+                        bpy.ops.view3d.view_axis(override, type="TOP")
+                    except Exception:
+                        pass
+                region3d.view_perspective = "ORTHO"
+                # Set pivot (Z component keep current so we don't snap unexpectedly)
+                region3d.view_location.x = center_xy[0]
+                region3d.view_location.y = center_xy[1]
+                # Compute an orthographic distance heuristic: in ortho, distance functions as scale base.
+                # Empirically region3d.view_distance ~= half visible span at default zoom.
+                span = max(size_x, size_y, 1.0)
+                region3d.view_distance = span * 0.55  # padding ~10% outside box
+                # Optional: if viewport aspect is narrower, expand distance slightly so full fits
+                try:
+                    if region and region.width and region.height:
+                        aspect = region.width / max(1, region.height)
+                        # If aspect < bbox aspect, widen distance a bit to avoid clipping horizontally
+                        bbox_aspect = size_x / max(1e-9, size_y)
+                        if aspect < bbox_aspect:
+                            region3d.view_distance = span * 0.6
+                except Exception:
+                    pass
                 framed = True
         if not framed:
             self.report({"WARNING"}, "No VIEW_3D area found")
             return {"CANCELLED"}
-        self.report({"INFO"}, "Viewport framed")
+        self.report({"INFO"}, "Viewport framed (Top Ortho)")
         return {"FINISHED"}
 
 
