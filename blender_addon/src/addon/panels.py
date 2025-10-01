@@ -112,7 +112,10 @@ class EVE_PT_main(Panel):
         row_view2.operator(
             "eve.viewport_set_space", text="Set Background to Black", icon="WORLD_DATA"
         )
-        row_view2.operator("eve.viewport_fit_selection", text="Frame Selection", icon="VIEW_RESET")
+        # Use a valid icon that conveys zoom-to-selection; VIEW_RESET isn't a valid enum.
+        row_view2.operator(
+            "eve.viewport_fit_selection", text="Frame Selection", icon="ZOOM_SELECTED"
+        )
         row_view_hdri = box_view.row(align=True)
         op_hdri = row_view_hdri.operator(
             "eve.viewport_set_hdri", text="Apply Space HDRI", icon="IMAGE_DATA"
