@@ -1,0 +1,16 @@
+[run]
+branch = True
+source = 
+    blender_addon/addon
+omit = 
+    blender_addon/addon/__init__.py
+    blender_addon/addon/operators.py
+    blender_addon/addon/panels.py
+    blender_addon/addon/preferences.py
+    blender_addon/addon/shaders_builtin.py
+    blender_addon/addon/shader_registry.py
+
+[report]
+show_missing = True
+skip_empty = True
+fail_under = 90
