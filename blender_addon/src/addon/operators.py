@@ -104,10 +104,20 @@ class EVE_OT_build_scene(Operator):
         systems_coll = _get_or_create_collection("EVE_Systems")
 
         created = 0
+        radius = getattr(prefs, "system_point_radius", 2.0)
+        # Clamp radius defensively
+        try:
+            radius = max(0.01, float(radius))
+        except Exception:
+            radius = 2.0
         for sys in systems_data:
             name = sys.name or f"System_{sys.id}"
-            mesh = bpy.data.meshes.new(f"{name}_Mesh")
-            obj = bpy.data.objects.new(name, mesh)
+            # Use a lightweight UV sphere for visibility instead of empty mesh
+            bpy.ops.mesh.primitive_uv_sphere_add(
+                radius=radius, enter_editmode=False, location=(0, 0, 0)
+            )
+            obj = bpy.context.active_object
+            obj.name = name
             systems_coll.objects.link(obj)
             obj.location = (sys.x * scale, sys.y * scale, sys.z * scale)
             planet_count = len(sys.planets)

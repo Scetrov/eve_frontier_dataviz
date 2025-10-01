@@ -61,12 +61,20 @@ class EVEVisualizerPreferences(AddonPreferences):
         default=True,
         description="Cache parsed data in memory for faster rebuild",
     )
+    system_point_radius: FloatProperty(  # type: ignore[valid-type]
+        name="System Point Radius",
+        default=2.0,
+        min=0.01,
+        soft_max=25.0,
+        description="Visual radius (in Blender Units after scaling) for system spheres",
+        precision=3,
+    )
 
     def draw(self, context):  # noqa: D401
         layout = self.layout
         col = layout.column(align=True)
         # Only draw props if they are resolved (avoid _PropertyDeferred edge cases)
-        for prop_name in ("db_path", "scale_factor", "enable_cache"):
+        for prop_name in ("db_path", "scale_factor", "enable_cache", "system_point_radius"):
             if prop_name in self.__class__.__dict__:
                 try:
                     # If env var override is active, show db_path disabled to communicate source.
@@ -125,6 +133,16 @@ try:  # pragma: no cover - runtime safety
             description="Cache parsed data in memory for faster rebuild",
         )
         _missing.append("enable_cache")
+    if not hasattr(EVEVisualizerPreferences, "system_point_radius"):
+        EVEVisualizerPreferences.system_point_radius = FloatProperty(  # type: ignore[attr-defined]
+            name="System Point Radius",
+            default=2.0,
+            min=0.01,
+            soft_max=25.0,
+            description="Visual radius (in Blender Units after scaling) for system spheres",
+            precision=3,
+        )
+        _missing.append("system_point_radius")
     if _missing:
         print(f"[EVEVisualizer][info] Injected fallback properties: {_missing}")
     else:
