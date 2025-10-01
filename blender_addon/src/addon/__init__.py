@@ -1,6 +1,6 @@
 bl_info = {
     "name": "EVE Frontier: Data Visualizer",
-    "author": "Your Name",
+    "author": "Scetrov",
     "version": (0, 1, 0),
     "blender": (4, 0, 0),
     "location": "View3D > Sidebar > EVE Frontier",
