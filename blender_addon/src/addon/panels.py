@@ -77,8 +77,20 @@ class EVE_PT_main(Panel):
             wm = context.window_manager
             if hasattr(wm, "eve_strategy_id"):
                 box_vis.prop(wm, "eve_strategy_id", text="Strategy")
-            row_vis = box_vis.row(align=True)
-            row_vis.operator("eve.apply_shader", text="Apply", icon="PLAY")
+            shader_in_progress = getattr(wm, "eve_shader_in_progress", False)
+            if not shader_in_progress:
+                row_vis = box_vis.row(align=True)
+                row_vis.operator("eve.apply_shader", text="Apply Sync", icon="PLAY")
+                row_vis.operator("eve.apply_shader_modal", text="Apply Async", icon="TIME")
+            else:
+                total = getattr(wm, "eve_shader_total", 0)
+                processed = getattr(wm, "eve_shader_processed", 0)
+                prog = getattr(wm, "eve_shader_progress", 0.0)
+                box_vis.label(text=f"Shading {processed}/{total} ({prog*100:.1f}%)")
+                row_bar = box_vis.row(align=True)
+                if hasattr(wm, "eve_shader_progress"):
+                    row_bar.enabled = False
+                    row_bar.prop(wm, "eve_shader_progress", text="Progress")
         else:
             row_vis = box_vis.row(align=True)
             row_vis.label(text="No strategies registered")

@@ -601,6 +601,138 @@ class EVE_OT_apply_shader(Operator):
         return {"FINISHED"}
 
 
+class EVE_OT_apply_shader_modal(Operator):  # pragma: no cover - Blender runtime usage
+    bl_idname = "eve.apply_shader_modal"
+    bl_label = "Apply Visualization (Async)"
+    bl_description = "Apply selected shader strategy asynchronously in batches"
+
+    batch_size: bpy.props.IntProperty(  # type: ignore[valid-type]
+        name="Batch Size",
+        default=5000,
+        min=100,
+        max=100000,
+        description="Objects shaded per modal tick",
+    )
+    strategy_id: bpy.props.StringProperty(  # type: ignore[valid-type]
+        name="Strategy Id",
+        default="",
+        description="Strategy to apply (leave blank to use panel selection)",
+    )
+
+    _objects = None
+    _index = 0
+    _total = 0
+    _timer = None
+    _strategy = None
+
+    def _gather(self, context):
+        objs = []
+        coll = bpy.data.collections.get("EVE_Systems")
+        if coll:
+            objs.extend(coll.objects)
+        return objs
+
+    def _resolve_strategy(self, context):
+        sid = self.strategy_id.strip() or getattr(context.window_manager, "eve_strategy_id", "")
+        if not sid:
+            strats = get_strategies()
+            if strats:
+                sid = strats[0].id
+        strat = get_strategy(sid)
+        return strat
+
+    def execute(self, context):  # start async
+        strat = self._resolve_strategy(context)
+        if not strat:
+            self.report({"ERROR"}, "Strategy not found")
+            return {"CANCELLED"}
+        self._strategy = strat
+        objs = self._gather(context)
+        if not objs:
+            self.report({"WARNING"}, "No system objects to shade")
+            return {"CANCELLED"}
+        self._objects = objs
+        self._index = 0
+        self._total = len(objs)
+        wm = context.window_manager
+        wm.eve_shader_in_progress = True
+        wm.eve_shader_progress = 0.0
+        wm.eve_shader_total = self._total
+        wm.eve_shader_processed = 0
+        wm.eve_shader_strategy = strat.id
+        try:
+            self._timer = context.window_manager.event_timer_add(0.01, window=context.window)
+        except Exception:
+            self._timer = None
+        context.window_manager.modal_handler_add(self)
+        return {"RUNNING_MODAL"}
+
+    def modal(self, context, event):
+        wm = context.window_manager
+        if event.type == "ESC":
+            self._finish(context, cancelled=True)
+            return {"CANCELLED"}
+        if event.type != "TIMER":
+            return {"PASS_THROUGH"}
+        if not getattr(wm, "eve_shader_in_progress", False):
+            self._finish(context, cancelled=True)
+            return {"CANCELLED"}
+        if self._objects is None or self._strategy is None:
+            self._finish(context, cancelled=True)
+            return {"CANCELLED"}
+        end = min(self._index + self.batch_size, self._total)
+        # Apply strategy incrementally if it supports 'apply'; else fallback to full build once
+        if hasattr(self._strategy, "apply"):
+            for i in range(self._index, end):
+                obj = self._objects[i]
+                try:
+                    self._strategy.apply(context, obj)
+                except Exception:
+                    pass
+        else:
+            # Fallback: call build once then finish
+            try:
+                self._strategy.build(context, {"systems": self._objects})
+            except Exception as e:
+                self.report({"ERROR"}, f"Apply failed: {e}")
+                self._finish(context, cancelled=True)
+                return {"CANCELLED"}
+            self._index = self._total
+            self._finish(context, cancelled=False)
+            return {"FINISHED"}
+        self._index = end
+        wm.eve_shader_processed = self._index
+        if self._total:
+            wm.eve_shader_progress = self._index / self._total
+        if self._index >= self._total:
+            self._finish(context, cancelled=False)
+            return {"FINISHED"}
+        # Tag redraw for UI
+        try:
+            for area in context.screen.areas:
+                area.tag_redraw()
+        except Exception:
+            pass
+        return {"RUNNING_MODAL"}
+
+    def _finish(self, context, cancelled=False):
+        wm = context.window_manager
+        wm.eve_shader_in_progress = False
+        wm.eve_shader_progress = 0.0 if cancelled else 1.0
+        msg = f"Shader async {'cancelled' if cancelled else 'complete'}: strategy={getattr(self._strategy, 'id', '?')} objects={self._total}"
+        self.report({"INFO"}, msg)
+        try:
+            if self._timer:
+                context.window_manager.event_timer_remove(self._timer)
+        except Exception:
+            pass
+        try:
+            for area in context.screen.areas:
+                area.tag_redraw()
+        except Exception:
+            pass
+
+
 class EVE_OT_viewport_fit_systems(Operator):
     bl_idname = "eve.viewport_fit_systems"
     bl_label = "Frame All Systems"
@@ -877,6 +1009,7 @@ def register():  # pragma: no cover - Blender runtime usage
     bpy.utils.register_class(EVE_OT_build_scene_modal)
     bpy.utils.register_class(EVE_OT_cancel_build)
     bpy.utils.register_class(EVE_OT_apply_shader)
+    bpy.utils.register_class(EVE_OT_apply_shader_modal)
     bpy.utils.register_class(EVE_OT_viewport_fit_systems)
     bpy.utils.register_class(EVE_OT_viewport_set_space)
     bpy.utils.register_class(EVE_OT_viewport_set_hdri)
@@ -898,6 +1031,27 @@ def register():  # pragma: no cover - Blender runtime usage
         wm.eve_build_created = bpy.props.IntProperty(name="EVE Build Created", default=0, min=0)  # type: ignore[attr-defined]
     if not hasattr(wm, "eve_build_mode"):
         wm.eve_build_mode = bpy.props.StringProperty(name="EVE Build Mode", default="")  # type: ignore[attr-defined]
+    # Shader async progress properties
+    if not hasattr(wm, "eve_shader_in_progress"):
+        wm.eve_shader_in_progress = bpy.props.BoolProperty(  # type: ignore[attr-defined]
+            name="EVE Shader In Progress", default=False
+        )
+    if not hasattr(wm, "eve_shader_progress"):
+        wm.eve_shader_progress = bpy.props.FloatProperty(  # type: ignore[attr-defined]
+            name="EVE Shader Progress", default=0.0, min=0.0, max=1.0, subtype="FACTOR"
+        )
+    if not hasattr(wm, "eve_shader_total"):
+        wm.eve_shader_total = bpy.props.IntProperty(  # type: ignore[attr-defined]
+            name="EVE Shader Total", default=0, min=0
+        )
+    if not hasattr(wm, "eve_shader_processed"):
+        wm.eve_shader_processed = bpy.props.IntProperty(  # type: ignore[attr-defined]
+            name="EVE Shader Processed", default=0, min=0
+        )
+    if not hasattr(wm, "eve_shader_strategy"):
+        wm.eve_shader_strategy = bpy.props.StringProperty(  # type: ignore[attr-defined]
+            name="EVE Shader Strategy", default=""
+        )
 
     # Strategy dropdown property
     def _strategy_enum_items(self, context):  # pragma: no cover - dynamic items
@@ -928,6 +1082,7 @@ def unregister():  # pragma: no cover - Blender runtime usage
     bpy.utils.unregister_class(EVE_OT_viewport_set_hdri)
     bpy.utils.unregister_class(EVE_OT_viewport_fit_systems)
     bpy.utils.unregister_class(EVE_OT_apply_shader)
+    bpy.utils.unregister_class(EVE_OT_apply_shader_modal)
     bpy.utils.unregister_class(EVE_OT_cancel_build)
     bpy.utils.unregister_class(EVE_OT_build_scene_modal)
     bpy.utils.unregister_class(EVE_OT_build_scene)
