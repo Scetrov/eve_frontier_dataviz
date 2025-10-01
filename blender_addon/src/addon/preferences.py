@@ -84,6 +84,17 @@ def register():  # noqa: D401
             f"[EVEVisualizer] Preferences registered: bl_idname='{EVEVisualizerPreferences.bl_idname}', "
             f"folder='{Path(__file__).parent.name}'"
         )
+        # If the folder name is literally 'addon', Blender may register the add-on under
+        # a different key (e.g. archive name). Provide a runtime sanity check hint.
+        prefs = getattr(bpy.context, "preferences", None)
+        if prefs is not None:
+            keys = list(getattr(prefs, "addons", {}).keys())
+            if EVEVisualizerPreferences.bl_idname not in keys:
+                print(
+                    "[EVEVisualizer][warn] bl_idname not in addons keys; keys=",
+                    keys,
+                    "— preferences panel may be blank.",
+                )
     except Exception:
         pass
 
