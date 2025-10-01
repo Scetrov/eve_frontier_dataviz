@@ -17,19 +17,24 @@ class EVE_PT_main(Panel):
         col.operator("eve.load_data", icon="FILE_REFRESH")
         build_row = col.row(align=True)
         build_row.operator("eve.build_scene", icon="OUTLINER_OB_EMPTY")
-        # Inline build percentage slider (from add-on prefs) if available
+        # Inline controls (sampling, scale, radius) from preferences if available
         try:
-            # Determine addon key from this module's path: addon.<name>.panels → folder name after 'addon'.
-            mod_name = __name__.split(
-                "."
-            )  # e.g., ['addon', 'panels'] or ['addon'] depending on load
+            mod_name = __name__.split(".")
             addon_key = mod_name[0] if mod_name else "addon"
             prefs_container = context.preferences.addons.get(addon_key)
             if prefs_container:
                 prefs = getattr(prefs_container, "preferences", None)
-                if hasattr(prefs, "build_percentage"):
-                    slider = col.row(align=True)
-                    slider.prop(prefs, "build_percentage", text="Build %")
+                if prefs:
+                    ctrl_col = col.column(align=True)
+                    if hasattr(prefs, "build_percentage"):
+                        row_pct = ctrl_col.row(align=True)
+                        row_pct.prop(prefs, "build_percentage", text="Build %")
+                    if hasattr(prefs, "scale_factor"):
+                        row_scale = ctrl_col.row(align=True)
+                        row_scale.prop(prefs, "scale_factor", text="Scale")
+                    if hasattr(prefs, "system_point_radius"):
+                        row_rad = ctrl_col.row(align=True)
+                        row_rad.prop(prefs, "system_point_radius", text="Radius")
         except Exception:
             pass
 
