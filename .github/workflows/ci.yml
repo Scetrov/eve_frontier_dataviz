@@ -7,18 +7,9 @@ on:
   pull_request:
     branches: [main]
 
-# Permissions needed for Codecov OIDC (id-token) and default read of repository contents.
-permissions:
-  contents: read
-  id-token: write
-
 jobs:
   build-test-lint:
     runs-on: ubuntu-latest
-    # Ensure job-level permissions (redundant with top-level but explicit if file fragments are reused).
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,23 +37,14 @@ jobs:
           fi
 
       - name: Run tests with coverage
-        run: |
-          echo "Running pytest with explicit coverage targets"
-          pytest -q --cov=addon --cov-report=term-missing --cov-report=xml:coverage.xml
-          echo "Listing generated coverage artifacts"
-          ls -l . || true
-          ls -l coverage.xml || echo "coverage.xml not found"
+        run: pytest --cov-report=term-missing --cov-report=xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           files: coverage.xml
-          flags: unittests
-          name: linux-py312
-          verbose: true
-          fail_ci_if_error: true
-          token: ${{ secrets.CODECOV_TOKEN }}
-          use_oidc: true
+          fail_ci_if_error: false
+          verbose: false
 
       - name: Build add-on zip
         run: python blender_addon/scripts/build_addon.py

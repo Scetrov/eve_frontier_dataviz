@@ -152,7 +152,6 @@ blender -b your_scene.blend -P blender_addon/scripts/export_batch.py -- --modes 
 4. Re-open panel & apply strategy.
 5. Document in `docs/SHADERS.md`.
 
-
 ## 🗃 Data Expectations (Example Tables)
 
 - `systems(id, name, x, y, z, security)`

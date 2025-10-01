@@ -68,3 +68,4 @@ Pure Python tests cover: loader hierarchy, cache behavior, data_state. No Blende
 - Asset Browser templates for materials.
 - Export pipeline (batch procedural renders / data overlays).
 
+If you have additional ideas for enhancements, feel free to create an issue.
