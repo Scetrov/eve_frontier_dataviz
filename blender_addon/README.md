@@ -1,44 +1,53 @@
 # EVE Frontier 3D Data Visualizer (Blender Add-on)
 
-This repository contains a Blender add-on and supporting scripts to visualize astronomical / game world data stored in `data/static.db` inside a 3D scene. It focuses on representing systems, planets, moons, stations, and other entities with procedural shaders that encode metrics (counts, categorical codes, characters of names) into colors, emission, shape modifiers, or geometry node inputs.
+This repository contains a Blender add-on and supporting scripts to visualize astronomical / game world data stored extracted from [the EVE Frontier Client](https://github.com/frontier-reapers/Phobos/tree/fsdbinary-t1) inside a 3D scene. It focuses on representing systems, planets, moons, stations, and other entities with procedural shaders that encode metrics (counts, categorical codes, characters of names) into colors, emission, shape modifiers, or geometry node inputs.
 
 ## ✨ Core Goals
 
-- Parse a large SQLite database (`static.db`) without committing it to version control.
+- Read data from a large SQLite database, while remaining separate from it so as not to commit a 30MB file to Git.
 - Transform raw rows (systems, planets, moons, etc.) into a normalized in-memory scene graph.
-- Instantiate Blender objects in collections (e.g. `Systems`, `Planets`, `Moons`).
-- Provide multiple **visualization modes** ("shaders") to map attributes (e.g. first letter of system name, population, hierarchy depth, orbital count) to material properties.
+- Instantiate Solar Systems as Blender objects in collections.
+- Provide multiple **visualization modes** ("shaders") to map attributes (e.g. first letter of system name, orbital count) to material properties.
 - Offer an extensible plug-in style registry for adding new shader strategies.
 - Allow batch re-render/export (stills or animation) via command line (headless `blender --background`).
 
 ## 🗂 Project Structure
 
-```tree
+Current layout uses a `src/` style package for clearer discovery & editable installs.
+
+```text
 blender_addon/
-  README.md                -> Project overview & usage
-  copilot-instructions.md  -> Guidance for AI pair-programming
-  .gitignore               -> Excludes large / generated artifacts
-  addon/
-    __init__.py            -> Blender add-on entry (register classes/menus)
-    preferences.py         -> Add-on preferences (e.g. path to static.db)
-    operators.py           -> Custom operators (load data, build scene, apply shader)
-    panels.py              -> UI panels in the 3D Viewport / N panel
-    data_loader.py         -> SQLite access & transformation to Python objects
-    scene_builder.py       -> Creates collections & objects
-    shader_registry.py     -> Registry & base class for visualization strategies
-    shaders_builtin.py     -> Example shader strategies
-    materials.py           -> Material creation helpers
-    utils.py               -> Shared helpers (logging, caching, color ramps)
-  shaders/
-    examples/              -> Optional external node groups / .blend assets
-  scripts/
-    export_batch.py        -> Example headless rendering script
-    dev_reload.py          -> Utility to reload add-on during dev
+  README.md               – This overview
+  README_TESTING.md       – Notes on testing approach
+  pyproject.toml          – Build / tooling config (setuptools + ruff + pytest)
+  .gitignore              – Ignore rules (excludes large DB, coverage artifacts)
+  src/
+    addon/                – Python package (Blender add-on code)
+      __init__.py         – Blender entry (bl_info, register/unregister)
+      data_loader.py      – Pure Python SQLite loader (systems→planets→moons)
+      data_state.py       – In‑memory cache of loaded systems
+      preferences.py      – Add-on preferences (db path, scale, cache toggle)
+      operators.py        – Operators: load data, build scene, apply shader
+      panels.py           – UI panel (N‑panel) integrating operators
+      shader_registry.py  – Strategy registry + base class
+      shaders_builtin.py  – Built-in visualization strategies
   docs/
-    ARCHITECTURE.md        -> Deeper technical design
-    SHADERS.md             -> Document visualization modes
-    DATA_MODEL.md          -> Describe DB tables & mapped entities
+    ARCHITECTURE.md       – Layer boundaries & design notes
+    DATA_MODEL.md         – Database tables / dataclass mapping
+    SHADERS.md            – Strategy contract & examples
+  scripts/
+    dev_reload.py         – Helper to reload add-on inside Blender session
+    export_batch.py       – Example headless export / batch script
+    markdown_lint.py      – Minimal Markdown formatting linter
+  shaders/                – (Placeholder for external .blend / node assets)
+  tests/
+    conftest.py           – Adds src path for imports
+    fixtures/mini.db.sql  – Tiny SQLite schema + seed data for tests
+    test_data_loader.py   – Loader hierarchy & cache tests
+    test_data_state.py    – In‑memory state tests
 ```
+
+Not (yet) present: `scene_builder.py`, geometry node assets, or planet/moon object instancing (the scene currently creates only system objects with planet/moon counts stored as custom properties).
 
 ## 🔧 Installation (Development Mode)
 
@@ -100,8 +109,7 @@ The database is assumed to be SQLite with tables resembling:
 
 - Units: 1 Blender unit == 1 arbitrary spatial unit (scaled from original coordinates if needed).
 - Systems placed at `(x, y, z)` possibly scaled (configurable factor, default 0.001).
-- Planets parented to their system empty; moons parented to planet empty.
-- Collections: `EVE_Systems`, `EVE_Planets`, `EVE_Moons`.
+- Collections: `EVE_Systems`
 
 ## 🎨 Visualization Concepts
 
@@ -109,14 +117,13 @@ The database is assumed to be SQLite with tables resembling:
 |---------|-----------------|
 | First char of name | Hue via HSV index (A→0°, Z→~360°) |
 | Count of children (planets, moons) | Emission strength / size |
-| Security / type | Color ramp or discrete material |
 | Hierarchy depth | Gradient emission or outline |
 | Orbital index | Saturation or value shift |
 
 ## 🧪 Testing & Dev Loop
 
 - Use `scripts/dev_reload.py` inside Blender's text editor to quickly reload the add-on after changes.
-- (Future) Add pytest-style offline tests for data parsing (pure Python, no Blender) in a `/tests` folder.
+- Add pytest-style offline tests for data parsing (pure Python, no Blender) in a `/tests` folder.
 
 ## 📦 Roadmap (Initial)
 
@@ -145,6 +152,15 @@ PRs welcome—focus on: new shader strategies, performance improvements (bulk bm
 | DB not found | Set correct path in preferences or ensure relative placement. |
 | Scene rebuild slow | Enable caching in loader or reduce dataset slice while prototyping. |
 | Materials all gray | Ensure chosen visualization mode implements `build()` correctly and registers. |
+
+## 🙏 Acknowledgements
+
+These visualizations would not have been possible without the work of the following individuals and organizations:
+
+- **CCP Games**: for taking the time and brain space to build something meaningful.
+- **Amber Goose**: for their original conceptual that the letters meant something.
+- **Reapers Tribe**: for putting up with my rambling and being a sounding board for ideas.
+- **ProtoDroidBot**: for doing the leg work in extracting the data from the client.
 
 ---
 Happy visualizing!
