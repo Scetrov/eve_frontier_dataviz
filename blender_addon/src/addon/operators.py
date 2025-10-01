@@ -23,8 +23,13 @@ def _clear_generated():  # pragma: no cover - Blender runtime usage
     for cname in _generated_collection_names:
         coll = bpy.data.collections.get(cname)
         if coll:
-            for parent in list(coll.users_scene):
-                parent.collection.children.unlink(coll)
+            # Unlink from all scenes that reference it (iterate over all scenes)
+            for scene in list(bpy.data.scenes):
+                if coll.name in scene.collection.children:
+                    try:
+                        scene.collection.children.unlink(coll)
+                    except Exception:
+                        pass
             for obj in list(coll.objects):
                 bpy.data.objects.remove(obj, do_unlink=True)
             bpy.data.collections.remove(coll)
@@ -42,8 +47,12 @@ class EVE_OT_clear_scene(Operator):
             coll = bpy.data.collections.get(cname)
             if not coll:
                 continue
-            for parent in list(coll.users_scene):
-                parent.collection.children.unlink(coll)
+            for scene in list(bpy.data.scenes):
+                if coll.name in scene.collection.children:
+                    try:
+                        scene.collection.children.unlink(coll)
+                    except Exception:
+                        pass
             for obj in list(coll.objects):
                 removed_objs += 1
                 bpy.data.objects.remove(obj, do_unlink=True)
