@@ -143,6 +143,42 @@ class EVE_OT_build_scene(Operator):
                 obj = bpy.context.active_object
                 obj.name = name
                 systems_coll.objects.link(obj)
+            elif representation == "ICO_INST":
+                # Reuse single icosphere mesh datablock
+                base_name = "EVE_System_Ico_Base"
+                mesh = bpy.data.meshes.get(base_name)
+                if not mesh:
+                    bpy.ops.mesh.primitive_ico_sphere_add(
+                        radius=radius, enter_editmode=False, location=(0, 0, 0), subdivisions=1
+                    )
+                    base_obj = bpy.context.active_object
+                    base_obj.name = base_name
+                    mesh = base_obj.data
+                    # Keep base object hidden in viewport & render to avoid duplicate
+                    base_obj.hide_set(True)
+                    base_obj.hide_render = True
+                    systems_coll.objects.link(base_obj)
+                obj = bpy.data.objects.new(name, mesh)
+                systems_coll.objects.link(obj)
+            elif representation == "SPHERE_INST":
+                base_name = "EVE_System_Sphere_Base"
+                mesh = bpy.data.meshes.get(base_name)
+                if not mesh:
+                    bpy.ops.mesh.primitive_uv_sphere_add(
+                        radius=radius,
+                        enter_editmode=False,
+                        location=(0, 0, 0),
+                        segments=8,
+                        ring_count=6,
+                    )
+                    base_obj = bpy.context.active_object
+                    base_obj.name = base_name
+                    mesh = base_obj.data
+                    base_obj.hide_set(True)
+                    base_obj.hide_render = True
+                    systems_coll.objects.link(base_obj)
+                obj = bpy.data.objects.new(name, mesh)
+                systems_coll.objects.link(obj)
             else:
                 # Default UV sphere geometry (still low segments)
                 bpy.ops.mesh.primitive_uv_sphere_add(

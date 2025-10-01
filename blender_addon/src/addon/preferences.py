@@ -71,11 +71,23 @@ class EVEVisualizerPreferences(AddonPreferences):
     )
     system_representation: EnumProperty(  # type: ignore[valid-type]
         name="System Display",
-        description="Geometry used for system markers (Point=Empty, Icosphere=low poly, Sphere=UV sphere)",
+        description=(
+            "Geometry for system markers: Point (Empty), Icosphere, Sphere, or instanced variants to reduce memory"
+        ),
         items=[
             ("EMPTY", "Point", "Use lightweight empties (fastest, not renderable geometry)"),
             ("ICO", "Icosphere", "Low-poly icosphere (subdiv=1) per system"),
-            ("SPHERE", "Sphere", "UV sphere mesh per system (slower, more verts)"),
+            ("SPHERE", "Sphere", "UV sphere mesh per system (more verts)"),
+            (
+                "ICO_INST",
+                "Icosphere (Instanced)",
+                "Instances of one shared low-poly icosphere mesh",
+            ),
+            (
+                "SPHERE_INST",
+                "Sphere (Instanced)",
+                "Instances of one shared low-poly UV sphere mesh",
+            ),
         ],
         default="EMPTY",
     )
@@ -172,11 +184,23 @@ try:  # pragma: no cover - runtime safety
     if not hasattr(EVEVisualizerPreferences, "system_representation"):
         EVEVisualizerPreferences.system_representation = EnumProperty(  # type: ignore[attr-defined]
             name="System Display",
-            description="Geometry used for system markers (Point=Empty, Icosphere=low poly, Sphere=UV sphere)",
+            description=(
+                "Geometry for system markers: Point (Empty), Icosphere, Sphere, or instanced variants to reduce memory"
+            ),
             items=[
                 ("EMPTY", "Point", "Use lightweight empties (fastest, not renderable geometry)"),
                 ("ICO", "Icosphere", "Low-poly icosphere (subdiv=1) per system"),
-                ("SPHERE", "Sphere", "UV sphere mesh per system (slower, more verts)"),
+                ("SPHERE", "Sphere", "UV sphere mesh per system (more verts)"),
+                (
+                    "ICO_INST",
+                    "Icosphere (Instanced)",
+                    "Instances of one shared low-poly icosphere mesh",
+                ),
+                (
+                    "SPHERE_INST",
+                    "Sphere (Instanced)",
+                    "Instances of one shared low-poly UV sphere mesh",
+                ),
             ],
             default="EMPTY",
         )
