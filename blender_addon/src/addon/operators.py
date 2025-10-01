@@ -1,5 +1,6 @@
 import os
 
+import bmesh
 import bpy
 from bpy.types import Operator
 
@@ -139,6 +140,12 @@ class EVE_OT_build_scene(Operator):
             _clear_generated()
         systems_coll = _get_or_create_collection("EVE_Systems")
 
+        # Temporarily hide collection & disable undo for speed
+        prev_undo = bpy.context.preferences.edit.use_global_undo
+        bpy.context.preferences.edit.use_global_undo = False
+        prev_hide_view = systems_coll.hide_viewport
+        systems_coll.hide_viewport = True
+
         created = 0
         radius = getattr(prefs, "system_point_radius", 2.0)
         pct = getattr(prefs, "build_percentage", 1.0)
@@ -163,70 +170,53 @@ class EVE_OT_build_scene(Operator):
             radius = max(0.01, float(radius))
         except Exception:
             radius = 2.0
-        for sys in systems_iter:
+
+        # --- Mesh template helpers ---
+        def _ensure_mesh(kind: str, r: float, inst: bool) -> bpy.types.Mesh:
+            suffix = "INST" if inst else "TPL"
+            key = f"EVE_{kind}_{int(r*1000)}_{suffix}"
+            m = bpy.data.meshes.get(key)
+            if m:
+                return m
+            m = bpy.data.meshes.new(key)
+            bm = bmesh.new()
+            if kind == "ICO":
+                bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+            else:  # SPHERE
+                bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=6, diameter=r * 2)
+            bm.to_mesh(m)
+            bm.free()
+            return m
+
+        instanced = representation in {"ICO_INST", "SPHERE_INST"}
+        base_kind = None
+        if representation.startswith("ICO"):
+            base_kind = "ICO"
+        elif representation.startswith("SPHERE"):
+            base_kind = "SPHERE"
+
+        shared_mesh = None
+        if instanced and base_kind:
+            shared_mesh = _ensure_mesh(base_kind, radius, True)
+
+        for idx, sys in enumerate(systems_iter):
             name = sys.name or f"System_{sys.id}"
             if representation == "EMPTY":
-                # Lightweight display: Empty (plain axes)
                 obj = bpy.data.objects.new(name, None)
                 obj.empty_display_type = "PLAIN_AXES"
                 obj.empty_display_size = radius
                 systems_coll.objects.link(obj)
-            elif representation == "ICO":
-                # Low poly icosphere (subdiv=1 gives 12 verts -> 42 verts). Fewer than UV sphere segments.
-                bpy.ops.mesh.primitive_ico_sphere_add(
-                    radius=radius, enter_editmode=False, location=(0, 0, 0), subdivisions=1
-                )
-                obj = bpy.context.active_object
-                obj.name = name
-                systems_coll.objects.link(obj)
-            elif representation == "ICO_INST":
-                # Reuse single icosphere mesh datablock
-                base_name = "EVE_System_Ico_Base"
-                mesh = bpy.data.meshes.get(base_name)
-                if not mesh:
-                    bpy.ops.mesh.primitive_ico_sphere_add(
-                        radius=radius, enter_editmode=False, location=(0, 0, 0), subdivisions=1
-                    )
-                    base_obj = bpy.context.active_object
-                    base_obj.name = base_name
-                    mesh = base_obj.data
-                    # Keep base object hidden in viewport & render to avoid duplicate
-                    base_obj.hide_set(True)
-                    base_obj.hide_render = True
-                    systems_coll.objects.link(base_obj)
-                obj = bpy.data.objects.new(name, mesh)
-                systems_coll.objects.link(obj)
-            elif representation == "SPHERE_INST":
-                base_name = "EVE_System_Sphere_Base"
-                mesh = bpy.data.meshes.get(base_name)
-                if not mesh:
-                    bpy.ops.mesh.primitive_uv_sphere_add(
-                        radius=radius,
-                        enter_editmode=False,
-                        location=(0, 0, 0),
-                        segments=8,
-                        ring_count=6,
-                    )
-                    base_obj = bpy.context.active_object
-                    base_obj.name = base_name
-                    mesh = base_obj.data
-                    base_obj.hide_set(True)
-                    base_obj.hide_render = True
-                    systems_coll.objects.link(base_obj)
-                obj = bpy.data.objects.new(name, mesh)
+            elif instanced and shared_mesh:
+                obj = bpy.data.objects.new(name, shared_mesh)
                 systems_coll.objects.link(obj)
             else:
-                # Default UV sphere geometry (still low segments)
-                bpy.ops.mesh.primitive_uv_sphere_add(
-                    radius=radius,
-                    enter_editmode=False,
-                    location=(0, 0, 0),
-                    segments=8,
-                    ring_count=6,
-                )
-                obj = bpy.context.active_object
-                obj.name = name
+                # Non-instanced mesh: copy from template mesh (faster than ops)
+                tpl_mesh = _ensure_mesh(base_kind or "SPHERE", radius, False)
+                obj = bpy.data.objects.new(name, tpl_mesh.copy())
                 systems_coll.objects.link(obj)
+
+            if idx and idx % 5000 == 0:
+                self.report({"INFO"}, f"Placed {idx:,} systems...")
             if apply_axis:
                 # (x,y,z)->(x,z,-y): rotate -90° about X to convert Z-up -> Y-up
                 obj.location = (sys.x * scale, sys.z * scale, -sys.y * scale)
@@ -238,9 +228,13 @@ class EVE_OT_build_scene(Operator):
             obj["moon_count"] = moon_count
             created += 1
 
+        # Restore collection visibility & undo
+        systems_coll.hide_viewport = prev_hide_view
+        bpy.context.preferences.edit.use_global_undo = prev_undo
+
         self.report(
             {"INFO"},
-            f"Scene built with {created} systems (sample={pct:.2%}, mode={representation}) planets/moons as counts only",
+            f"Scene built with {created} systems (sample={pct:.2%}, mode={representation}, inst={'yes' if instanced else 'no'})",
         )
         return {"FINISHED"}
 
