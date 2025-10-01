@@ -8,7 +8,7 @@ This document catalogs available visualization ("shader") strategies and the dat
 
 - ID: `NameFirstCharHue`
 - Mapping: First letter (A–Z) -> hue across color wheel (HSV). Saturation fixed at 0.8, value 1.0.
-- Objects: Systems (placeholder in early scaffold).
+- Objects: Systems (only systems instantiated currently; planets/moons available as counts on system objects).
 - Notes: Creates a shared base material then per-initial copies to set emission color.
 
 ### ChildCountEmission
@@ -40,7 +40,7 @@ This document catalogs available visualization ("shader") strategies and the dat
 1. Subclass `BaseShaderStrategy` in a module (e.g. `my_strategies.py`).
 2. Decorate with `@register_strategy`.
 3. Implement `build(context, objects_by_type)`.
-4. Reference objects via keys: `systems`, `planets`, `moons` (extend as needed).
+4. Reference objects via keys: `systems` (future keys like `planets`, `moons` will appear once instancing is implemented). Use custom props `planet_count`, `moon_count` on each system if you need child metrics now.
 5. Test in a small scene slice before running on full dataset.
 6. Document here.
 

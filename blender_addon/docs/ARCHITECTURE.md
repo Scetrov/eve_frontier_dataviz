@@ -1,42 +1,70 @@
 # Architecture Overview
 
-## Layers
+## Layered Design (Current vs Planned)
 
-1. Data Layer (pure Python) – future `data_loader.py` parses SQLite into dataclasses.
-2. Scene Layer – builds Blender objects/collections from structured entities.
-3. Visualization Layer – shader strategies produce / assign materials.
-4. UI Layer – panels + operators orchestrate workflows.
+1. Data Layer (implemented): `src/addon/data_loader.py` converts SQLite tables → dataclasses (Systems with nested Planets + Moons).
+2. Scene Layer (partial): Implemented inline in `operators.EVE_OT_build_scene` (systems only). Planned extraction to `scene_builder.py`.
+3. Visualization Layer: `shader_registry.py`, `shaders_builtin.py` apply / reuse materials per system.
+4. UI / Orchestration: `operators.py`, `panels.py`, `preferences.py` route user actions.
 
-## Flow
+## Current Flow
 
 ```text
-SQLite -> Data Loader -> Entities -> Scene Builder -> Objects -> Strategy -> Materials/Nodes
+SQLite --> data_loader (pure Python) --> [System dataclasses (+ planets/moons in-memory)]
+  --> build_scene (systems only) --> Blender objects (custom props: planet_count, moon_count)
+  --> shader strategy (NameFirstCharHue, ChildCountEmission) --> Materials
 ```
+
+## Planned Flow (Future Extraction)
+
+```text
+SQLite -> data_loader -> entities -> scene_builder.build() -> objects -> strategies -> materials/nodes
+```
+
+## Key Decisions
+
+- Planets & moons are NOT instantiated yet: counts stored on system objects to keep scene light early.
+- `bpy` imports isolated to UI/scene modules; pure loader stays testable.
+- Deterministic material naming prevents duplication on repeated strategy application.
+- `src/` layout clarifies import roots and avoids accidental extra packages.
 
 ## Performance Considerations
 
-- Bulk fetch DB tables instead of per-row queries.
-- Reuse materials & node groups.
-- Avoid rebuilding entire scene if only visualization changes.
-- Potential future: Use Geometry Nodes for large instances (systems as points -> instanced sphere).
-
-## Caching
-
-- In-memory cache keyed by DB mtime + size. Invalidate if file changed or preference toggled.
+- Single bulk SELECT per table; filter by limited system IDs when slicing.
+- In-memory cache keyed by `(path, size, mtime_ns, limit_systems)`.
+- Avoid full scene rebuild for visualization-only changes (strategies operate in-place).
+- Future: geometry nodes + instancing for large numbers of child bodies.
 
 ## Extensibility Points
 
-- Strategy Registry: plug new classes without modifying core.
-- Data Model: additional tables mapped by extending dataclasses.
-- Operators: add export / analysis steps.
+| Area | How to Extend |
+|------|---------------|
+| Data Model | Add dataclass + bulk fetch + parent linking pattern |
+| Scene (future) | New builder functions in `scene_builder.py` |
+| Strategies | New subclass + `@register_strategy` decorator |
+| Operators | New `EVE_OT_*` with concise `execute` and clear reporting |
 
-## Error Handling
+## Error Handling & Reporting
 
-- Operators should `report({'ERROR'}, msg)` on failure and early return.
-- Strategies must fail gracefully (wrap heavy ops try/except, log not crash).
+- Operators: use `self.report({'ERROR'}, msg)` and return `{'CANCELLED'}` on failure.
+- Strategies: fail gracefully; skip objects lacking expected custom properties.
+- Loader: raises `FileNotFoundError` early for missing DB; other exceptions bubble for explicit reporting.
+
+## Roadmap Snapshot
+
+- [ ] Extract scene building into dedicated module.
+- [ ] Add planets/moons instancing toggle.
+- [ ] Security metric visualization strategy.
+- [ ] Node-group based shared material system (reduce per-variant copies).
+- [ ] Optional Blender API stubs for deeper unit testing.
+
+## Testing Boundary
+
+Pure Python tests cover: loader hierarchy, cache behavior, data_state. No Blender API mocking yet; strategies and operators exercised manually in Blender.
 
 ## Future Enhancements
 
-- Headless test harness with mocked Blender API (e.g. via `bpy.types` stubs for CI).
-- Geometry Node based visual encodings.
-- Asset Browser integration for reusable material templates.
+- Geometry Node driven attribute visualization.
+- Asset Browser templates for materials.
+- Export pipeline (batch procedural renders / data overlays).
+
