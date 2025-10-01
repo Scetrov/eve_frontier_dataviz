@@ -402,6 +402,35 @@ class EVE_OT_viewport_set_clip(Operator):
         return {"CANCELLED"}
 
 
+class EVE_OT_viewport_hide_overlays(Operator):
+    bl_idname = "eve.viewport_hide_overlays"
+    bl_label = "Hide Grid & Axis"
+    bl_description = "Hide floor grid and XYZ axis in all 3D Viewports (toggle)"
+
+    def execute(self, context):  # noqa: D401
+        toggled = 0
+        last_show_floor = None
+        for area in context.screen.areas:
+            if area.type == "VIEW_3D":
+                for space in area.spaces:
+                    if space.type == "VIEW_3D":
+                        overlay = space.overlay
+                        # Toggle both grid and axis visibility
+                        new_state = not overlay.show_floor
+                        overlay.show_floor = new_state
+                        overlay.show_axis_x = new_state  # axis follows floor
+                        overlay.show_axis_y = new_state
+                        overlay.show_axis_z = new_state
+                        last_show_floor = new_state
+                        toggled += 1
+        if toggled:
+            state = "shown" if last_show_floor else "hidden"
+            self.report({"INFO"}, f"Grid/Axis now {state} ({toggled} view(s))")
+            return {"FINISHED"}
+        self.report({"WARNING"}, "No VIEW_3D areas found")
+        return {"CANCELLED"}
+
+
 def register():  # pragma: no cover - Blender runtime usage
     bpy.utils.register_class(EVE_OT_clear_scene)
     bpy.utils.register_class(EVE_OT_load_data)
@@ -410,6 +439,7 @@ def register():  # pragma: no cover - Blender runtime usage
     bpy.utils.register_class(EVE_OT_viewport_fit_systems)
     bpy.utils.register_class(EVE_OT_viewport_set_space)
     bpy.utils.register_class(EVE_OT_viewport_set_clip)
+    bpy.utils.register_class(EVE_OT_viewport_hide_overlays)
     # Fallback: ensure strategy_id materialized (rare on some reload sequences)
     if not hasattr(EVE_OT_apply_shader, "strategy_id"):
         print(
@@ -420,6 +450,7 @@ def register():  # pragma: no cover - Blender runtime usage
 
 def unregister():  # pragma: no cover - Blender runtime usage
     bpy.utils.unregister_class(EVE_OT_viewport_set_clip)
+    bpy.utils.unregister_class(EVE_OT_viewport_hide_overlays)
     bpy.utils.unregister_class(EVE_OT_clear_scene)
     bpy.utils.unregister_class(EVE_OT_viewport_set_space)
     bpy.utils.unregister_class(EVE_OT_viewport_fit_systems)
