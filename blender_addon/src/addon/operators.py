@@ -46,8 +46,8 @@ class EVE_OT_load_data(Operator):
         prefs = get_prefs(context)
         db_path = prefs.db_path
         if not os.path.exists(db_path):
-            self.report({'ERROR'}, f"Database not found: {db_path}")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, f"Database not found: {db_path}")
+            return {"CANCELLED"}
         try:
             systems = load_data(
                 db_path,
@@ -55,16 +55,16 @@ class EVE_OT_load_data(Operator):
                 enable_cache=prefs.enable_cache,
             )
         except Exception as e:  # pragma: no cover - defensive
-            self.report({'ERROR'}, f"Load failed: {e}")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, f"Load failed: {e}")
+            return {"CANCELLED"}
         data_state.set_loaded_systems(systems)
         total_planets = sum(len(s.planets) for s in systems)
         total_moons = sum(len(p.moons) for s in systems for p in s.planets)
         self.report(
-            {'INFO'},
+            {"INFO"},
             f"Loaded {len(systems)} systems / {total_planets} planets / {total_moons} moons",
         )
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class EVE_OT_build_scene(Operator):
@@ -78,14 +78,14 @@ class EVE_OT_build_scene(Operator):
         if not systems_data:
             prefs = get_prefs(context)
             if not os.path.exists(prefs.db_path):
-                self.report({'ERROR'}, "No data loaded and database path invalid")
-                return {'CANCELLED'}
+                self.report({"ERROR"}, "No data loaded and database path invalid")
+                return {"CANCELLED"}
             try:
                 systems_data = load_data(prefs.db_path, enable_cache=prefs.enable_cache)
                 data_state.set_loaded_systems(systems_data)
             except Exception as e:  # pragma: no cover
-                self.report({'ERROR'}, f"Auto-load failed: {e}")
-                return {'CANCELLED'}
+                self.report({"ERROR"}, f"Auto-load failed: {e}")
+                return {"CANCELLED"}
 
         prefs = get_prefs(context)
         scale = prefs.scale_factor
@@ -107,8 +107,8 @@ class EVE_OT_build_scene(Operator):
             obj["moon_count"] = moon_count
             created += 1
 
-        self.report({'INFO'}, f"Scene built with {created} systems (planets/moons as counts only)")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"Scene built with {created} systems (planets/moons as counts only)")
+        return {"FINISHED"}
 
 
 class EVE_OT_apply_shader(Operator):
@@ -131,11 +131,11 @@ class EVE_OT_apply_shader(Operator):
                 objs_by_type["systems"].extend(coll.objects)
         strat = get_strategy(self.strategy_id)
         if not strat:
-            self.report({'ERROR'}, f"Strategy {self.strategy_id} not found")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, f"Strategy {self.strategy_id} not found")
+            return {"CANCELLED"}
         strat.build(context, objs_by_type)
-        self.report({'INFO'}, f"Applied {self.strategy_id}")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"Applied {self.strategy_id}")
+        return {"FINISHED"}
 
 
 def register():  # pragma: no cover - Blender runtime usage

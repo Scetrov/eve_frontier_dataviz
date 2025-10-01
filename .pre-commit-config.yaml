@@ -18,3 +18,9 @@ repos:
         language: system
         pass_filenames: false
         stages: [pre-commit]
+      - id: build-addon
+        name: build-addon (verify zip builds)
+        entry: python blender_addon/scripts/build_addon.py
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]

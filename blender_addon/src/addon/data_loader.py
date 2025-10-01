@@ -2,6 +2,7 @@
 
 No Blender API calls here so it can be unit tested headlessly.
 """
+
 from __future__ import annotations
 
 import os
@@ -56,7 +57,9 @@ def _file_identity(path: Path) -> Tuple[str, int, int]:
     return (str(path.resolve()), int(st.st_size), int(st.st_mtime_ns))
 
 
-def load_data(db_path: str | os.PathLike, *, limit_systems: int | None = None, enable_cache: bool = True) -> List[System]:
+def load_data(
+    db_path: str | os.PathLike, *, limit_systems: int | None = None, enable_cache: bool = True
+) -> List[System]:
     """Load systems, planets, moons from the SQLite database.
 
     Parameters

@@ -4,13 +4,13 @@ from pathlib import Path
 
 from addon.data_loader import clear_cache, load_data
 
-SQL_FILE = Path(__file__).parent / 'fixtures' / 'mini.db.sql'
+SQL_FILE = Path(__file__).parent / "fixtures" / "mini.db.sql"
 
 
 def build_temp_db() -> Path:
-    with open(SQL_FILE, 'r', encoding='utf-8') as f:
+    with open(SQL_FILE, "r", encoding="utf-8") as f:
         sql_script = f.read()
-    tmp = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     tmp.close()
     path = Path(tmp.name)
     with sqlite3.connect(path) as con:
@@ -24,7 +24,7 @@ def test_load_data_basic():
     # Expect 2 systems
     assert len(systems) == 2
     alpha = systems[0]
-    assert alpha.name == 'Alpha'
+    assert alpha.name == "Alpha"
     # System 1 has 2 planets
     assert len(alpha.planets) == 2
     # Planet 10 has 2 moons

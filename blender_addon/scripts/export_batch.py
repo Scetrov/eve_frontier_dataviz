@@ -2,6 +2,7 @@
 Run with:
 blender -b some_scene.blend -P scripts/export_batch.py -- --modes NameFirstCharHue ChildCountEmission
 """
+
 import argparse
 
 import bpy
@@ -24,11 +25,12 @@ def apply_strategy(strategy_id: str):
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--modes', nargs='+', default=['NameFirstCharHue'])
-    parser.add_argument('--output', default='renders')
+    parser.add_argument("--modes", nargs="+", default=["NameFirstCharHue"])
+    parser.add_argument("--output", default="renders")
     args = parser.parse_args(argv)
     out_dir = args.output
     import os
+
     os.makedirs(out_dir, exist_ok=True)
 
     for mode in args.modes:

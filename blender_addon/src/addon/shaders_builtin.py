@@ -22,17 +22,17 @@ class NameFirstCharHue(BaseShaderStrategy):
         links = nt.links
         # Clear except output
         for n in list(nodes):
-            if n.type != 'OUTPUT_MATERIAL':
+            if n.type != "OUTPUT_MATERIAL":
                 nodes.remove(n)
-        out = next(n for n in nodes if n.type == 'OUTPUT_MATERIAL')
+        out = next(n for n in nodes if n.type == "OUTPUT_MATERIAL")
         emission = nodes.new("ShaderNodeEmission")
         emission.location = (-200, 0)
         links.new(emission.outputs[0], out.inputs[0])
 
         # Assign color per object name first char
         for obj in objects_by_type.get("systems", []):
-            first = obj.name[:1].upper() if obj.name else 'A'
-            idx = ord(first) - ord('A')
+            first = obj.name[:1].upper() if obj.name else "A"
+            idx = ord(first) - ord("A")
             hue = (idx / 26.0) % 1.0
             r, g, b = colorsys.hsv_to_rgb(hue, 0.8, 1.0)
             inst_name = f"{mat_name}_{first}"
@@ -43,7 +43,7 @@ class NameFirstCharHue(BaseShaderStrategy):
                 e_node = inst.node_tree.nodes.get(emission.name)
                 if e_node:  # In copy, name preserved
                     e_node.inputs[0].default_value = (r, g, b, 1.0)
-            if obj.data and hasattr(obj.data, 'materials'):
+            if obj.data and hasattr(obj.data, "materials"):
                 if obj.data.materials:
                     obj.data.materials[0] = inst
                 else:
@@ -66,16 +66,16 @@ class ChildCountEmission(BaseShaderStrategy):
             nodes = nt.nodes
             links = nt.links
             for n in list(nodes):
-                if n.type != 'OUTPUT_MATERIAL':
+                if n.type != "OUTPUT_MATERIAL":
                     nodes.remove(n)
-            out = next(n for n in nodes if n.type == 'OUTPUT_MATERIAL')
+            out = next(n for n in nodes if n.type == "OUTPUT_MATERIAL")
             emission = nodes.new("ShaderNodeEmission")
             emission.location = (-200, 0)
             links.new(emission.outputs[0], out.inputs[0])
 
         # For each system object set emission strength proportional to child count
         for obj in objects_by_type.get("systems", []):
-            child_count = sum(1 for c in obj.children if c.type == 'MESH')
+            child_count = sum(1 for c in obj.children if c.type == "MESH")
             strength = max(0.1, min(child_count / 10.0, 10.0))
             inst_name = f"{mat_name}_{child_count}"
             inst = bpy.data.materials.get(inst_name)
@@ -83,9 +83,9 @@ class ChildCountEmission(BaseShaderStrategy):
                 inst = base.copy()
                 inst.name = inst_name
                 for n in inst.node_tree.nodes:
-                    if n.type == 'EMISSION':
+                    if n.type == "EMISSION":
                         n.inputs[1].default_value = strength
-            if obj.data and hasattr(obj.data, 'materials'):
+            if obj.data and hasattr(obj.data, "materials"):
                 if obj.data.materials:
                     obj.data.materials[0] = inst
                 else:
