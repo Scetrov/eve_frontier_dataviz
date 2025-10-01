@@ -144,8 +144,6 @@ class NamePatternCategory(BaseShaderStrategy):
     _re_colon = re.compile(r"^[A-Z]:[0-9]{4}$")
     # Allow dot-separated 1 + (3|4) + (3|4) alphanumeric to catch more variations
     _re_dotseq = re.compile(r"^[A-Z]\.[A-Z0-9]{3,4}\.[A-Z0-9]{3,4}$")
-    # Extended variant: 3 alnum - 1 to 4 alnum + trailing alnum cluster (looser hybrid) e.g. O3H-1FN, E06-D68
-    _re_dash_ext = re.compile(r"^[A-Z0-9]{3}-[A-Z0-9]{2,4}$")
 
     _CATEGORY_COLORS = {
         "DASH": (0.0, 0.8, 1.0),  # cyan
@@ -157,8 +155,6 @@ class NamePatternCategory(BaseShaderStrategy):
     def _category(self, name: str) -> str:
         nm = (name or "").strip().upper()
         if self._re_dash.match(nm):
-            return "DASH"
-        if self._re_dash_ext.match(nm):
             return "DASH"
         if self._re_colon.match(nm):
             return "COLON"
