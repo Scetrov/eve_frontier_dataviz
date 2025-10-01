@@ -1,3 +1,4 @@
+import traceback
 from pathlib import Path
 
 import bpy
@@ -12,9 +13,10 @@ def _default_db_path():
     preference field is editable instead of crashing registration.
     """  # noqa: D401
     try:
-        # repo_root / blender_addon / src / addon / preferences.py -> parents[3] == repo_root
         return str(Path(__file__).resolve().parents[3] / "data" / "static.db")
-    except Exception:  # pragma: no cover - safety net
+    except Exception as e:  # pragma: no cover - safety net
+        print(f"[EVEVisualizer][warn] default db path resolution failed: {e}")
+        traceback.print_exc()
         return ""
 
 
@@ -69,7 +71,12 @@ def get_prefs(context):  # pragma: no cover - Blender runtime usage
 
 
 def register():  # noqa: D401
-    bpy.utils.register_class(EVEVisualizerPreferences)
+    try:
+        bpy.utils.register_class(EVEVisualizerPreferences)
+    except Exception as e:  # pragma: no cover - show why preferences might be blank
+        print(f"[EVEVisualizer][error] register_class(EVEVisualizerPreferences) failed: {e}")
+        traceback.print_exc()
+        return
     try:  # pragma: no cover - Blender runtime only
         print(
             f"[EVEVisualizer] Preferences registered: bl_idname='{EVEVisualizerPreferences.bl_idname}', "

@@ -9,6 +9,7 @@ bl_info = {
 }
 
 import importlib  # noqa: E402
+import traceback  # noqa: E402
 
 _loaded_modules = []  # populated at register time to support unregister & reload
 
@@ -17,9 +18,21 @@ def _load_modules():  # lazy import to avoid bpy dependency in pure-Python tests
     global _loaded_modules
     if _loaded_modules:
         return _loaded_modules
-    from . import operators, panels, preferences, shader_registry, shaders_builtin  # noqa: F401
-
-    _loaded_modules = [preferences, operators, panels, shader_registry, shaders_builtin]
+    module_names = [
+        "preferences",
+        "operators",
+        "panels",
+        "shader_registry",
+        "shaders_builtin",
+    ]
+    mods = []
+    for name in module_names:
+        try:
+            mods.append(importlib.import_module(f"{__package__}.{name}"))
+        except Exception as e:  # pragma: no cover - Blender runtime diagnostics
+            print(f"[EVEVisualizer][error] Failed importing '{name}': {e}")
+            traceback.print_exc()
+    _loaded_modules = mods
     return _loaded_modules
 
 
@@ -30,14 +43,30 @@ def reload_modules():  # for dev reload (inside Blender only)
 
 
 def register():
-    mods = _load_modules()
-    for m in mods:
-        if hasattr(m, "register"):
-            m.register()
+    try:
+        mods = _load_modules()
+        for m in mods:
+            if hasattr(m, "register"):
+                try:
+                    m.register()
+                except Exception as e:  # pragma: no cover - runtime diagnostics
+                    print(f"[EVEVisualizer][error] register() failed in {m.__name__}: {e}")
+                    traceback.print_exc()
+        if not mods:
+            print("[EVEVisualizer][warn] No modules loaded; preferences panel will be blank.")
+    except Exception as e:  # pragma: no cover
+        print(f"[EVEVisualizer][fatal] Top-level register failed: {e}")
+        traceback.print_exc()
 
 
 def unregister():
-    mods = list(reversed(_load_modules()))
-    for m in mods:
-        if hasattr(m, "unregister"):
-            m.unregister()
+    try:
+        mods = list(reversed(_load_modules()))
+        for m in mods:
+            if hasattr(m, "unregister"):
+                try:
+                    m.unregister()
+                except Exception as e:  # pragma: no cover - runtime diagnostics
+                    print(f"[EVEVisualizer][error] unregister() failed in {m.__name__}: {e}")
+    except Exception as e:  # pragma: no cover
+        print(f"[EVEVisualizer][fatal] Top-level unregister failed: {e}")
