@@ -1,14 +1,17 @@
 [run]
 branch = True
+# Point directly at the source tree inside the editable package directory so file paths
+# in omit patterns match exactly what coverage records.
 source =
-    addon
+    blender_addon/src/addon
 omit =
-    addon/__init__.py
-    addon/operators.py
-    addon/panels.py
-    addon/preferences.py
-    addon/shaders_builtin.py
-    addon/shader_registry.py
+    blender_addon/src/addon/__init__.py
+    # Exclude Blender runtime (bpy) dependent UI / operator / shader modules from coverage
+    blender_addon/src/addon/operators.py
+    blender_addon/src/addon/panels.py
+    blender_addon/src/addon/preferences.py
+    blender_addon/src/addon/shaders_builtin.py
+    blender_addon/src/addon/shader_registry.py
 
 [report]
 show_missing = True
