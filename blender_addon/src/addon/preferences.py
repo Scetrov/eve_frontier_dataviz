@@ -63,7 +63,7 @@ class EVEVisualizerPreferences(AddonPreferences):
     )
     apply_axis_transform: BoolProperty(  # type: ignore[valid-type]
         name="Normalize Axis",
-        default=False,
+        default=True,  # Inverted default: now enabled by default
         description=(
             "If enabled, remap coordinates (x,y,z)->(x,z,-y) to convert source Z-up data into a Y-up scene"
         ),
@@ -109,12 +109,12 @@ class EVEVisualizerPreferences(AddonPreferences):
     )
     exclude_ad_systems: BoolProperty(  # type: ignore[valid-type]
         name="Exclude AD###",
-        default=False,
+        default=True,  # Inverted default: exclude by default
         description="If enabled, exclude systems whose name matches AD followed by three digits (e.g. AD123)",
     )
     exclude_vdash_systems: BoolProperty(  # type: ignore[valid-type]
         name="Exclude V-###",
-        default=False,
+        default=True,  # Inverted default: exclude by default
         description="If enabled, exclude systems whose name matches V- followed by three digits (e.g. V-456)",
     )
 
@@ -194,7 +194,7 @@ try:  # pragma: no cover - runtime safety
     if not hasattr(EVEVisualizerPreferences, "apply_axis_transform"):
         EVEVisualizerPreferences.apply_axis_transform = BoolProperty(  # type: ignore[attr-defined]
             name="Normalize Axis",
-            default=False,
+            default=True,  # match inverted annotation default
             description=(
                 "If enabled, remap coordinates (x,y,z)->(x,z,-y) to convert source Z-up data into a Y-up scene"
             ),
@@ -248,14 +248,14 @@ try:  # pragma: no cover - runtime safety
     if not hasattr(EVEVisualizerPreferences, "exclude_ad_systems"):
         EVEVisualizerPreferences.exclude_ad_systems = BoolProperty(  # type: ignore[attr-defined]
             name="Exclude AD###",
-            default=False,
+            default=True,  # match inverted annotation default
             description="If enabled, exclude systems whose name matches AD followed by three digits (e.g. AD123)",
         )
         _missing.append("exclude_ad_systems")
     if not hasattr(EVEVisualizerPreferences, "exclude_vdash_systems"):
         EVEVisualizerPreferences.exclude_vdash_systems = BoolProperty(  # type: ignore[attr-defined]
             name="Exclude V-###",
-            default=False,
+            default=True,  # match inverted annotation default
             description="If enabled, exclude systems whose name matches V- followed by three digits (e.g. V-456)",
         )
         _missing.append("exclude_vdash_systems")
