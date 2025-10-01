@@ -588,12 +588,14 @@ class EVE_OT_apply_shader(Operator):
 
     def execute(self, context):  # noqa: D401
         objs_by_type = {"systems": []}
+        systems_coll = None
         for cname in _generated_collection_names:
             coll = bpy.data.collections.get(cname)
             if not coll:
                 continue
             if cname == "EVE_Systems":
                 objs_by_type["systems"].extend(coll.objects)
+                systems_coll = coll
         # Resolve selected strategy id; handle reload edge cases where EnumProperty is still deferred.
         # Prefer global dropdown selection if present
         wm = context.window_manager
@@ -616,7 +618,25 @@ class EVE_OT_apply_shader(Operator):
             self.report({"ERROR"}, f"Strategy {sid} not found")
             return {"CANCELLED"}
         self.strategy_id = sid  # persist chosen id
-        strat.build(context, objs_by_type)
+        # Performance optimizations: disable undo & hide collection during bulk material assignment
+        prev_undo = bpy.context.preferences.edit.use_global_undo
+        prev_hide = None
+        if systems_coll is not None:
+            prev_hide = systems_coll.hide_viewport
+            systems_coll.hide_viewport = True
+        bpy.context.preferences.edit.use_global_undo = False
+        try:
+            strat.build(context, objs_by_type)
+        finally:
+            bpy.context.preferences.edit.use_global_undo = prev_undo
+            if systems_coll is not None and prev_hide is not None:
+                systems_coll.hide_viewport = prev_hide
+            # Force a redraw after bulk apply
+            try:
+                for area in context.screen.areas:
+                    area.tag_redraw()
+            except Exception:
+                pass
         self.report({"INFO"}, f"Applied {sid}")
         return {"FINISHED"}
 
@@ -644,6 +664,9 @@ class EVE_OT_apply_shader_modal(Operator):  # pragma: no cover - Blender runtime
     _total = 0
     _timer = None
     _strategy = None
+    _systems_coll = None
+    _prev_coll_hide = None
+    _prev_undo = None
 
     def _gather(self, context):
         objs = []
@@ -674,6 +697,13 @@ class EVE_OT_apply_shader_modal(Operator):  # pragma: no cover - Blender runtime
         self._objects = objs
         self._index = 0
         self._total = len(objs)
+        # Optimization: hide systems collection & disable undo during incremental application
+        self._systems_coll = bpy.data.collections.get("EVE_Systems")
+        if self._systems_coll is not None:
+            self._prev_coll_hide = self._systems_coll.hide_viewport
+            self._systems_coll.hide_viewport = True
+        self._prev_undo = bpy.context.preferences.edit.use_global_undo
+        bpy.context.preferences.edit.use_global_undo = False
         wm = context.window_manager
         wm.eve_shader_in_progress = True
         wm.eve_shader_progress = 0.0
@@ -741,6 +771,17 @@ class EVE_OT_apply_shader_modal(Operator):  # pragma: no cover - Blender runtime
         wm.eve_shader_progress = 0.0 if cancelled else 1.0
         msg = f"Shader async {'cancelled' if cancelled else 'complete'}: strategy={getattr(self._strategy, 'id', '?')} objects={self._total}"
         self.report({"INFO"}, msg)
+        # Restore undo & collection visibility
+        try:
+            if self._prev_undo is not None:
+                bpy.context.preferences.edit.use_global_undo = self._prev_undo
+        except Exception:
+            pass
+        try:
+            if self._systems_coll is not None and self._prev_coll_hide is not None:
+                self._systems_coll.hide_viewport = self._prev_coll_hide
+        except Exception:
+            pass
         try:
             if self._timer:
                 context.window_manager.event_timer_remove(self._timer)
