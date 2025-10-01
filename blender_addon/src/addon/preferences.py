@@ -68,6 +68,40 @@ class EVEVisualizerPreferences(AddonPreferences):
             pass
 
 
+# ---- Fallback injection (in case Blender did not materialize annotation properties) ----
+try:  # pragma: no cover - runtime safety
+    _missing = []
+    if not hasattr(EVEVisualizerPreferences, "db_path"):
+        EVEVisualizerPreferences.db_path = StringProperty(  # type: ignore[attr-defined]
+            name="Database Path",
+            subtype="FILE_PATH",
+            default="",
+            description="Path to static.db SQLite file",
+        )
+        _missing.append("db_path")
+    if not hasattr(EVEVisualizerPreferences, "scale_factor"):
+        EVEVisualizerPreferences.scale_factor = FloatProperty(  # type: ignore[attr-defined]
+            name="Coordinate Scale",
+            default=0.001,
+            min=0.0000001,
+            description="Multiply raw coordinates by this factor",
+        )
+        _missing.append("scale_factor")
+    if not hasattr(EVEVisualizerPreferences, "enable_cache"):
+        EVEVisualizerPreferences.enable_cache = BoolProperty(  # type: ignore[attr-defined]
+            name="Enable Data Cache",
+            default=True,
+            description="Cache parsed data in memory for faster rebuild",
+        )
+        _missing.append("enable_cache")
+    if _missing:
+        print(f"[EVEVisualizer][info] Injected fallback properties: {_missing}")
+    else:
+        print("[EVEVisualizer][info] Annotation properties present (no fallback needed)")
+except Exception as _e:  # pragma: no cover
+    print(f"[EVEVisualizer][warn] Fallback property injection failed: {_e}")
+
+
 def get_prefs(context):  # pragma: no cover - Blender runtime usage
     key = Path(__file__).parent.name
     if key in context.preferences.addons:
