@@ -76,16 +76,16 @@ class EVE_PT_main(Panel):
         # --- Visualization Section ---
         box_vis = layout.box()
         box_vis.label(text="Visualization", icon="MATERIAL")
-        row_vis = box_vis.row(align=True)
         strategies = get_strategies()
         if strategies:
-            op = row_vis.operator("eve.apply_shader", text="Apply Strategy", icon="MATERIAL")
-            if hasattr(op, "strategy_id") and strategies:
-                try:
-                    op.strategy_id = strategies[0].id
-                except Exception:
-                    pass
+            # Dropdown from WindowManager
+            wm = context.window_manager
+            if hasattr(wm, "eve_strategy_id"):
+                box_vis.prop(wm, "eve_strategy_id", text="Strategy")
+            row_vis = box_vis.row(align=True)
+            row_vis.operator("eve.apply_shader", text="Apply", icon="PLAY")
         else:
+            row_vis = box_vis.row(align=True)
             row_vis.label(text="No strategies registered")
 
         # --- View Section ---

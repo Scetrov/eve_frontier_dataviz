@@ -575,7 +575,14 @@ class EVE_OT_apply_shader(Operator):
             if cname == "EVE_Systems":
                 objs_by_type["systems"].extend(coll.objects)
         # Resolve selected strategy id; handle reload edge cases where EnumProperty is still deferred.
-        sid = getattr(self, "strategy_id", None)
+        # Prefer global dropdown selection if present
+        wm = context.window_manager
+        sid = None
+        sid_wm = getattr(wm, "eve_strategy_id", None)
+        if isinstance(sid_wm, str) and sid_wm not in {"__none__", "__error__"}:
+            sid = sid_wm
+        else:
+            sid = getattr(self, "strategy_id", None)
         if not isinstance(sid, str) or sid in {"__none__", "__error__"}:
             # Pick first available strategy as fallback
             strats = get_strategies()
@@ -765,6 +772,20 @@ def register():  # pragma: no cover - Blender runtime usage
         wm.eve_build_created = bpy.props.IntProperty(name="EVE Build Created", default=0, min=0)  # type: ignore[attr-defined]
     if not hasattr(wm, "eve_build_mode"):
         wm.eve_build_mode = bpy.props.StringProperty(name="EVE Build Mode", default="")  # type: ignore[attr-defined]
+
+    # Strategy dropdown property
+    def _strategy_enum_items(self, context):  # pragma: no cover - dynamic items
+        try:
+            return [(s.id, s.label, "") for s in get_strategies()] or [("__none__", "None", "")]
+        except Exception:
+            return [("__error__", "(error)", "Failed to enumerate strategies")]
+
+    if not hasattr(wm, "eve_strategy_id"):
+        wm.eve_strategy_id = bpy.props.EnumProperty(  # type: ignore[attr-defined]
+            name="Strategy",
+            description="Visualization strategy to apply",
+            items=_strategy_enum_items,
+        )
     # Fallback: ensure strategy_id materialized (rare on some reload sequences)
     if not hasattr(EVE_OT_apply_shader, "strategy_id"):
         print(
