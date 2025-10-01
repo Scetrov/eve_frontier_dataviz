@@ -3,7 +3,7 @@ ADDON_VERSION:=$(shell $(PYTHON) -c "import tomllib,sys;import pathlib;d=tomllib
 DIST_DIR=dist
 ZIP=dist/eve_frontier_visualizer-$(ADDON_VERSION).zip
 
-.PHONY: help build clean test lint release
+.PHONY: help build clean test lint lint-fix format release
 
 help:
 	@echo "Targets:"
@@ -11,6 +11,8 @@ help:
 	@echo "  clean   - remove dist/ directory"
 	@echo "  test    - run pytest with coverage"
 	@echo "  lint    - run ruff check"
+	@echo "  lint-fix- run ruff check --fix & ruff format"
+	@echo "  format  - run ruff format (code style only)"
 	@echo "  release - tag current version (git tag v<version>)"
 
 build: $(ZIP)
@@ -27,6 +29,12 @@ test:
 
 lint:
 	ruff check .
+
+lint-fix:
+	ruff check --fix . && ruff format .
+
+format:
+	ruff format .
 
 release:
 	@git tag v$(ADDON_VERSION)

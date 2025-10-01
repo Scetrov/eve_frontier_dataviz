@@ -47,21 +47,20 @@ data/static.db (ignored)    # Large real dataset (not in repo)
 ## 🔧 Installation (Development Mode)
 
 1. Ensure the SQLite database exists at `data/static.db` (or set a custom path in Add-on Preferences inside Blender).
-2. (Optional) Create a virtual environment & install dev deps:
+1. (Optional) Create a virtual environment & install dev deps:
 
 ```bash
 pip install -e .[dev]
 ```
 
-3. Zip the add-on directory or point Blender at it directly:
+1. Zip the add-on directory or point Blender at it directly:
 
 ```bash
 python -m zipfile -c eve_frontier_visualizer.zip blender_addon/addon
 ```
 
-4. In Blender: Edit > Preferences > Add-ons > Install… → choose the zip (or copy folder into scripts/addons) and enable it (`EVE Frontier: Data Visualizer`).
-5. Open the 3D Viewport > N panel > "EVE Frontier" tab.
-
+1. In Blender: Edit > Preferences > Add-ons > Install… → choose the zip (or copy folder into scripts/addons) and enable it (`EVE Frontier: Data Visualizer`).
+1. Open the 3D Viewport > N panel > "EVE Frontier" tab.
 
 ## 🚀 Usage Workflow
 
@@ -94,8 +93,9 @@ Details and dataclasses: see `docs/DATA_MODEL.md`.
 
 ## 🧪 Testing & Dev Loop
 
-- Run tests: `pytest`
-- Lint: `ruff check .`
+- Run tests: `pytest` or `make test`
+- Lint: `ruff check .` or `make lint`
+- Auto-fix trivial lint (imports/format): `make lint-fix`
 - Focus pure-Python logic first (data loader) before large scene builds.
 - Use `scripts/dev_reload.py` inside a Blender Text Editor to hot-reload the add-on.
 
@@ -130,7 +130,7 @@ pre-commit run --all-files
 
 ## 🙌 Contributions
 
-PRs welcome—please keep strategies deterministic & idempotent; avoid duplicating materials each run.
+PRs welcome—please keep strategies deterministic & idempotent; avoid duplicating materials each run. See `CONTRIBUTING.md` for workflow details.
 
 ## ❓ Troubleshooting
 

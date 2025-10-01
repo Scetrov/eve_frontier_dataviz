@@ -1,6 +1,6 @@
 ## AI Contribution Guide (Project-Specific)
 
-Authoritative rules for assisting on the EVE Frontier Blender data visualizer. Favor minimal, targeted edits; keep public behavior stable; provably accurate, incremental, testable changes, committed frequently.
+Authoritative rules for assisting on the EVE Frontier Blender data visualizer. Favor minimal, targeted edits; keep public behavior stable; provably accurate, incremental, testable changes, committed frequently. Commit and push each change before next prompt.pr
 
 ### Current Core Flow
 
@@ -58,11 +58,12 @@ Idempotent: re-running may reuse or lazily create a bounded set of materials; no
 
 ### Testing & Tooling
 
-- Tests: `pytest` with coverage (threshold 90%). Only modules without `bpy`.
+- Tests: `pytest` with coverage (threshold 90%). Only modules without `bpy`, ensure passing before commit.
 - Add fixtures under `tests/fixtures` as `.sql` scripts (see `mini.db.sql`).
 - Lint: `ruff check .` (import ordering, errors, basic best practices).
 - Markdown: `python blender_addon/scripts/markdown_lint.py` in CI.
 - Pre-commit: ruff (fix + format), markdown lint, pytest.
+- Commit messages: Conventional Commits style (chore:, feat:, fix:, docs:, test:, refactor:, etc).
 
 ### Common Pitfalls to Avoid
 

@@ -29,7 +29,12 @@ jobs:
           python blender_addon/scripts/markdown_lint.py
 
       - name: Ruff Lint
-        run: ruff check .
+        run: |
+          set -e
+          if ! ruff check .; then
+            echo "::error::Ruff lint failed. If failures are only formatting/imports, run: pre-commit install && pre-commit run --all-files (or 'make lint-fix')." >&2
+            exit 1
+          fi
 
       - name: Run tests with coverage
         run: pytest
