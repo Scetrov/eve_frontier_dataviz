@@ -67,6 +67,11 @@ class EVE_PT_main(Panel):
         row_view.operator("eve.viewport_fit_systems", text="Frame Systems", icon="VIEWZOOM")
         row_view2 = box_view.row(align=True)
         row_view2.operator("eve.viewport_set_space", text="Black BG", icon="WORLD_DATA")
+        row_view3 = box_view.row(align=True)
+        op_clip = row_view3.operator(
+            "eve.viewport_set_clip", text="Clip 100km", icon="VIEW_PERSPECTIVE"
+        )
+        op_clip.clip_end = 100000.0
 
 
 def register():  # pragma: no cover - Blender runtime usage

@@ -365,6 +365,34 @@ class EVE_OT_viewport_set_space(Operator):
         return {"FINISHED"}
 
 
+class EVE_OT_viewport_set_clip(Operator):
+    bl_idname = "eve.viewport_set_clip"
+    bl_label = "Set Clip End 100km"
+    bl_description = "Set 3D View clip end distance to 100,000 (for large-scale starmap)"
+
+    clip_end: bpy.props.FloatProperty(  # type: ignore[valid-type]
+        name="Clip End",
+        default=100000.0,
+        min=1000.0,
+        soft_max=1000000.0,
+        description="Clip end distance to apply to all 3D viewports",
+    )
+
+    def execute(self, context):  # noqa: D401
+        applied = 0
+        for area in context.screen.areas:
+            if area.type == "VIEW_3D":
+                for space in area.spaces:
+                    if space.type == "VIEW_3D":
+                        space.clip_end = float(self.clip_end)
+                        applied += 1
+        if applied:
+            self.report({"INFO"}, f"Set clip end to {self.clip_end:g} on {applied} view(s)")
+            return {"FINISHED"}
+        self.report({"WARNING"}, "No VIEW_3D areas found")
+        return {"CANCELLED"}
+
+
 def register():  # pragma: no cover - Blender runtime usage
     bpy.utils.register_class(EVE_OT_clear_scene)
     bpy.utils.register_class(EVE_OT_load_data)
@@ -372,6 +400,7 @@ def register():  # pragma: no cover - Blender runtime usage
     bpy.utils.register_class(EVE_OT_apply_shader)
     bpy.utils.register_class(EVE_OT_viewport_fit_systems)
     bpy.utils.register_class(EVE_OT_viewport_set_space)
+    bpy.utils.register_class(EVE_OT_viewport_set_clip)
     # Fallback: ensure strategy_id materialized (rare on some reload sequences)
     if not hasattr(EVE_OT_apply_shader, "strategy_id"):
         print(
@@ -381,6 +410,7 @@ def register():  # pragma: no cover - Blender runtime usage
 
 
 def unregister():  # pragma: no cover - Blender runtime usage
+    bpy.utils.unregister_class(EVE_OT_viewport_set_clip)
     bpy.utils.unregister_class(EVE_OT_clear_scene)
     bpy.utils.unregister_class(EVE_OT_viewport_set_space)
     bpy.utils.unregister_class(EVE_OT_viewport_fit_systems)
