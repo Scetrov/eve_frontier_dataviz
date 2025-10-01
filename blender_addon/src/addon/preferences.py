@@ -5,26 +5,47 @@ from bpy.props import BoolProperty, FloatProperty, StringProperty
 from bpy.types import AddonPreferences
 
 
-class EVEVisualizerPreferences(AddonPreferences):
-    bl_idname = __package__ or "addon"
+def _top_level_addon_name():
+    """Return the top-level addon module name.
 
-    # Resolve default DB path relative to repo root (three parents up from src/addon)
-    _default_db = Path(__file__).resolve().parents[3] / 'data' / 'static.db'
-    db_path = StringProperty(
+    Handles cases where the user installed either the inner folder ("addon")
+    or a renamed/distribution folder (e.g. eve_frontier_visualizer).
+    """
+    return __name__.split(".")[0]
+
+
+def _default_db_path():
+    """Best-effort default path to data/static.db relative to repository root.
+
+    If resolution fails (unusual packaging), fall back to an empty string so the
+    preference field is editable instead of crashing registration.
+    """  # noqa: D401
+    try:
+        # repo_root / blender_addon / src / addon / preferences.py -> parents[3] == repo_root
+        return str(Path(__file__).resolve().parents[3] / "data" / "static.db")
+    except Exception:  # pragma: no cover - safety net
+        return ""
+
+
+class EVEVisualizerPreferences(AddonPreferences):
+    # Blender matches this to the add-on package name key in context.preferences.addons
+    bl_idname = _top_level_addon_name()
+
+    db_path = StringProperty(  # type: ignore[valid-type]
         name="Database Path",
-        subtype='FILE_PATH',
-        default=str(_default_db),
+        subtype="FILE_PATH",
+        default=_default_db_path(),
         description="Path to static.db SQLite file",
     )
 
-    scale_factor = FloatProperty(
+    scale_factor = FloatProperty(  # type: ignore[valid-type]
         name="Coordinate Scale",
         default=0.001,
         min=0.0000001,
         description="Multiply raw coordinates by this factor",
     )
 
-    enable_cache = BoolProperty(
+    enable_cache = BoolProperty(  # type: ignore[valid-type]
         name="Enable Data Cache",
         default=True,
         description="Cache parsed data in memory for faster rebuild",
@@ -32,13 +53,26 @@ class EVEVisualizerPreferences(AddonPreferences):
 
     def draw(self, context):  # noqa: D401
         layout = self.layout
-        layout.prop(self, "db_path")
-        layout.prop(self, "scale_factor")
-        layout.prop(self, "enable_cache")
+        col = layout.column(align=True)
+        col.prop(self, "db_path")
+        col.prop(self, "scale_factor")
+        col.prop(self, "enable_cache")
+        # Helpful runtime hint (non-fatal) if path missing
+        db = Path(self.db_path)
+        if self.db_path and not db.exists():
+            col.label(text="(File not found)", icon="ERROR")
 
 
 def get_prefs(context):  # pragma: no cover - Blender runtime usage
-    return context.preferences.addons[__package__].preferences
+    addon_key = _top_level_addon_name()
+    # Defensive: ensure key exists; if not, attempt a fallback search.
+    if addon_key in context.preferences.addons:
+        return context.preferences.addons[addon_key].preferences
+    # Fallback: find first addon module containing our preferences class
+    for _k, v in context.preferences.addons.items():  # pragma: no cover - rare
+        if hasattr(v, "preferences") and isinstance(v.preferences, EVEVisualizerPreferences):
+            return v.preferences
+    raise KeyError(f"EVEVisualizerPreferences not found under addon key '{addon_key}'")
 
 
 def register():  # noqa: D401
