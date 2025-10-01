@@ -35,6 +35,9 @@ class EVE_PT_main(Panel):
                     if hasattr(prefs, "system_point_radius"):
                         row_rad = ctrl_col.row(align=True)
                         row_rad.prop(prefs, "system_point_radius", text="Radius")
+                    if hasattr(prefs, "system_representation"):
+                        row_rep = ctrl_col.row(align=True)
+                        row_rep.prop(prefs, "system_representation", text="Display")
         except Exception:
             pass
 

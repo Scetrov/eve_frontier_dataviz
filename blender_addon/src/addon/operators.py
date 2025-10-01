@@ -106,6 +106,7 @@ class EVE_OT_build_scene(Operator):
         created = 0
         radius = getattr(prefs, "system_point_radius", 2.0)
         pct = getattr(prefs, "build_percentage", 1.0)
+        representation = getattr(prefs, "system_representation", "SPHERE")
         try:
             pct = float(pct)
         except Exception:
@@ -128,12 +129,24 @@ class EVE_OT_build_scene(Operator):
             radius = 2.0
         for sys in systems_iter:
             name = sys.name or f"System_{sys.id}"
-            bpy.ops.mesh.primitive_uv_sphere_add(
-                radius=radius, enter_editmode=False, location=(0, 0, 0)
-            )
-            obj = bpy.context.active_object
-            obj.name = name
-            systems_coll.objects.link(obj)
+            if representation == "EMPTY":
+                # Lightweight display: Empty (plain axes)
+                obj = bpy.data.objects.new(name, None)
+                obj.empty_display_type = "PLAIN_AXES"
+                obj.empty_display_size = radius
+                systems_coll.objects.link(obj)
+            else:
+                # Default sphere geometry (low segments)
+                bpy.ops.mesh.primitive_uv_sphere_add(
+                    radius=radius,
+                    enter_editmode=False,
+                    location=(0, 0, 0),
+                    segments=8,
+                    ring_count=6,
+                )
+                obj = bpy.context.active_object
+                obj.name = name
+                systems_coll.objects.link(obj)
             obj.location = (sys.x * scale, sys.y * scale, sys.z * scale)
             planet_count = len(sys.planets)
             moon_count = sum(len(p.moons) for p in sys.planets)
@@ -143,7 +156,7 @@ class EVE_OT_build_scene(Operator):
 
         self.report(
             {"INFO"},
-            f"Scene built with {created} systems (sample={pct:.2%}) planets/moons as counts only",
+            f"Scene built with {created} systems (sample={pct:.2%}, mode={representation}) planets/moons as counts only",
         )
         return {"FINISHED"}
 

@@ -3,7 +3,7 @@ import traceback
 from pathlib import Path
 
 import bpy
-from bpy.props import BoolProperty, FloatProperty, StringProperty
+from bpy.props import BoolProperty, EnumProperty, FloatProperty, StringProperty
 from bpy.types import AddonPreferences, Operator
 
 
@@ -69,6 +69,15 @@ class EVEVisualizerPreferences(AddonPreferences):
         description="Visual radius (in Blender Units after scaling) for system spheres",
         precision=3,
     )
+    system_representation: EnumProperty(  # type: ignore[valid-type]
+        name="System Display",
+        description="Geometry used for system markers (Point=Empty, Sphere=UV Sphere geometry)",
+        items=[
+            ("EMPTY", "Point", "Use lightweight empties (fast, not renderable geometry)"),
+            ("SPHERE", "Sphere", "Use sphere mesh per system (slower, fully renderable)"),
+        ],
+        default="EMPTY",
+    )
     build_percentage: FloatProperty(  # type: ignore[valid-type]
         name="Build %",
         default=1.0,
@@ -87,6 +96,7 @@ class EVEVisualizerPreferences(AddonPreferences):
             "db_path",
             "scale_factor",
             "enable_cache",
+            "system_representation",
             "system_point_radius",
             "build_percentage",
         ):
@@ -158,6 +168,17 @@ try:  # pragma: no cover - runtime safety
             precision=3,
         )
         _missing.append("system_point_radius")
+    if not hasattr(EVEVisualizerPreferences, "system_representation"):
+        EVEVisualizerPreferences.system_representation = EnumProperty(  # type: ignore[attr-defined]
+            name="System Display",
+            description="Geometry used for system markers (Point=Empty, Sphere=UV Sphere geometry)",
+            items=[
+                ("EMPTY", "Point", "Use lightweight empties (fast, not renderable geometry)"),
+                ("SPHERE", "Sphere", "Use sphere mesh per system (slower, fully renderable)"),
+            ],
+            default="EMPTY",
+        )
+        _missing.append("system_representation")
     if not hasattr(EVEVisualizerPreferences, "build_percentage"):
         EVEVisualizerPreferences.build_percentage = FloatProperty(  # type: ignore[attr-defined]
             name="Build %",
