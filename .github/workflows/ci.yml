@@ -37,15 +37,23 @@ jobs:
           fi
 
       - name: Run tests with coverage
-        run: pytest --cov-report=term-missing --cov-report=xml
+        run: |
+          echo "Running pytest with explicit coverage targets"
+          pytest -q --cov=addon --cov-report=term-missing --cov-report=xml:coverage.xml
+          echo "Listing generated coverage artifacts"
+          ls -l . || true
+          ls -l coverage.xml || echo "coverage.xml not found"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           files: coverage.xml
-          fail_ci_if_error: false
-          verbose: false
+          flags: unittests
+          name: linux-py312
+          verbose: true
+          fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true
 
       - name: Build add-on zip
         run: python blender_addon/scripts/build_addon.py
