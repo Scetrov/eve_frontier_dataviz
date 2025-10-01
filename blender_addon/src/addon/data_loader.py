@@ -51,6 +51,8 @@ class System:
 # Simple in-process cache keyed by file identity + limit parameter
 _cache: Dict[Tuple[str, int, int, Optional[int]], List[System]] = {}
 
+MAX_SQL_VARS = 900  # safety margin below default SQLite limit (999) for IN clause batching
+
 
 def _file_identity(path: Path) -> Tuple[str, int, int]:
     st = path.stat()
@@ -100,9 +102,9 @@ def _resolve_table_names(cur: sqlite3.Cursor) -> Dict[str, str]:
 # Column synonym lists (lowercased for matching)
 _COL_SYSTEM_ID = ("id", "system_id", "solarsystemid", "solar_system_id")
 _COL_SYSTEM_NAME = ("name", "system_name", "solarsystemname", "solar_system_name")
-_COL_X = ("x", "posx", "positionx")
-_COL_Y = ("y", "posy", "positiony")
-_COL_Z = ("z", "posz", "positionz")
+_COL_X = ("x", "posx", "positionx", "centerx")
+_COL_Y = ("y", "posy", "positiony", "centery")
+_COL_Z = ("z", "posz", "positionz", "centerz")
 _COL_SECURITY = ("security", "securitystatus", "security_status")
 
 _COL_PLANET_ID = ("id", "planetid")
@@ -215,8 +217,6 @@ def load_data(
 
         # Planets filtered by selected systems (if limited)
         sys_ids = tuple(system_map.keys())
-        placeholder = ",".join(["?"] * len(sys_ids))
-        # PLANETS
         cur.execute(f"PRAGMA table_info('{tables['planets']}')")
         pl_cols = [row[1] for row in cur.fetchall()]
         pl_resolve = _column_lookup(pl_cols)
@@ -233,11 +233,22 @@ def load_data(
                 f"Missing required columns on '{tables['planets']}': {', '.join(missing_pl)} (have: {', '.join(pl_cols)})"
             )
         pl_select = [c for c in (pl_id, pl_sys, pl_name, pl_orbit, pl_type) if c]
-        cur.execute(
-            f"SELECT {', '.join(pl_select)} FROM {tables['planets']} WHERE {pl_sys} IN ({placeholder})",
-            sys_ids,
-        )
-        planet_rows = cur.fetchall()
+        planet_rows = []
+        if sys_ids:
+            # Batch to avoid "too many SQL variables" for large datasets
+            for i in range(0, len(sys_ids), MAX_SQL_VARS):
+                chunk = sys_ids[i : i + MAX_SQL_VARS]
+                placeholder = ",".join(["?"] * len(chunk))
+                cur.execute(
+                    f"SELECT {', '.join(pl_select)} FROM {tables['planets']} WHERE {pl_sys} IN ({placeholder})",
+                    chunk,
+                )
+                planet_rows.extend(cur.fetchall())
+        # Sort to keep deterministic ordering by planet id
+        try:
+            planet_rows.sort(key=lambda r: int(r[pl_id]))  # type: ignore[arg-type]
+        except Exception:
+            pass
         planet_map: Dict[int, Planet] = {}
         for r in planet_rows:
             rid = int(r[pl_id])
@@ -256,7 +267,6 @@ def load_data(
         # Moons filtered by selected planets
         if planet_map:
             planet_ids = tuple(planet_map.keys())
-            placeholder = ",".join(["?"] * len(planet_ids))
             cur.execute(f"PRAGMA table_info('{tables['moons']}')")
             moon_cols = [row[1] for row in cur.fetchall()]
             moon_resolve = _column_lookup(moon_cols)
@@ -274,11 +284,20 @@ def load_data(
                     f"Missing required columns on '{tables['moons']}': {', '.join(missing_m)} (have: {', '.join(moon_cols)})"
                 )
             moon_select = [c for c in (m_id, m_planet_id, m_name, m_orbit) if c]
-            cur.execute(
-                f"SELECT {', '.join(moon_select)} FROM {tables['moons']} WHERE {m_planet_id} IN ({placeholder})",
-                planet_ids,
-            )
-            moon_rows = cur.fetchall()
+            moon_rows = []
+            if planet_ids:
+                for i in range(0, len(planet_ids), MAX_SQL_VARS):
+                    chunk = planet_ids[i : i + MAX_SQL_VARS]
+                    placeholder = ",".join(["?"] * len(chunk))
+                    cur.execute(
+                        f"SELECT {', '.join(moon_select)} FROM {tables['moons']} WHERE {m_planet_id} IN ({placeholder})",
+                        chunk,
+                    )
+                    moon_rows.extend(cur.fetchall())
+            try:
+                moon_rows.sort(key=lambda r: int(r[m_id]))  # type: ignore[arg-type]
+            except Exception:
+                pass
             for r in moon_rows:
                 mid = int(r[m_id])
                 m = Moon(
@@ -292,6 +311,16 @@ def load_data(
                     parent.moons.append(m)
 
     systems = list(system_map.values())
+    # Optional debug mapping output
+    if os.environ.get("EVE_LOADER_DEBUG"):
+        print(
+            "[EVEVisualizer][debug] Loaded systems count=",
+            len(systems),
+            " planets=",
+            sum(len(s.planets) for s in systems),
+            " moons=",
+            sum(len(p.moons) for s in systems for p in s.planets),
+        )
     if enable_cache:
         _cache[cache_key] = systems
     return systems
