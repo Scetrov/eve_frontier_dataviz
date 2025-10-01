@@ -7,9 +7,18 @@ on:
   pull_request:
     branches: [main]
 
+# Permissions needed for Codecov OIDC (id-token) and default read of repository contents.
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   build-test-lint:
     runs-on: ubuntu-latest
+    # Ensure job-level permissions (redundant with top-level but explicit if file fragments are reused).
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
