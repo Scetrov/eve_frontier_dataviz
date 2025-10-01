@@ -5,6 +5,21 @@
 
 This repository contains a Blender add-on and supporting Python tooling to visualize astronomical / game world data stored in `data/static.db` inside a 3D scene. It focuses on representing systems, planets, moons, stations, and other entities with procedural shaders that encode metrics (counts, categorical codes, characters of names) into colors, emission, shape modifiers, or geometry node inputs.
 
+---
+
+## 🔁 Quick Blender Access (TL;DR)
+
+1. Download (or build) the add-on zip: `python blender_addon/scripts/build_addon.py` → creates `dist/eve_frontier_visualizer.zip`.
+1. In Blender: `Edit > Preferences > Add-ons > Install…` and pick the zip.
+1. Enable: search for `EVE Frontier: Data Visualizer` and tick the checkbox.
+1. Still in Preferences, expand the add-on panel and set the path to your `static.db` (default: `data/static.db` relative to repo root if you launched Blender from there).
+1. Close Preferences. In the 3D Viewport press `N` to open the Sidebar → find the `EVE Frontier` tab.
+1. Click `Load / Refresh Data`, then `Build Scene`, then `Apply` to attach a shader strategy.
+
+If the tab or operators don’t show up, see Troubleshooting below.
+
+---
+
 ## ✨ Core Goals
 
 - Parse a large SQLite database (`static.db`) without committing it to version control.
@@ -62,6 +77,60 @@ python -m zipfile -c eve_frontier_visualizer.zip blender_addon/addon
 
 1. In Blender: Edit > Preferences > Add-ons > Install… → choose the zip (or copy folder into scripts/addons) and enable it (`EVE Frontier: Data Visualizer`).
 1. Open the 3D Viewport > N panel > "EVE Frontier" tab.
+
+### Alternative: Direct Folder (Editable) Install
+
+During active development you can skip zipping:
+
+1. In Blender Add-ons preferences click `Install…` and select the folder `blender_addon/addon` (Blender will copy it). OR symlink/copy that folder into your Blender config `scripts/addons` directory.
+1. When you change code, use the dev reload script inside Blender’s Text Editor:
+
+- Open `blender_addon/scripts/dev_reload.py` in Blender.
+- Run it to call `addon.reload_modules()` without restarting Blender.
+- Re-apply a shader if materials need updating.
+
+Note: structural changes (renaming modules or adding new files imported at register time) may still require a full Blender restart.
+
+### Where Things Appear in Blender
+
+| Component | Location |
+|-----------|----------|
+| Add-on enable toggle | Edit > Preferences > Add-ons (search "EVE Frontier") |
+| Add-on preferences (DB path, cache) | Same panel, dropdown arrow under the add-on entry |
+| Main UI panel | 3D Viewport → Sidebar (N) → `EVE Frontier` tab |
+| Operators | Buttons: Load / Refresh Data, Build Scene, Apply (strategy) |
+| Materials | Created under names prefixed `EVE_` in the Materials list |
+
+### Typical First Run Flow
+
+1. Launch Blender from the repository root (so relative DB path resolves), or set the absolute DB path in preferences.
+1. Open the `EVE Frontier` sidebar tab.
+1. Press `Load / Refresh Data` (loads systems into in-memory cache).
+1. Press `Build Scene` (creates or refreshes system objects / custom props).
+1. Press `Apply` to run the first registered shader strategy. (More strategies listed in SHADERS.md.)
+1. Select objects to inspect custom properties: `planet_count`, `moon_count`.
+
+### Headless / Automation
+
+You can run a headless build + shader application in future workflows. Example skeleton (scene build pending expansion):
+
+```bash
+blender -b -P blender_addon/scripts/dev_reload.py -- --auto
+```
+
+Or batch export with strategies:
+
+```bash
+blender -b my_scene.blend -P blender_addon/scripts/export_batch.py -- --modes NameFirstCharHue ChildCountEmission
+```
+
+### Uninstall / Clean
+
+1. Disable the add-on in Preferences.
+1. Click `Remove` in the same panel.
+1. (Optional) Delete any `EVE_` collections from existing .blend files manually if you want a clean slate.
+
+---
 
 ## 🚀 Usage Workflow
 
