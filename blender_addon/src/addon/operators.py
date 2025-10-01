@@ -703,7 +703,7 @@ class EVE_OT_viewport_set_space(Operator):
                 break
         if not bg:
             bg = nt.nodes.new("ShaderNodeBackground")
-        bg.inputs[0].default_value = (0.0, 0.0, 0.0, 1.0)  # black
+        bg.inputs[0].default_value = (0.0030, 0.0040, 0.0060, 1.0)  # space blue
         # Optionally reduce strength for neutral backdrop
         bg.inputs[1].default_value = 1.0
         # Ensure output
