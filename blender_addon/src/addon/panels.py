@@ -96,6 +96,11 @@ class EVE_PT_main(Panel):
             "eve.viewport_set_space", text="Set Background to Black", icon="WORLD_DATA"
         )
         row_view2.operator("eve.viewport_fit_selection", text="Frame Selection", icon="VIEW_RESET")
+        row_view_hdri = box_view.row(align=True)
+        op_hdri = row_view_hdri.operator(
+            "eve.viewport_set_hdri", text="Apply Space HDRI", icon="IMAGE_DATA"
+        )
+        op_hdri.strength = 1.0
         row_view3 = box_view.row(align=True)
         op_clip = row_view3.operator(
             "eve.viewport_set_clip", text="Set Clipping to 100km", icon="VIEW_PERSPECTIVE"
