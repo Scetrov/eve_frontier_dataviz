@@ -132,8 +132,8 @@ class EVE_OT_apply_shader(Operator):
     bl_label = "Apply Visualization"
     bl_description = "Apply selected shader strategy to generated objects"
 
-    # Use a named callback to avoid lambda serialization / registration edge cases.
-    strategy_id: bpy.props.EnumProperty = bpy.props.EnumProperty(  # type: ignore[assignment]
+    # Proper EnumProperty declaration (annotation only) to avoid _PropertyDeferred leakage on reload.
+    strategy_id: bpy.props.EnumProperty(  # type: ignore[valid-type]
         name="Strategy",
         description="Shader / visualization strategy to apply",
         items=_strategy_items,
@@ -147,12 +147,23 @@ class EVE_OT_apply_shader(Operator):
                 continue
             if cname == "EVE_Systems":
                 objs_by_type["systems"].extend(coll.objects)
-        strat = get_strategy(self.strategy_id)
+        # Resolve selected strategy id; handle reload edge cases where EnumProperty is still deferred.
+        sid = getattr(self, "strategy_id", None)
+        if not isinstance(sid, str) or sid in {"__none__", "__error__"}:
+            # Pick first available strategy as fallback
+            strats = get_strategies()
+            if strats:
+                sid = strats[0].id
+            else:
+                self.report({"ERROR"}, "No strategies registered")
+                return {"CANCELLED"}
+        strat = get_strategy(sid)
         if not strat:
-            self.report({"ERROR"}, f"Strategy {self.strategy_id} not found")
+            self.report({"ERROR"}, f"Strategy {sid} not found")
             return {"CANCELLED"}
+        self.strategy_id = sid  # persist chosen id
         strat.build(context, objs_by_type)
-        self.report({"INFO"}, f"Applied {self.strategy_id}")
+        self.report({"INFO"}, f"Applied {sid}")
         return {"FINISHED"}
 
 
@@ -160,8 +171,11 @@ def register():  # pragma: no cover - Blender runtime usage
     bpy.utils.register_class(EVE_OT_load_data)
     bpy.utils.register_class(EVE_OT_build_scene)
     bpy.utils.register_class(EVE_OT_apply_shader)
-    # Fallback: ensure strategy_id exists (rare, but protects against failed EnumProperty registration)
+    # Fallback: ensure strategy_id materialized (rare on some reload sequences)
     if not hasattr(EVE_OT_apply_shader, "strategy_id"):
+        print(
+            "[EVEVisualizer][warn] strategy_id EnumProperty missing; injecting StringProperty fallback"
+        )
         EVE_OT_apply_shader.strategy_id = bpy.props.StringProperty(name="Strategy")  # type: ignore[attr-defined]
 
 
