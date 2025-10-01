@@ -30,6 +30,32 @@ def _clear_generated():  # pragma: no cover - Blender runtime usage
             bpy.data.collections.remove(coll)
 
 
+class EVE_OT_clear_scene(Operator):
+    bl_idname = "eve.clear_scene"
+    bl_label = "Clear Scene"
+    bl_description = "Remove all generated EVE collections and their objects"
+
+    def execute(self, context):  # noqa: D401
+        removed_objs = 0
+        removed_colls = 0
+        for cname in _generated_collection_names:
+            coll = bpy.data.collections.get(cname)
+            if not coll:
+                continue
+            for parent in list(coll.users_scene):
+                parent.collection.children.unlink(coll)
+            for obj in list(coll.objects):
+                removed_objs += 1
+                bpy.data.objects.remove(obj, do_unlink=True)
+            bpy.data.collections.remove(coll)
+            removed_colls += 1
+        if removed_colls == 0:
+            self.report({"INFO"}, "No generated collections present")
+            return {"CANCELLED"}
+        self.report({"INFO"}, f"Cleared {removed_objs} objects across {removed_colls} collections")
+        return {"FINISHED"}
+
+
 class EVE_OT_load_data(Operator):
     bl_idname = "eve.load_data"
     bl_label = "Load / Refresh Data"
@@ -340,6 +366,7 @@ class EVE_OT_viewport_set_space(Operator):
 
 
 def register():  # pragma: no cover - Blender runtime usage
+    bpy.utils.register_class(EVE_OT_clear_scene)
     bpy.utils.register_class(EVE_OT_load_data)
     bpy.utils.register_class(EVE_OT_build_scene)
     bpy.utils.register_class(EVE_OT_apply_shader)
@@ -354,6 +381,7 @@ def register():  # pragma: no cover - Blender runtime usage
 
 
 def unregister():  # pragma: no cover - Blender runtime usage
+    bpy.utils.unregister_class(EVE_OT_clear_scene)
     bpy.utils.unregister_class(EVE_OT_viewport_set_space)
     bpy.utils.unregister_class(EVE_OT_viewport_fit_systems)
     bpy.utils.unregister_class(EVE_OT_apply_shader)

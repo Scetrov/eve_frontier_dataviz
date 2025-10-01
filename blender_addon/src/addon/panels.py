@@ -25,6 +25,7 @@ class EVE_PT_main(Panel):
         box_build.label(text="Build", icon="OUTLINER_OB_EMPTY")
         row_build = box_build.row(align=True)
         row_build.operator("eve.build_scene", icon="OUTLINER_OB_EMPTY")
+        row_build.operator("eve.clear_scene", text="Clear", icon="TRASH")
         # Inline controls (sampling, scale, radius, display)
         try:
             mod_name = __name__.split(".")
