@@ -42,6 +42,8 @@ class EVE_PT_main(Panel):
                         box_build.prop(prefs, "system_point_radius", text="Radius")
                     if hasattr(prefs, "system_representation"):
                         box_build.prop(prefs, "system_representation", text="Display")
+                    if hasattr(prefs, "apply_axis_transform"):
+                        box_build.prop(prefs, "apply_axis_transform", text="Axis Rx-90")
         except Exception:
             pass
 

@@ -47,10 +47,10 @@ class EVEVisualizerPreferences(AddonPreferences):
     )
     scale_factor: FloatProperty(  # type: ignore[valid-type]
         name="Coordinate Scale",
-        default=1e-13,
-        min=1e-16,
-        soft_min=1e-16,
-        soft_max=1e-1,
+        default=1e-18,
+        min=1e-18,
+        soft_min=1e-18,
+        soft_max=1e-10,
         description=(
             "Multiply raw coordinates by this factor. 1e-13 maps ~1e16m spans to ~1000 BU."
         ),
@@ -60,6 +60,13 @@ class EVEVisualizerPreferences(AddonPreferences):
         name="Enable Data Cache",
         default=True,
         description="Cache parsed data in memory for faster rebuild",
+    )
+    apply_axis_transform: BoolProperty(  # type: ignore[valid-type]
+        name="Axis Transform (Rx-90)",
+        default=False,
+        description=(
+            "If enabled, remap coordinates (x,y,z)->(x,z,-y) to convert source Z-up data into a Y-up scene"
+        ),
     )
     system_point_radius: FloatProperty(  # type: ignore[valid-type]
         name="System Point Radius",
@@ -109,6 +116,7 @@ class EVEVisualizerPreferences(AddonPreferences):
             "db_path",
             "scale_factor",
             "enable_cache",
+            "apply_axis_transform",
             "system_representation",
             "system_point_radius",
             "build_percentage",
@@ -171,6 +179,15 @@ try:  # pragma: no cover - runtime safety
             description="Cache parsed data in memory for faster rebuild",
         )
         _missing.append("enable_cache")
+    if not hasattr(EVEVisualizerPreferences, "apply_axis_transform"):
+        EVEVisualizerPreferences.apply_axis_transform = BoolProperty(  # type: ignore[attr-defined]
+            name="Axis Transform (Rx-90)",
+            default=False,
+            description=(
+                "If enabled, remap coordinates (x,y,z)->(x,z,-y) to convert source Z-up data into a Y-up scene"
+            ),
+        )
+        _missing.append("apply_axis_transform")
     if not hasattr(EVEVisualizerPreferences, "system_point_radius"):
         EVEVisualizerPreferences.system_point_radius = FloatProperty(  # type: ignore[attr-defined]
             name="System Point Radius",

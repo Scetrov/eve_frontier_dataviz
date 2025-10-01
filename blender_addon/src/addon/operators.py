@@ -133,6 +133,7 @@ class EVE_OT_build_scene(Operator):
 
         prefs = get_prefs(context)
         scale = prefs.scale_factor
+        apply_axis = getattr(prefs, "apply_axis_transform", False)
 
         if self.clear_previous:
             _clear_generated()
@@ -226,7 +227,11 @@ class EVE_OT_build_scene(Operator):
                 obj = bpy.context.active_object
                 obj.name = name
                 systems_coll.objects.link(obj)
-            obj.location = (sys.x * scale, sys.y * scale, sys.z * scale)
+            if apply_axis:
+                # (x,y,z)->(x,z,-y): rotate -90° about X to convert Z-up -> Y-up
+                obj.location = (sys.x * scale, sys.z * scale, -sys.y * scale)
+            else:
+                obj.location = (sys.x * scale, sys.y * scale, sys.z * scale)
             planet_count = len(sys.planets)
             moon_count = sum(len(p.moons) for p in sys.planets)
             obj["planet_count"] = planet_count
