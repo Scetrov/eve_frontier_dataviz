@@ -129,10 +129,20 @@ class EVEVisualizerPreferences(AddonPreferences):
     def draw(self, context):  # noqa: D401
         layout = self.layout
         col = layout.column(align=True)
-        # Only draw props if they are resolved (avoid _PropertyDeferred edge cases)
+        # Draw DB path first with Locate just beneath
+        if "db_path" in self.__class__.__dict__:
+            row = col.row()
+            if _ENV_DB_PATH:
+                row.enabled = False
+            try:
+                row.prop(self, "db_path")
+            except Exception as e:  # pragma: no cover
+                col.label(text=f"(Failed db_path: {e})", icon="ERROR")
+            locate_row = col.row(align=True)
+            locate_row.operator("eve.locate_static_db", text="Locate", icon="FILE_FOLDER")
+
+        # Remaining properties (excluding scale_factor which is panel-only now)
         for prop_name in (
-            "db_path",
-            "scale_factor",
             "enable_cache",
             "apply_axis_transform",
             "system_representation",
@@ -144,18 +154,9 @@ class EVEVisualizerPreferences(AddonPreferences):
         ):
             if prop_name in self.__class__.__dict__:
                 try:
-                    # If env var override is active, show db_path disabled to communicate source.
-                    if prop_name == "db_path" and _ENV_DB_PATH:
-                        row = col.row()
-                        row.enabled = False
-                        row.prop(self, prop_name)
-                    else:
-                        col.prop(self, prop_name)
-                except Exception as e:  # pragma: no cover - Blender UI safety
+                    col.prop(self, prop_name)
+                except Exception as e:  # pragma: no cover
                     col.label(text=f"(Failed prop {prop_name}: {e})", icon="ERROR")
-        # Locate / override info
-        row = col.row(align=True)
-        row.operator("eve.locate_static_db", text="Locate", icon="FILE_FOLDER")
         if _ENV_DB_PATH:
             col.label(text=f"Env {ENV_DB_VAR} in use (read-only)", icon="INFO")
         elif not self.db_path:

@@ -55,19 +55,14 @@ class EVE_PT_main(Panel):
                 if prefs:
                     if hasattr(prefs, "build_percentage"):
                         box_build.prop(prefs, "build_percentage", text="Build %")
+                    # Coordinate scale now panel-only (removed from preferences UI)
                     if hasattr(prefs, "scale_factor"):
                         box_build.prop(prefs, "scale_factor", text="Scale")
                     if hasattr(prefs, "system_point_radius"):
                         box_build.prop(prefs, "system_point_radius", text="Radius")
                     if hasattr(prefs, "system_representation"):
                         box_build.prop(prefs, "system_representation", text="Display")
-                    if hasattr(prefs, "apply_axis_transform"):
-                        box_build.prop(prefs, "apply_axis_transform", text="Normalize Axis")
-                    # Exclusion toggles
-                    if hasattr(prefs, "exclude_ad_systems"):
-                        box_build.prop(prefs, "exclude_ad_systems", text="Exclude AD###")
-                    if hasattr(prefs, "exclude_vdash_systems"):
-                        box_build.prop(prefs, "exclude_vdash_systems", text="Exclude V-###")
+                    # Black hole scale remains accessible where user tweaks visualization
                     if hasattr(prefs, "blackhole_scale_multiplier"):
                         box_build.prop(prefs, "blackhole_scale_multiplier", text="BH Scale")
         except Exception:
