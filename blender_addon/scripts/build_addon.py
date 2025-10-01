@@ -11,11 +11,10 @@ from __future__ import annotations
 
 import argparse
 import shutil
-import sys
 import tempfile
+import tomllib
 import zipfile
 from pathlib import Path
-import tomllib
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
