@@ -105,14 +105,29 @@ class EVE_OT_build_scene(Operator):
 
         created = 0
         radius = getattr(prefs, "system_point_radius", 2.0)
+        pct = getattr(prefs, "build_percentage", 1.0)
+        try:
+            pct = float(pct)
+        except Exception:
+            pct = 1.0
+        if pct <= 0:
+            pct = 0.01
+        if pct > 1:
+            pct = 1.0
+
+        systems_iter = systems_data
+        if pct < 0.9999:
+            # Uniform down-sampling by index stride
+            target = max(1, int(len(systems_data) * pct))
+            stride = max(1, len(systems_data) // target)
+            systems_iter = [s for i, s in enumerate(systems_data) if i % stride == 0][:target]
         # Clamp radius defensively
         try:
             radius = max(0.01, float(radius))
         except Exception:
             radius = 2.0
-        for sys in systems_data:
+        for sys in systems_iter:
             name = sys.name or f"System_{sys.id}"
-            # Use a lightweight UV sphere for visibility instead of empty mesh
             bpy.ops.mesh.primitive_uv_sphere_add(
                 radius=radius, enter_editmode=False, location=(0, 0, 0)
             )
@@ -126,7 +141,10 @@ class EVE_OT_build_scene(Operator):
             obj["moon_count"] = moon_count
             created += 1
 
-        self.report({"INFO"}, f"Scene built with {created} systems (planets/moons as counts only)")
+        self.report(
+            {"INFO"},
+            f"Scene built with {created} systems (sample={pct:.2%}) planets/moons as counts only",
+        )
         return {"FINISHED"}
 
 

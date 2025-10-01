@@ -69,12 +69,27 @@ class EVEVisualizerPreferences(AddonPreferences):
         description="Visual radius (in Blender Units after scaling) for system spheres",
         precision=3,
     )
+    build_percentage: FloatProperty(  # type: ignore[valid-type]
+        name="Build %",
+        default=1.0,
+        min=0.01,
+        max=1.0,
+        subtype="FACTOR",
+        description="Fraction of loaded systems to instantiate (sampled uniformly). Increase for more detail.",
+        precision=3,
+    )
 
     def draw(self, context):  # noqa: D401
         layout = self.layout
         col = layout.column(align=True)
         # Only draw props if they are resolved (avoid _PropertyDeferred edge cases)
-        for prop_name in ("db_path", "scale_factor", "enable_cache", "system_point_radius"):
+        for prop_name in (
+            "db_path",
+            "scale_factor",
+            "enable_cache",
+            "system_point_radius",
+            "build_percentage",
+        ):
             if prop_name in self.__class__.__dict__:
                 try:
                     # If env var override is active, show db_path disabled to communicate source.
@@ -143,6 +158,17 @@ try:  # pragma: no cover - runtime safety
             precision=3,
         )
         _missing.append("system_point_radius")
+    if not hasattr(EVEVisualizerPreferences, "build_percentage"):
+        EVEVisualizerPreferences.build_percentage = FloatProperty(  # type: ignore[attr-defined]
+            name="Build %",
+            default=1.0,
+            min=0.01,
+            max=1.0,
+            subtype="FACTOR",
+            description="Fraction of loaded systems to instantiate (sampled uniformly). Increase for more detail.",
+            precision=3,
+        )
+        _missing.append("build_percentage")
     if _missing:
         print(f"[EVEVisualizer][info] Injected fallback properties: {_missing}")
     else:

@@ -15,7 +15,23 @@ class EVE_PT_main(Panel):
         layout = self.layout
         col = layout.column(align=True)
         col.operator("eve.load_data", icon="FILE_REFRESH")
-        col.operator("eve.build_scene", icon="OUTLINER_OB_EMPTY")
+        build_row = col.row(align=True)
+        build_row.operator("eve.build_scene", icon="OUTLINER_OB_EMPTY")
+        # Inline build percentage slider (from add-on prefs) if available
+        try:
+            # Determine addon key from this module's path: addon.<name>.panels → folder name after 'addon'.
+            mod_name = __name__.split(
+                "."
+            )  # e.g., ['addon', 'panels'] or ['addon'] depending on load
+            addon_key = mod_name[0] if mod_name else "addon"
+            prefs_container = context.preferences.addons.get(addon_key)
+            if prefs_container:
+                prefs = getattr(prefs_container, "preferences", None)
+                if hasattr(prefs, "build_percentage"):
+                    slider = col.row(align=True)
+                    slider.prop(prefs, "build_percentage", text="Build %")
+        except Exception:
+            pass
 
         col.separator()
         col.label(text="Visualization")
