@@ -13,11 +13,19 @@ class EVE_PT_main(Panel):
 
     def draw(self, context):  # noqa: D401
         layout = self.layout
-        col = layout.column(align=True)
-        col.operator("eve.load_data", icon="FILE_REFRESH")
-        build_row = col.row(align=True)
-        build_row.operator("eve.build_scene", icon="OUTLINER_OB_EMPTY")
-        # Inline controls (sampling, scale, radius) from preferences if available
+
+        # --- Load Section ---
+        box_load = layout.box()
+        box_load.label(text="Load", icon="FILE_FOLDER")
+        row_load = box_load.row(align=True)
+        row_load.operator("eve.load_data", icon="FILE_REFRESH")
+
+        # --- Build Section ---
+        box_build = layout.box()
+        box_build.label(text="Build", icon="OUTLINER_OB_EMPTY")
+        row_build = box_build.row(align=True)
+        row_build.operator("eve.build_scene", icon="OUTLINER_OB_EMPTY")
+        # Inline controls (sampling, scale, radius, display)
         try:
             mod_name = __name__.split(".")
             addon_key = mod_name[0] if mod_name else "addon"
@@ -25,36 +33,39 @@ class EVE_PT_main(Panel):
             if prefs_container:
                 prefs = getattr(prefs_container, "preferences", None)
                 if prefs:
-                    ctrl_col = col.column(align=True)
                     if hasattr(prefs, "build_percentage"):
-                        row_pct = ctrl_col.row(align=True)
-                        row_pct.prop(prefs, "build_percentage", text="Build %")
+                        box_build.prop(prefs, "build_percentage", text="Build %")
                     if hasattr(prefs, "scale_factor"):
-                        row_scale = ctrl_col.row(align=True)
-                        row_scale.prop(prefs, "scale_factor", text="Scale")
+                        box_build.prop(prefs, "scale_factor", text="Scale")
                     if hasattr(prefs, "system_point_radius"):
-                        row_rad = ctrl_col.row(align=True)
-                        row_rad.prop(prefs, "system_point_radius", text="Radius")
+                        box_build.prop(prefs, "system_point_radius", text="Radius")
                     if hasattr(prefs, "system_representation"):
-                        row_rep = ctrl_col.row(align=True)
-                        row_rep.prop(prefs, "system_representation", text="Display")
+                        box_build.prop(prefs, "system_representation", text="Display")
         except Exception:
             pass
 
-        col.separator()
-        col.label(text="Visualization")
-        row = col.row()
+        # --- Visualization Section ---
+        box_vis = layout.box()
+        box_vis.label(text="Visualization", icon="MATERIAL")
+        row_vis = box_vis.row(align=True)
         strategies = get_strategies()
         if strategies:
-            op = row.operator("eve.apply_shader", text="Apply", icon="MATERIAL")
-            # Guard against missing property if registration hiccup occurred.
+            op = row_vis.operator("eve.apply_shader", text="Apply Strategy", icon="MATERIAL")
             if hasattr(op, "strategy_id") and strategies:
                 try:
                     op.strategy_id = strategies[0].id
                 except Exception:
                     pass
         else:
-            row.label(text="No strategies registered")
+            row_vis.label(text="No strategies registered")
+
+        # --- View Section ---
+        box_view = layout.box()
+        box_view.label(text="View / Camera", icon="VIEW_CAMERA")
+        row_view = box_view.row(align=True)
+        row_view.operator("eve.viewport_fit_systems", text="Frame Systems", icon="VIEWZOOM")
+        row_view2 = box_view.row(align=True)
+        row_view2.operator("eve.viewport_set_space", text="Black BG", icon="WORLD_DATA")
 
 
 def register():  # pragma: no cover - Blender runtime usage
