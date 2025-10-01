@@ -7,6 +7,7 @@ Creates dist/eve_frontier_visualizer-<version>.zip containing the addon package.
 The archive root will contain the `addon` package directory contents (Blender expects
 top-level modules with `__init__.py` exposing `bl_info`).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -18,6 +19,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PKG_ROOT = REPO_ROOT / "blender_addon" / "src" / "addon"
+# Name of the folder inside the distributed ZIP (avoid generic 'addon' to ensure
+# Blender assigns a stable, non-conflicting addon key for preferences lookup).
+DIST_PACKAGE_NAME = "eve_frontier_visualizer"
 DIST_DIR = REPO_ROOT / "dist"
 
 
@@ -38,10 +42,10 @@ def build(zip_name: str | None = None) -> Path:
     out_path = DIST_DIR / zip_name
 
     # Create a temp staging dir that mirrors the final expected layout:
-    # zip root contains addon/*
+    # zip root contains eve_frontier_visualizer/*
     with tempfile.TemporaryDirectory() as tmpd:
         staging_root = Path(tmpd)
-        addon_target = staging_root / "addon"
+        addon_target = staging_root / DIST_PACKAGE_NAME
         shutil.copytree(PKG_ROOT, addon_target, dirs_exist_ok=True)
         for cache in addon_target.rglob("__pycache__"):
             shutil.rmtree(cache, ignore_errors=True)
@@ -49,7 +53,7 @@ def build(zip_name: str | None = None) -> Path:
             out_path.unlink()
         # Manually zip to avoid race on Windows with shutil.make_archive/stat
         with zipfile.ZipFile(out_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-            for p in addon_target.rglob('*'):
+            for p in addon_target.rglob("*"):
                 if p.is_dir():
                     continue
                 rel = p.relative_to(staging_root)

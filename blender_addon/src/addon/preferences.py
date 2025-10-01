@@ -5,15 +5,6 @@ from bpy.props import BoolProperty, FloatProperty, StringProperty
 from bpy.types import AddonPreferences
 
 
-def _top_level_addon_name():
-    """Return the top-level addon module name.
-
-    Handles cases where the user installed either the inner folder ("addon")
-    or a renamed/distribution folder (e.g. eve_frontier_visualizer).
-    """
-    return __name__.split(".")[0]
-
-
 def _default_db_path():
     """Best-effort default path to data/static.db relative to repository root.
 
@@ -28,8 +19,8 @@ def _default_db_path():
 
 
 class EVEVisualizerPreferences(AddonPreferences):
-    # Blender matches this to the add-on package name key in context.preferences.addons
-    bl_idname = _top_level_addon_name()
+    # Use actual folder name (works for dev 'addon' and distributed 'eve_frontier_visualizer').
+    bl_idname = Path(__file__).parent.name
 
     # NOTE: Using classic assignment style for maximum compatibility (annotation-only
     # can be unreliable depending on Blender/Python bundling).
@@ -66,15 +57,15 @@ class EVEVisualizerPreferences(AddonPreferences):
 
 
 def get_prefs(context):  # pragma: no cover - Blender runtime usage
-    addon_key = _top_level_addon_name()
-    # Defensive: ensure key exists; if not, attempt a fallback search.
-    if addon_key in context.preferences.addons:
-        return context.preferences.addons[addon_key].preferences
-    # Fallback: find first addon module containing our preferences class
-    for _k, v in context.preferences.addons.items():  # pragma: no cover - rare
-        if hasattr(v, "preferences") and isinstance(v.preferences, EVEVisualizerPreferences):
-            return v.preferences
-    raise KeyError(f"EVEVisualizerPreferences not found under addon key '{addon_key}'")
+    key = Path(__file__).parent.name
+    if key in context.preferences.addons:
+        return context.preferences.addons[key].preferences
+    # Fallback: heuristic search.
+    for v in context.preferences.addons.values():  # pragma: no cover - rare
+        prefs = getattr(v, "preferences", None)
+        if isinstance(prefs, EVEVisualizerPreferences):
+            return prefs
+    raise KeyError(f"EVEVisualizerPreferences not found (expected addon key '{key}')")
 
 
 def register():  # noqa: D401
