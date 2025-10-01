@@ -68,6 +68,8 @@ class EVE_PT_main(Panel):
                         box_build.prop(prefs, "exclude_ad_systems", text="Exclude AD###")
                     if hasattr(prefs, "exclude_vdash_systems"):
                         box_build.prop(prefs, "exclude_vdash_systems", text="Exclude V-###")
+                    if hasattr(prefs, "blackhole_scale_multiplier"):
+                        box_build.prop(prefs, "blackhole_scale_multiplier", text="BH Scale")
         except Exception:
             pass
 

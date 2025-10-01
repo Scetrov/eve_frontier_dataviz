@@ -178,6 +178,7 @@ class EVE_OT_build_scene(Operator):
 
         created = 0
         radius = getattr(prefs, "system_point_radius", 2.0)
+        bh_scale_mult = getattr(prefs, "blackhole_scale_multiplier", 3.0)
         pct = getattr(prefs, "build_percentage", 1.0)
         representation = getattr(prefs, "system_representation", "SPHERE")
         try:
@@ -245,10 +246,11 @@ class EVE_OT_build_scene(Operator):
 
         for idx, sys in enumerate(systems_iter):
             name = sys.name or f"System_{sys.id}"
+            is_blackhole = name in {"A 2560", "M 974", "U 3183"}
             if representation == "EMPTY":
                 obj = bpy.data.objects.new(name, None)
                 obj.empty_display_type = "PLAIN_AXES"
-                obj.empty_display_size = radius
+                obj.empty_display_size = radius * (bh_scale_mult if is_blackhole else 1.0)
                 systems_coll.objects.link(obj)
             elif instanced and shared_mesh:
                 obj = bpy.data.objects.new(name, shared_mesh)
@@ -258,6 +260,12 @@ class EVE_OT_build_scene(Operator):
                 tpl_mesh = _ensure_mesh(base_kind or "SPHERE", radius, False)
                 obj = bpy.data.objects.new(name, tpl_mesh.copy())
                 systems_coll.objects.link(obj)
+                if is_blackhole:
+                    # Uniform scale after creation (avoid duplicating mesh variants)
+                    try:
+                        obj.scale = (bh_scale_mult, bh_scale_mult, bh_scale_mult)
+                    except Exception:
+                        pass
 
             if idx and idx % 5000 == 0:
                 self.report({"INFO"}, f"Placed {idx:,} systems...")
@@ -348,6 +356,7 @@ class EVE_OT_build_scene_modal(Operator):  # pragma: no cover - Blender runtime 
         self._scale = getattr(prefs, "scale_factor", 1.0)
         self._apply_axis = getattr(prefs, "apply_axis_transform", False)
         self._radius = max(0.01, float(getattr(prefs, "system_point_radius", 2.0)))
+        self._bh_scale_mult = float(getattr(prefs, "blackhole_scale_multiplier", 3.0))
         pct = getattr(prefs, "build_percentage", 1.0)
         try:
             pct = float(pct)
@@ -471,7 +480,9 @@ class EVE_OT_build_scene_modal(Operator):  # pragma: no cover - Blender runtime 
                 if self._representation == "EMPTY":
                     obj = bpy.data.objects.new(name, None)
                     obj.empty_display_type = "PLAIN_AXES"
-                    obj.empty_display_size = self._radius
+                    obj.empty_display_size = self._radius * (
+                        self._bh_scale_mult if name in {"A 2560", "M 974", "U 3183"} else 1.0
+                    )
                     if self._coll:
                         self._coll.objects.link(obj)
                 elif self._instanced and self._shared_mesh:
@@ -483,6 +494,15 @@ class EVE_OT_build_scene_modal(Operator):  # pragma: no cover - Blender runtime 
                     obj = bpy.data.objects.new(name, tpl_mesh.copy())
                     if self._coll:
                         self._coll.objects.link(obj)
+                    if name in {"A 2560", "M 974", "U 3183"}:
+                        try:
+                            obj.scale = (
+                                self._bh_scale_mult,
+                                self._bh_scale_mult,
+                                self._bh_scale_mult,
+                            )
+                        except Exception:
+                            pass
                 if self._apply_axis:
                     obj.location = (sys.x * self._scale, sys.z * self._scale, -sys.y * self._scale)
                 else:

@@ -117,6 +117,14 @@ class EVEVisualizerPreferences(AddonPreferences):
         default=True,  # Inverted default: exclude by default
         description="If enabled, exclude systems whose name matches V- followed by three digits (e.g. V-456)",
     )
+    blackhole_scale_multiplier: FloatProperty(  # type: ignore[valid-type]
+        name="Black Hole Scale Mult",
+        default=3.0,
+        min=0.1,
+        soft_max=25.0,
+        description="Visual scale multiplier applied to special black hole systems (A 2560, M 974, U 3183)",
+        precision=2,
+    )
 
     def draw(self, context):  # noqa: D401
         layout = self.layout
@@ -132,6 +140,7 @@ class EVEVisualizerPreferences(AddonPreferences):
             "build_percentage",
             "exclude_ad_systems",
             "exclude_vdash_systems",
+            "blackhole_scale_multiplier",
         ):
             if prop_name in self.__class__.__dict__:
                 try:
@@ -259,6 +268,16 @@ try:  # pragma: no cover - runtime safety
             description="If enabled, exclude systems whose name matches V- followed by three digits (e.g. V-456)",
         )
         _missing.append("exclude_vdash_systems")
+    if not hasattr(EVEVisualizerPreferences, "blackhole_scale_multiplier"):
+        EVEVisualizerPreferences.blackhole_scale_multiplier = FloatProperty(  # type: ignore[attr-defined]
+            name="Black Hole Scale Mult",
+            default=3.0,
+            min=0.1,
+            soft_max=25.0,
+            description="Visual scale multiplier applied to special black hole systems (A 2560, M 974, U 3183)",
+            precision=2,
+        )
+        _missing.append("blackhole_scale_multiplier")
     if _missing:
         print(f"[EVEVisualizer][info] Injected fallback properties: {_missing}")
     else:
