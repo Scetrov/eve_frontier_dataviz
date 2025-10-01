@@ -48,10 +48,19 @@ class EVE_OT_load_data(Operator):
         if not os.path.exists(db_path):
             self.report({"ERROR"}, f"Database not found: {db_path}")
             return {"CANCELLED"}
+
+        # Blender reload edge case: IntProperty may present as _PropertyDeferred until accessed.
+        raw_limit = getattr(self, "limit_systems", 0)
+        try:
+            coerced_limit = int(raw_limit) if raw_limit else 0
+        except Exception:  # pragma: no cover - fallback
+            coerced_limit = 0
+        limit_arg = coerced_limit or None
+
         try:
             systems = load_data(
                 db_path,
-                limit_systems=self.limit_systems or None,
+                limit_systems=limit_arg,
                 enable_cache=prefs.enable_cache,
             )
         except Exception as e:  # pragma: no cover - defensive
