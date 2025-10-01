@@ -744,72 +744,119 @@ class EVE_OT_viewport_fit_systems(Operator):
             self.report({"WARNING"}, "No systems to frame")
             return {"CANCELLED"}
         objs = list(systems_coll.objects)
+        # Safety: avoid attempting to frame if too many objects for selection-based method
+        count = len(objs)
+        if count == 0:
+            self.report({"WARNING"}, "No systems to frame")
+            return {"CANCELLED"}
 
-        xs = [o.location.x for o in objs]
-        ys = [o.location.y for o in objs]
-        # We only care about XY for a top view; Z span irrelevant for ortho top fill
-        min_x, max_x = min(xs), max(xs)
-        min_y, max_y = min(ys), max(ys)
-        size_x = max_x - min_x
-        size_y = max_y - min_y
-        if size_x <= 0 and size_y <= 0:
-            size_x = size_y = 1.0
+        # Preserve current selection / active
+        view_layer = context.view_layer
+        prev_selected = set(bpy.context.selected_objects)
+        prev_active = view_layer.objects.active
+        restore_mode = None
+        try:
+            if bpy.context.mode != "OBJECT":  # leave edit/sculpt modes cleanly
+                restore_mode = bpy.context.mode
+                bpy.ops.object.mode_set(mode="OBJECT")
+        except Exception:
+            restore_mode = None
 
-        # User wants viewport filled even if origin ends up off-center, so we bias
-        # to keep full bounding box inside view while not insisting the world origin sits in center.
-        # We'll place view pivot at bbox center for simplicity (robust) but orthographic zoom
-        # will guarantee fill regardless of origin offset.
-        center_xy = ((min_x + max_x) * 0.5, (min_y + max_y) * 0.5)
+        # Deselect all then select system objects
+        try:
+            bpy.ops.object.select_all(action="DESELECT")
+        except Exception:
+            for o in bpy.context.selected_objects:
+                try:
+                    o.select_set(False)
+                except Exception:
+                    pass
+        for o in objs:
+            try:
+                o.select_set(True)
+            except Exception:
+                pass
+        # Set an active object (helps view_selected stability)
+        try:
+            view_layer.objects.active = objs[0]
+        except Exception:
+            pass
 
-        framed = False
+        framed_any = False
         for area in context.screen.areas:
             if area.type != "VIEW_3D":
                 continue
-            region = None
-            for r in area.regions:
-                if r.type == "WINDOW":
-                    region = r
-                    break
-            for space in area.spaces:
-                if space.type != "VIEW_3D":
-                    continue
-                region3d = space.region_3d
-                # Switch to top orthographic view via operator for correctness (if context allows)
-                if region:
-                    override = {
-                        "window": context.window,
-                        "screen": context.screen,
-                        "area": area,
-                        "region": region,
-                        "space_data": space,
-                    }
-                    try:
-                        bpy.ops.view3d.view_axis(override, type="TOP")
-                    except Exception:
-                        pass
-                region3d.view_perspective = "ORTHO"
-                # Set pivot (Z component keep current so we don't snap unexpectedly)
-                region3d.view_location.x = center_xy[0]
-                region3d.view_location.y = center_xy[1]
-                # Compute an orthographic distance heuristic: in ortho, distance functions as scale base.
-                # Empirically region3d.view_distance ~= half visible span at default zoom.
-                span = max(size_x, size_y, 1.0)
-                region3d.view_distance = span * 0.55  # padding ~10% outside box
-                # Optional: if viewport aspect is narrower, expand distance slightly so full fits
+            region = next((r for r in area.regions if r.type == "WINDOW"), None)
+            space = next((s for s in area.spaces if s.type == "VIEW_3D"), None)
+            if not (region and space):
+                continue
+            override = {
+                "window": context.window,
+                "screen": context.screen,
+                "area": area,
+                "region": region,
+                "space_data": space,
+                "scene": context.scene,
+                "view_layer": view_layer,
+            }
+            # Force top view
+            try:
+                bpy.ops.view3d.view_axis(override, type="TOP")
+            except Exception:
+                pass
+            # Ensure orthographic
+            try:
+                space.region_3d.view_perspective = "ORTHO"
+            except Exception:
+                pass
+            # Frame selection using Blender's internal logic (robust for all sizes)
+            try:
+                bpy.ops.view3d.view_selected(override, use_all_regions=False)
+            except TypeError:
+                # Older / different Blender signature fallback
                 try:
-                    if region and region.width and region.height:
-                        aspect = region.width / max(1, region.height)
-                        # If aspect < bbox aspect, widen distance a bit to avoid clipping horizontally
-                        bbox_aspect = size_x / max(1e-9, size_y)
-                        if aspect < bbox_aspect:
-                            region3d.view_distance = span * 0.6
+                    bpy.ops.view3d.view_selected(override)
                 except Exception:
                     pass
-                framed = True
-        if not framed:
+            except Exception:
+                pass
+            # Add a tiny padding (zoom out slightly) so nothing hugs edge
+            try:
+                r3d = space.region_3d
+                if hasattr(r3d, "view_distance"):
+                    r3d.view_distance *= 1.02
+            except Exception:
+                pass
+            framed_any = True
+
+        # Restore previous selection
+        try:
+            bpy.ops.object.select_all(action="DESELECT")
+        except Exception:
+            for o in bpy.context.selected_objects:
+                try:
+                    o.select_set(False)
+                except Exception:
+                    pass
+        for o in prev_selected:
+            try:
+                o.select_set(True)
+            except Exception:
+                pass
+        try:
+            view_layer.objects.active = prev_active
+        except Exception:
+            pass
+        if restore_mode:
+            try:
+                bpy.ops.object.mode_set(mode=restore_mode)
+            except Exception:
+                pass
+
+        if not framed_any:
             self.report({"WARNING"}, "No VIEW_3D area found")
             return {"CANCELLED"}
-        self.report({"INFO"}, "Viewport framed (Top Ortho)")
+        self.report({"INFO"}, f"Viewport framed (Top Ortho, {count} systems)")
         return {"FINISHED"}
 
 
