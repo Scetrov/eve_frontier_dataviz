@@ -24,6 +24,11 @@ def _load_modules():  # lazy import to avoid bpy dependency in pure-Python tests
         "panels",
         "shader_registry",
         "shaders_builtin",
+        # individual shader strategy modules (modularized)
+        "shaders.name_first_char_hue",
+        "shaders.child_count_emission",
+        "shaders.name_pattern_category",
+        "shaders.char_index_hue",
     ]
     mods = []
     for name in module_names:

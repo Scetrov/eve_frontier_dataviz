@@ -18,6 +18,24 @@ This document catalogs available visualization ("shader") strategies and the dat
 - Objects: Systems.
 - Notes: Creates a base emission material and clones per distinct child count.
 
+### NamePatternCategory
+
+- ID: `NamePatternCategory`
+- Mapping: System name matched against relaxed regex categories:
+  - `DASH` (AAA-BBB style)
+  - `COLON` (A:1234 style)
+  - `DOTSEQ` (A.AAAA.BBBB with 3–4 length segments)
+  - `OTHER` fallback gray
+- Each category maps to a fixed emission color; materials reused per category.
+- Notes: Regexes intentionally broad to capture alphanumeric hybrids.
+
+### CharIndexHue
+
+- ID: `CharIndexHue`
+- Mapping: Aggregated per-character hue contributions (first 12 chars). Each character contributes a hue derived from (ordinal + index * offset). Final RGB is the averaged (clamped) accumulation.
+- Digits compressed into a partial hue range; punctuation bucketed.
+- Notes: Produces one variant material per system (hash-suffixed) — acceptable for current scale; future optimization could parameterize via node groups.
+
 ## Future Strategy Ideas
 
 | Proposed ID | Concept | Mapping Sketch |
@@ -27,6 +45,7 @@ This document catalogs available visualization ("shader") strategies and the dat
 | `SecondCharMetal` | Second char classification | groups letters into metallic values |
 | `SecurityGradient` | Security scalar -> color ramp | 0.0 red -> 1.0 green |
 | `OrbitIndexValue` | Orbital index -> value (brightness) | index scaled log or linear |
+| `CharSequentialGradient` | Per-character layered gradient | stacked mix by char order |
 
 ## Implementation Guidelines
 
@@ -46,7 +65,7 @@ This document catalogs available visualization ("shader") strategies and the dat
 
 ## Optimization Considerations
 
-- Prefer node group parameterization instead of copying full materials once scale grows > 100s of variants.
+- Prefer node group parameterization instead of copying full materials once scale grows > 100s of variants (e.g., refactor `CharIndexHue` later if growth accelerates).
 - Consider encoding numeric attributes into custom vertex colors or geometry node attributes for more advanced shading.
 
 ## Troubleshooting
