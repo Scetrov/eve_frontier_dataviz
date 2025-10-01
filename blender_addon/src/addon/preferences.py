@@ -21,26 +21,29 @@ def _default_db_path():
 
 
 class EVEVisualizerPreferences(AddonPreferences):
-    # Use actual folder name (works for dev 'addon' and distributed 'eve_frontier_visualizer').
-    bl_idname = Path(__file__).parent.name
+    """Add-on preferences.
 
-    # NOTE: Using classic assignment style for maximum compatibility (annotation-only
-    # can be unreliable depending on Blender/Python bundling).
-    db_path = StringProperty(  # type: ignore[valid-type]
+    Uses annotation-style definitions (Blender 4.x recommended) with a runtime
+    fallback to classic assignments for older or edge cases. We avoid heavy
+    default path resolution; user will set DB path explicitly if blank.
+    """
+
+    bl_idname = Path(__file__).parent.name  # matches installed folder name
+
+    # Properties (annotation style)
+    db_path: StringProperty(  # type: ignore[valid-type]
         name="Database Path",
         subtype="FILE_PATH",
-        default=_default_db_path(),
-        description="Path to static.db SQLite file",
+        default="",  # leave blank; attempting repo-relative path in an installed add-on is brittle
+        description="Path to static.db SQLite file (set this before loading data)",
     )
-
-    scale_factor = FloatProperty(  # type: ignore[valid-type]
+    scale_factor: FloatProperty(  # type: ignore[valid-type]
         name="Coordinate Scale",
         default=0.001,
         min=0.0000001,
         description="Multiply raw coordinates by this factor",
     )
-
-    enable_cache = BoolProperty(  # type: ignore[valid-type]
+    enable_cache: BoolProperty(  # type: ignore[valid-type]
         name="Enable Data Cache",
         default=True,
         description="Cache parsed data in memory for faster rebuild",
@@ -49,13 +52,20 @@ class EVEVisualizerPreferences(AddonPreferences):
     def draw(self, context):  # noqa: D401
         layout = self.layout
         col = layout.column(align=True)
-        col.prop(self, "db_path")
-        col.prop(self, "scale_factor")
-        col.prop(self, "enable_cache")
-        # Helpful runtime hint (non-fatal) if path missing
-        db = Path(self.db_path)
-        if self.db_path and not db.exists():
-            col.label(text="(File not found)", icon="ERROR")
+        # Only draw props if they are resolved (avoid _PropertyDeferred edge cases)
+        for prop_name in ("db_path", "scale_factor", "enable_cache"):
+            if prop_name in self.__class__.__dict__:
+                try:
+                    col.prop(self, prop_name)
+                except Exception as e:  # pragma: no cover - Blender UI safety
+                    col.label(text=f"(Failed prop {prop_name}: {e})", icon="ERROR")
+        # Show path existence hint
+        try:
+            if isinstance(self.db_path, str) and self.db_path:
+                if not Path(self.db_path).exists():
+                    col.label(text="(File not found)", icon="ERROR")
+        except Exception:
+            pass
 
 
 def get_prefs(context):  # pragma: no cover - Blender runtime usage
