@@ -18,6 +18,7 @@ def _load_modules():  # lazy import to avoid bpy dependency in pure-Python tests
     if _loaded_modules:
         return _loaded_modules
     from . import operators, panels, preferences, shader_registry, shaders_builtin  # noqa: F401
+
     _loaded_modules = [preferences, operators, panels, shader_registry, shaders_builtin]
     return _loaded_modules
 

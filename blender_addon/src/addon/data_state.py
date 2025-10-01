@@ -1,7 +1,4 @@
-"""In-memory state for loaded EVE data.
-
-Separated from operators so it stays pure-Python and testable / reloadable.
-"""
+"""In-memory state for loaded EVE data."""
 from __future__ import annotations
 
 from typing import List, Optional
@@ -20,6 +17,6 @@ def get_loaded_systems() -> Optional[List[System]]:
     return _loaded_systems
 
 
-def clear_loaded_systems():  # pragma: no cover - utility for manual reloads
+def clear_loaded_systems():  # pragma: no cover - utility
     global _loaded_systems
     _loaded_systems = None

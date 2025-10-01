@@ -1,17 +1,17 @@
 import os
-import math
+
 import bpy
 from bpy.types import Operator
 
-from .shader_registry import get_strategies, get_strategy
-from .preferences import get_prefs
-from .data_loader import load_data
 from . import data_state
+from .data_loader import load_data
+from .preferences import get_prefs
+from .shader_registry import get_strategies, get_strategy
 
 _generated_collection_names = ["EVE_Systems", "EVE_Planets", "EVE_Moons"]
 
 
-def _get_or_create_collection(name: str):
+def _get_or_create_collection(name: str):  # pragma: no cover - Blender runtime usage
     coll = bpy.data.collections.get(name)
     if not coll:
         coll = bpy.data.collections.new(name)
@@ -19,14 +19,12 @@ def _get_or_create_collection(name: str):
     return coll
 
 
-def _clear_generated():
+def _clear_generated():  # pragma: no cover - Blender runtime usage
     for cname in _generated_collection_names:
         coll = bpy.data.collections.get(cname)
         if coll:
-            # unlink from scene
             for parent in list(coll.users_scene):
                 parent.collection.children.unlink(coll)
-            # delete objects first
             for obj in list(coll.objects):
                 bpy.data.objects.remove(obj, do_unlink=True)
             bpy.data.collections.remove(coll)
@@ -37,7 +35,6 @@ class EVE_OT_load_data(Operator):
     bl_label = "Load / Refresh Data"
     bl_description = "Load data from the configured SQLite database"
 
-    # Optional developer helper to restrict systems loaded
     limit_systems = bpy.props.IntProperty(
         name="Limit Systems",
         default=0,
@@ -57,7 +54,7 @@ class EVE_OT_load_data(Operator):
                 limit_systems=self.limit_systems or None,
                 enable_cache=prefs.enable_cache,
             )
-        except Exception as e:  # pragma: no cover - defensive around IO/SQLite errors
+        except Exception as e:  # pragma: no cover - defensive
             self.report({'ERROR'}, f"Load failed: {e}")
             return {'CANCELLED'}
         data_state.set_loaded_systems(systems)
@@ -79,7 +76,6 @@ class EVE_OT_build_scene(Operator):
     def execute(self, context):  # noqa: D401
         systems_data = data_state.get_loaded_systems()
         if not systems_data:
-            # Attempt implicit load if possible
             prefs = get_prefs(context)
             if not os.path.exists(prefs.db_path):
                 self.report({'ERROR'}, "No data loaded and database path invalid")
@@ -98,7 +94,6 @@ class EVE_OT_build_scene(Operator):
             _clear_generated()
         systems_coll = _get_or_create_collection("EVE_Systems")
 
-        # Create one object per system only; encode counts as custom properties
         created = 0
         for sys in systems_data:
             name = sys.name or f"System_{sys.id}"
@@ -108,7 +103,6 @@ class EVE_OT_build_scene(Operator):
             obj.location = (sys.x * scale, sys.y * scale, sys.z * scale)
             planet_count = len(sys.planets)
             moon_count = sum(len(p.moons) for p in sys.planets)
-            # Store counts as custom properties (simple ints) for strategies
             obj["planet_count"] = planet_count
             obj["moon_count"] = moon_count
             created += 1
@@ -127,8 +121,7 @@ class EVE_OT_apply_shader(Operator):
         items=lambda self, context: [(s.id, s.label, "") for s in get_strategies()],
     )
 
-    def execute(self, context):
-        # gather objects by type (stub only systems)
+    def execute(self, context):  # noqa: D401
         objs_by_type = {"systems": []}
         for cname in _generated_collection_names:
             coll = bpy.data.collections.get(cname)
@@ -145,13 +138,13 @@ class EVE_OT_apply_shader(Operator):
         return {'FINISHED'}
 
 
-def register():
+def register():  # pragma: no cover - Blender runtime usage
     bpy.utils.register_class(EVE_OT_load_data)
     bpy.utils.register_class(EVE_OT_build_scene)
     bpy.utils.register_class(EVE_OT_apply_shader)
 
 
-def unregister():
+def unregister():  # pragma: no cover - Blender runtime usage
     bpy.utils.unregister_class(EVE_OT_apply_shader)
     bpy.utils.unregister_class(EVE_OT_build_scene)
     bpy.utils.unregister_class(EVE_OT_load_data)

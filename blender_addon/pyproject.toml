@@ -18,7 +18,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = [".", "blender_addon"]
+pythonpath = [".", "blender_addon/src"]
 addopts = "-q --cov --cov-report=term-missing"
 
 [tool.ruff]
@@ -27,7 +27,13 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "B"]
 ignore = ["E203", "E266", "E501"]
-per-file-ignores = {"addon/__init__.py" = ["F401"]}
+per-file-ignores = {"src/addon/__init__.py" = ["F401"]}
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["addon"]

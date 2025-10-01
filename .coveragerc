@@ -1,14 +1,14 @@
 [run]
 branch = True
-source = 
-    blender_addon/addon
-omit = 
-    blender_addon/addon/__init__.py
-    blender_addon/addon/operators.py
-    blender_addon/addon/panels.py
-    blender_addon/addon/preferences.py
-    blender_addon/addon/shaders_builtin.py
-    blender_addon/addon/shader_registry.py
+source =
+    addon
+omit =
+    src/addon/__init__.py
+    src/addon/operators.py
+    src/addon/panels.py
+    src/addon/preferences.py
+    src/addon/shaders_builtin.py
+    src/addon/shader_registry.py
 
 [report]
 show_missing = True

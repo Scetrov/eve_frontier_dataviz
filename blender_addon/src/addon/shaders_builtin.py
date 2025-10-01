@@ -35,14 +35,11 @@ class NameFirstCharHue(BaseShaderStrategy):
             idx = ord(first) - ord('A')
             hue = (idx / 26.0) % 1.0
             r, g, b = colorsys.hsv_to_rgb(hue, 0.8, 1.0)
-            # Duplicate material per object? Instead we can assign node override via copy
-            # Simpler: create a per-object material copy with unique color
             inst_name = f"{mat_name}_{first}"
             inst = bpy.data.materials.get(inst_name)
             if not inst:
                 inst = mat.copy()
                 inst.name = inst_name
-                # set emission color
                 e_node = inst.node_tree.nodes.get(emission.name)
                 if e_node:  # In copy, name preserved
                     e_node.inputs[0].default_value = (r, g, b, 1.0)
@@ -85,7 +82,6 @@ class ChildCountEmission(BaseShaderStrategy):
             if not inst:
                 inst = base.copy()
                 inst.name = inst_name
-                # adjust emission strength
                 for n in inst.node_tree.nodes:
                     if n.type == 'EMISSION':
                         n.inputs[1].default_value = strength

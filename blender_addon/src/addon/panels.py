@@ -11,7 +11,7 @@ class EVE_PT_main(Panel):
     bl_region_type = 'UI'
     bl_category = 'EVE Frontier'
 
-    def draw(self, context):
+    def draw(self, context):  # noqa: D401
         layout = self.layout
         col = layout.column(align=True)
         col.operator("eve.load_data", icon='FILE_REFRESH')
@@ -20,19 +20,17 @@ class EVE_PT_main(Panel):
         col.separator()
         col.label(text="Visualization")
         row = col.row()
-        # Show enum dynamically
         strategies = get_strategies()
         if strategies:
             op = row.operator("eve.apply_shader", text="Apply", icon='MATERIAL')
-            # pick first as default (UI operator call – property setting not persistent here)
             op.strategy_id = strategies[0].id
         else:
             row.label(text="No strategies registered")
 
 
-def register():
+def register():  # pragma: no cover - Blender runtime usage
     bpy.utils.register_class(EVE_PT_main)
 
 
-def unregister():
+def unregister():  # pragma: no cover - Blender runtime usage
     bpy.utils.unregister_class(EVE_PT_main)
