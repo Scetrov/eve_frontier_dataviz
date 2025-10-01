@@ -16,7 +16,6 @@ import tomllib
 import zipfile
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PKG_ROOT = REPO_ROOT / "blender_addon" / "src" / "addon"
 DIST_DIR = REPO_ROOT / "dist"
