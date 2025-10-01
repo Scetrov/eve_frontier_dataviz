@@ -20,6 +20,9 @@ def _default_db_path():
         return ""
 
 
+_DEFAULT_USER_DB = str((Path.home() / "Documents" / "static.db").resolve())
+
+
 class EVEVisualizerPreferences(AddonPreferences):
     """Add-on preferences.
 
@@ -34,8 +37,8 @@ class EVEVisualizerPreferences(AddonPreferences):
     db_path: StringProperty(  # type: ignore[valid-type]
         name="Database Path",
         subtype="FILE_PATH",
-        default="",  # leave blank; attempting repo-relative path in an installed add-on is brittle
-        description="Path to static.db SQLite file (set this before loading data)",
+        default=_DEFAULT_USER_DB,
+        description="Path to static.db SQLite file (default: ~/Documents/static.db)",
     )
     scale_factor: FloatProperty(  # type: ignore[valid-type]
         name="Coordinate Scale",
@@ -75,8 +78,8 @@ try:  # pragma: no cover - runtime safety
         EVEVisualizerPreferences.db_path = StringProperty(  # type: ignore[attr-defined]
             name="Database Path",
             subtype="FILE_PATH",
-            default="",
-            description="Path to static.db SQLite file",
+            default=_DEFAULT_USER_DB,
+            description="Path to static.db SQLite file (default: ~/Documents/static.db)",
         )
         _missing.append("db_path")
     if not hasattr(EVEVisualizerPreferences, "scale_factor"):
