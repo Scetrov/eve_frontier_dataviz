@@ -62,7 +62,7 @@ class EVEVisualizerPreferences(AddonPreferences):
         description="Cache parsed data in memory for faster rebuild",
     )
     apply_axis_transform: BoolProperty(  # type: ignore[valid-type]
-        name="Axis Transform (Rx-90)",
+        name="Normalize Axis",
         default=False,
         description=(
             "If enabled, remap coordinates (x,y,z)->(x,z,-y) to convert source Z-up data into a Y-up scene"
@@ -96,7 +96,7 @@ class EVEVisualizerPreferences(AddonPreferences):
                 "Instances of one shared low-poly UV sphere mesh",
             ),
         ],
-        default="EMPTY",
+        default="ICO_INST",  # Updated default to instanced icosphere for performance
     )
     build_percentage: FloatProperty(  # type: ignore[valid-type]
         name="Build %",
@@ -106,6 +106,16 @@ class EVEVisualizerPreferences(AddonPreferences):
         subtype="FACTOR",
         description="Fraction of loaded systems to instantiate (sampled uniformly). Increase for more detail.",
         precision=3,
+    )
+    exclude_ad_systems: BoolProperty(  # type: ignore[valid-type]
+        name="Exclude AD###",
+        default=False,
+        description="If enabled, exclude systems whose name matches AD followed by three digits (e.g. AD123)",
+    )
+    exclude_vdash_systems: BoolProperty(  # type: ignore[valid-type]
+        name="Exclude V-###",
+        default=False,
+        description="If enabled, exclude systems whose name matches V- followed by three digits (e.g. V-456)",
     )
 
     def draw(self, context):  # noqa: D401
@@ -120,6 +130,8 @@ class EVEVisualizerPreferences(AddonPreferences):
             "system_representation",
             "system_point_radius",
             "build_percentage",
+            "exclude_ad_systems",
+            "exclude_vdash_systems",
         ):
             if prop_name in self.__class__.__dict__:
                 try:
@@ -181,7 +193,7 @@ try:  # pragma: no cover - runtime safety
         _missing.append("enable_cache")
     if not hasattr(EVEVisualizerPreferences, "apply_axis_transform"):
         EVEVisualizerPreferences.apply_axis_transform = BoolProperty(  # type: ignore[attr-defined]
-            name="Axis Transform (Rx-90)",
+            name="Normalize Axis",
             default=False,
             description=(
                 "If enabled, remap coordinates (x,y,z)->(x,z,-y) to convert source Z-up data into a Y-up scene"
@@ -219,7 +231,7 @@ try:  # pragma: no cover - runtime safety
                     "Instances of one shared low-poly UV sphere mesh",
                 ),
             ],
-            default="EMPTY",
+            default="ICO_INST",  # match annotation default
         )
         _missing.append("system_representation")
     if not hasattr(EVEVisualizerPreferences, "build_percentage"):
@@ -233,6 +245,20 @@ try:  # pragma: no cover - runtime safety
             precision=3,
         )
         _missing.append("build_percentage")
+    if not hasattr(EVEVisualizerPreferences, "exclude_ad_systems"):
+        EVEVisualizerPreferences.exclude_ad_systems = BoolProperty(  # type: ignore[attr-defined]
+            name="Exclude AD###",
+            default=False,
+            description="If enabled, exclude systems whose name matches AD followed by three digits (e.g. AD123)",
+        )
+        _missing.append("exclude_ad_systems")
+    if not hasattr(EVEVisualizerPreferences, "exclude_vdash_systems"):
+        EVEVisualizerPreferences.exclude_vdash_systems = BoolProperty(  # type: ignore[attr-defined]
+            name="Exclude V-###",
+            default=False,
+            description="If enabled, exclude systems whose name matches V- followed by three digits (e.g. V-456)",
+        )
+        _missing.append("exclude_vdash_systems")
     if _missing:
         print(f"[EVEVisualizer][info] Injected fallback properties: {_missing}")
     else:

@@ -189,6 +189,20 @@ class EVE_OT_build_scene(Operator):
         if pct > 1:
             pct = 1.0
 
+        # Optional exclusions
+        excl_ad = getattr(prefs, "exclude_ad_systems", False)
+        excl_vdash = getattr(prefs, "exclude_vdash_systems", False)
+        if excl_ad or excl_vdash:
+            filtered = []
+            for s in systems_data:
+                nm = s.name or ""
+                if excl_ad and len(nm) == 5 and nm.startswith("AD") and nm[2:].isdigit():
+                    continue
+                if excl_vdash and len(nm) == 5 and nm.startswith("V-") and nm[2:].isdigit():
+                    continue
+                filtered.append(s)
+            systems_data = filtered
+
         systems_iter = systems_data
         if pct < 0.9999:
             # Uniform down-sampling by index stride
@@ -267,6 +281,218 @@ class EVE_OT_build_scene(Operator):
             f"Scene built with {created} systems (sample={pct:.2%}, mode={representation}, inst={'yes' if instanced else 'no'})",
         )
         return {"FINISHED"}
+
+
+class EVE_OT_build_scene_modal(Operator):  # pragma: no cover - Blender runtime usage
+    bl_idname = "eve.build_scene_modal"
+    bl_label = "Build Scene (Async)"
+    bl_description = "Asynchronously build the scene in batches to keep UI responsive"
+
+    batch_size: bpy.props.IntProperty(  # type: ignore[valid-type]
+        name="Batch Size",
+        default=2500,
+        min=100,
+        max=100000,
+        description="Systems instantiated per modal step",
+    )
+    clear_previous: bpy.props.BoolProperty(  # type: ignore[valid-type]
+        name="Clear Previous",
+        default=True,
+    )
+
+    _systems_iter = None
+    _systems_total = 0
+    _created = 0
+    _shared_mesh = None
+    _instanced = False
+    _base_kind = None
+    _coll = None
+    _apply_axis = False
+    _scale = 1.0
+    _radius = 2.0
+    _representation = "ICO_INST"
+
+    def _ensure_mesh(self, kind: str, r: float, inst: bool):  # local helper
+        suffix = "INST" if inst else "TPL"
+        key = f"EVE_{kind}_{int(r*1000)}_{suffix}"
+        m = bpy.data.meshes.get(key)
+        if m:
+            return m
+        m = bpy.data.meshes.new(key)
+        bm = bmesh.new()
+        if kind == "ICO":
+            bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+        else:
+            bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=6, diameter=r * 2)
+        bm.to_mesh(m)
+        bm.free()
+        return m
+
+    def _init_build(self, context):
+        # Acquire / load data
+        systems_data = data_state.get_loaded_systems()
+        if not systems_data:
+            prefs = get_prefs(context)
+            if not os.path.exists(prefs.db_path):
+                self.report({"ERROR"}, "No data loaded and database path invalid")
+                return False
+            try:
+                systems_data = load_data(prefs.db_path, enable_cache=prefs.enable_cache)
+                data_state.set_loaded_systems(systems_data)
+            except Exception as e:
+                self.report({"ERROR"}, f"Auto-load failed: {e}")
+                return False
+
+        prefs = get_prefs(context)
+        self._scale = getattr(prefs, "scale_factor", 1.0)
+        self._apply_axis = getattr(prefs, "apply_axis_transform", False)
+        self._radius = max(0.01, float(getattr(prefs, "system_point_radius", 2.0)))
+        pct = getattr(prefs, "build_percentage", 1.0)
+        try:
+            pct = float(pct)
+        except Exception:
+            pct = 1.0
+        pct = max(0.01, min(1.0, pct))
+        representation = getattr(prefs, "system_representation", "ICO_INST")
+        self._representation = representation
+        # Apply exclusions if enabled
+        excl_ad = getattr(prefs, "exclude_ad_systems", False)
+        excl_vdash = getattr(prefs, "exclude_vdash_systems", False)
+        if excl_ad or excl_vdash:
+            filtered = []
+            for s in systems_data:
+                nm = s.name or ""
+                if excl_ad and len(nm) == 5 and nm.startswith("AD") and nm[2:].isdigit():
+                    continue
+                if excl_vdash and len(nm) == 5 and nm.startswith("V-") and nm[2:].isdigit():
+                    continue
+                filtered.append(s)
+            systems_data = filtered
+
+        systems_iter = systems_data
+        if pct < 0.9999:
+            target = max(1, int(len(systems_data) * pct))
+            stride = max(1, len(systems_data) // target)
+            systems_iter = [s for i, s in enumerate(systems_data) if i % stride == 0][:target]
+        self._systems_iter = systems_iter
+        self._systems_total = len(systems_iter)
+
+        # Clear previous if requested
+        if self.clear_previous:
+            _clear_generated()
+        self._coll = _get_or_create_collection("EVE_Systems")
+        self._coll.hide_viewport = True
+
+        # Determine representation
+        self._instanced = representation in {"ICO_INST", "SPHERE_INST"}
+        if representation.startswith("ICO"):
+            self._base_kind = "ICO"
+        elif representation.startswith("SPHERE"):
+            self._base_kind = "SPHERE"
+        else:
+            self._base_kind = None
+        if self._instanced and self._base_kind:
+            self._shared_mesh = self._ensure_mesh(self._base_kind, self._radius, True)
+
+        # Disable undo for duration
+        self._prev_undo = bpy.context.preferences.edit.use_global_undo
+        bpy.context.preferences.edit.use_global_undo = False
+
+        wm = context.window_manager
+        wm.eve_build_in_progress = True
+        wm.eve_build_progress = 0.0
+        wm.eve_build_total = self._systems_total
+        wm.eve_build_created = 0
+        wm.eve_build_mode = representation
+        return True
+
+    def _finish(self, context, cancelled=False):
+        if self._coll:
+            self._coll.hide_viewport = False
+        bpy.context.preferences.edit.use_global_undo = getattr(self, "_prev_undo", True)
+        wm = context.window_manager
+        wm.eve_build_progress = 1.0 if not cancelled else 0.0
+        wm.eve_build_in_progress = False
+        msg = f"Async build {'cancelled' if cancelled else 'complete'}: {self._created} systems (mode={self._representation}, inst={'yes' if self._instanced else 'no'})"
+        self.report({"INFO"}, msg)
+
+    def execute(self, context):  # start modal
+        if not self._init_build(context):
+            return {"CANCELLED"}
+        context.window_manager.modal_handler_add(self)
+        return {"RUNNING_MODAL"}
+
+    def modal(self, context, event):
+        wm = context.window_manager
+        if event.type == "ESC":  # user pressed escape
+            self._finish(context, cancelled=True)
+            return {"CANCELLED"}
+        if not wm.eve_build_in_progress:
+            # External cancel
+            return {"CANCELLED"}
+        # If init somehow failed earlier, abort safely
+        if self._systems_iter is None or self._coll is None:
+            self.report({"ERROR"}, "Build state invalid; aborting")
+            wm.eve_build_in_progress = False
+            return {"CANCELLED"}
+        # Build a batch each TIMER or redraw event
+        if event.type in {"TIMER", "NONE", "TIMER_REPORT"}:
+            remaining = self._systems_total - self._created
+            if remaining <= 0:
+                self._finish(context)
+                return {"FINISHED"}
+            count = min(self.batch_size, remaining)
+            start_index = self._created
+            systems_slice = (
+                self._systems_iter[start_index : start_index + count] if self._systems_iter else []
+            )
+            for sys in systems_slice:
+                name = sys.name or f"System_{sys.id}"
+                if self._representation == "EMPTY":
+                    obj = bpy.data.objects.new(name, None)
+                    obj.empty_display_type = "PLAIN_AXES"
+                    obj.empty_display_size = self._radius
+                    if self._coll:
+                        self._coll.objects.link(obj)
+                elif self._instanced and self._shared_mesh:
+                    obj = bpy.data.objects.new(name, self._shared_mesh)
+                    if self._coll:
+                        self._coll.objects.link(obj)
+                else:
+                    tpl_mesh = self._ensure_mesh(self._base_kind or "SPHERE", self._radius, False)
+                    obj = bpy.data.objects.new(name, tpl_mesh.copy())
+                    if self._coll:
+                        self._coll.objects.link(obj)
+                if self._apply_axis:
+                    obj.location = (sys.x * self._scale, sys.z * self._scale, -sys.y * self._scale)
+                else:
+                    obj.location = (sys.x * self._scale, sys.y * self._scale, sys.z * self._scale)
+                planet_count = len(sys.planets)
+                moon_count = sum(len(p.moons) for p in sys.planets)
+                obj["planet_count"] = planet_count
+                obj["moon_count"] = moon_count
+                self._created += 1
+            # Update progress
+            wm.eve_build_created = self._created
+            if self._systems_total > 0:
+                wm.eve_build_progress = self._created / self._systems_total
+            return {"RUNNING_MODAL"}
+        return {"PASS_THROUGH"}
+
+
+class EVE_OT_cancel_build(Operator):  # pragma: no cover - Blender runtime usage
+    bl_idname = "eve.cancel_build"
+    bl_label = "Cancel Build"
+    bl_description = "Cancel the asynchronous build in progress"
+
+    def execute(self, context):  # noqa: D401
+        wm = context.window_manager
+        if getattr(wm, "eve_build_in_progress", False):
+            wm.eve_build_in_progress = False
+            self.report({"INFO"}, "Cancellation requested")
+            return {"FINISHED"}
+        self.report({"WARNING"}, "No build in progress")
+        return {"CANCELLED"}
 
 
 def _strategy_items(self, context):  # pragma: no cover - Blender runtime usage
@@ -464,11 +690,29 @@ def register():  # pragma: no cover - Blender runtime usage
     bpy.utils.register_class(EVE_OT_clear_scene)
     bpy.utils.register_class(EVE_OT_load_data)
     bpy.utils.register_class(EVE_OT_build_scene)
+    bpy.utils.register_class(EVE_OT_build_scene_modal)
+    bpy.utils.register_class(EVE_OT_cancel_build)
     bpy.utils.register_class(EVE_OT_apply_shader)
     bpy.utils.register_class(EVE_OT_viewport_fit_systems)
     bpy.utils.register_class(EVE_OT_viewport_set_space)
     bpy.utils.register_class(EVE_OT_viewport_set_clip)
     bpy.utils.register_class(EVE_OT_viewport_hide_overlays)
+    # WindowManager properties for progress
+    wm = bpy.types.WindowManager
+    if not hasattr(wm, "eve_build_in_progress"):
+        wm.eve_build_in_progress = bpy.props.BoolProperty(
+            name="EVE Build In Progress", default=False
+        )  # type: ignore[attr-defined]
+    if not hasattr(wm, "eve_build_progress"):
+        wm.eve_build_progress = bpy.props.FloatProperty(
+            name="EVE Build Progress", default=0.0, min=0.0, max=1.0, subtype="FACTOR"
+        )  # type: ignore[attr-defined]
+    if not hasattr(wm, "eve_build_total"):
+        wm.eve_build_total = bpy.props.IntProperty(name="EVE Build Total", default=0, min=0)  # type: ignore[attr-defined]
+    if not hasattr(wm, "eve_build_created"):
+        wm.eve_build_created = bpy.props.IntProperty(name="EVE Build Created", default=0, min=0)  # type: ignore[attr-defined]
+    if not hasattr(wm, "eve_build_mode"):
+        wm.eve_build_mode = bpy.props.StringProperty(name="EVE Build Mode", default="")  # type: ignore[attr-defined]
     # Fallback: ensure strategy_id materialized (rare on some reload sequences)
     if not hasattr(EVE_OT_apply_shader, "strategy_id"):
         print(
@@ -484,5 +728,7 @@ def unregister():  # pragma: no cover - Blender runtime usage
     bpy.utils.unregister_class(EVE_OT_viewport_set_space)
     bpy.utils.unregister_class(EVE_OT_viewport_fit_systems)
     bpy.utils.unregister_class(EVE_OT_apply_shader)
+    bpy.utils.unregister_class(EVE_OT_cancel_build)
+    bpy.utils.unregister_class(EVE_OT_build_scene_modal)
     bpy.utils.unregister_class(EVE_OT_build_scene)
     bpy.utils.unregister_class(EVE_OT_load_data)

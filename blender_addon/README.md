@@ -201,6 +201,7 @@ These visualizations would not have been possible without the work of the follow
 - **Amber Goose**: for their original conceptual that the letters meant something.
 - **Reapers Tribe**: for putting up with my rambling and being a sounding board for ideas.
 - **ProtoDroidBot**: for doing the leg work in extracting the data from the client.
+- **Lacal**: for identifying the Rx-90 transformation required to normalize the coordinate system.
 
 ---
 Happy visualizing!

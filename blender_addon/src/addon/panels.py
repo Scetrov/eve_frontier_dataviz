@@ -23,9 +23,28 @@ class EVE_PT_main(Panel):
         # --- Build Section ---
         box_build = layout.box()
         box_build.label(text="Build", icon="OUTLINER_OB_EMPTY")
-        row_build = box_build.row(align=True)
-        row_build.operator("eve.build_scene", icon="OUTLINER_OB_EMPTY")
-        row_build.operator("eve.clear_scene", text="Clear", icon="TRASH")
+        wm = context.window_manager
+        in_progress = getattr(wm, "eve_build_in_progress", False)
+        if not in_progress:
+            row_build = box_build.row(align=True)
+            op = row_build.operator("eve.build_scene_modal", icon="OUTLINER_OB_EMPTY")
+            op.batch_size = 2500
+            row_build.operator("eve.clear_scene", text="Clear", icon="TRASH")
+        else:
+            # Progress & cancel UI
+            prog = getattr(wm, "eve_build_progress", 0.0)
+            created = getattr(wm, "eve_build_created", 0)
+            total = getattr(wm, "eve_build_total", 0)
+            mode = getattr(wm, "eve_build_mode", "")
+            box_build.label(text=f"Building {created}/{total} ({prog*100:.1f}%) mode={mode}")
+            row_p = box_build.row(align=True)
+            # Simulated progress bar: factor property if registered
+            if hasattr(wm, "eve_build_progress"):
+                row_p.enabled = False
+                row_p.prop(wm, "eve_build_progress", text="Progress")
+            row_cancel = box_build.row(align=True)
+            row_cancel.operator("eve.cancel_build", text="Cancel", icon="CANCEL")
+            row_cancel.operator("eve.clear_scene", text="Clear", icon="TRASH")
         # Inline controls (sampling, scale, radius, display)
         try:
             mod_name = __name__.split(".")
@@ -43,7 +62,12 @@ class EVE_PT_main(Panel):
                     if hasattr(prefs, "system_representation"):
                         box_build.prop(prefs, "system_representation", text="Display")
                     if hasattr(prefs, "apply_axis_transform"):
-                        box_build.prop(prefs, "apply_axis_transform", text="Axis Rx-90")
+                        box_build.prop(prefs, "apply_axis_transform", text="Normalize Axis")
+                    # Exclusion toggles
+                    if hasattr(prefs, "exclude_ad_systems"):
+                        box_build.prop(prefs, "exclude_ad_systems", text="Exclude AD###")
+                    if hasattr(prefs, "exclude_vdash_systems"):
+                        box_build.prop(prefs, "exclude_vdash_systems", text="Exclude V-###")
         except Exception:
             pass
 
