@@ -4,6 +4,31 @@ import bpy
 
 from .shader_registry import BaseShaderStrategy, register_strategy
 
+_BLACKHOLE_NAMES = {"A 2560", "M 974", "U 3183"}
+
+
+def _get_blackhole_material():  # pragma: no cover
+    """Return (creating if needed) a shared bright orange emission material for black holes."""
+    mat_name = "EVE_BlackHole_Orange"
+    mat = bpy.data.materials.get(mat_name)
+    if mat:
+        return mat
+    mat = bpy.data.materials.new(mat_name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nodes = nt.nodes
+    links = nt.links
+    for n in list(nodes):
+        if n.type != "OUTPUT_MATERIAL":
+            nodes.remove(n)
+    out = next(n for n in nodes if n.type == "OUTPUT_MATERIAL")
+    emission = nodes.new("ShaderNodeEmission")
+    emission.location = (-200, 0)
+    emission.inputs[0].default_value = (1.0, 0.45, 0.0, 1.0)  # bright orange
+    emission.inputs[1].default_value = 5.0
+    links.new(emission.outputs[0], out.inputs[0])
+    return mat
+
 
 @register_strategy
 class NameFirstCharHue(BaseShaderStrategy):
@@ -43,6 +68,8 @@ class NameFirstCharHue(BaseShaderStrategy):
                 e_node = inst.node_tree.nodes.get(emission.name)
                 if e_node:  # In copy, name preserved
                     e_node.inputs[0].default_value = (r, g, b, 1.0)
+            if obj.name in _BLACKHOLE_NAMES:
+                inst = _get_blackhole_material()
             if obj.data and hasattr(obj.data, "materials"):
                 if obj.data.materials:
                     obj.data.materials[0] = inst
@@ -85,6 +112,8 @@ class ChildCountEmission(BaseShaderStrategy):
                 for n in inst.node_tree.nodes:
                     if n.type == "EMISSION":
                         n.inputs[1].default_value = strength
+            if obj.name in _BLACKHOLE_NAMES:
+                inst = _get_blackhole_material()
             if obj.data and hasattr(obj.data, "materials"):
                 if obj.data.materials:
                     obj.data.materials[0] = inst
