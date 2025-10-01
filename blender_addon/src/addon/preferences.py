@@ -71,10 +71,11 @@ class EVEVisualizerPreferences(AddonPreferences):
     )
     system_representation: EnumProperty(  # type: ignore[valid-type]
         name="System Display",
-        description="Geometry used for system markers (Point=Empty, Sphere=UV Sphere geometry)",
+        description="Geometry used for system markers (Point=Empty, Icosphere=low poly, Sphere=UV sphere)",
         items=[
-            ("EMPTY", "Point", "Use lightweight empties (fast, not renderable geometry)"),
-            ("SPHERE", "Sphere", "Use sphere mesh per system (slower, fully renderable)"),
+            ("EMPTY", "Point", "Use lightweight empties (fastest, not renderable geometry)"),
+            ("ICO", "Icosphere", "Low-poly icosphere (subdiv=1) per system"),
+            ("SPHERE", "Sphere", "UV sphere mesh per system (slower, more verts)"),
         ],
         default="EMPTY",
     )
@@ -171,10 +172,11 @@ try:  # pragma: no cover - runtime safety
     if not hasattr(EVEVisualizerPreferences, "system_representation"):
         EVEVisualizerPreferences.system_representation = EnumProperty(  # type: ignore[attr-defined]
             name="System Display",
-            description="Geometry used for system markers (Point=Empty, Sphere=UV Sphere geometry)",
+            description="Geometry used for system markers (Point=Empty, Icosphere=low poly, Sphere=UV sphere)",
             items=[
-                ("EMPTY", "Point", "Use lightweight empties (fast, not renderable geometry)"),
-                ("SPHERE", "Sphere", "Use sphere mesh per system (slower, fully renderable)"),
+                ("EMPTY", "Point", "Use lightweight empties (fastest, not renderable geometry)"),
+                ("ICO", "Icosphere", "Low-poly icosphere (subdiv=1) per system"),
+                ("SPHERE", "Sphere", "UV sphere mesh per system (slower, more verts)"),
             ],
             default="EMPTY",
         )

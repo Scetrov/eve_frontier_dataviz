@@ -135,8 +135,16 @@ class EVE_OT_build_scene(Operator):
                 obj.empty_display_type = "PLAIN_AXES"
                 obj.empty_display_size = radius
                 systems_coll.objects.link(obj)
+            elif representation == "ICO":
+                # Low poly icosphere (subdiv=1 gives 12 verts -> 42 verts). Fewer than UV sphere segments.
+                bpy.ops.mesh.primitive_ico_sphere_add(
+                    radius=radius, enter_editmode=False, location=(0, 0, 0), subdivisions=1
+                )
+                obj = bpy.context.active_object
+                obj.name = name
+                systems_coll.objects.link(obj)
             else:
-                # Default sphere geometry (low segments)
+                # Default UV sphere geometry (still low segments)
                 bpy.ops.mesh.primitive_uv_sphere_add(
                     radius=radius,
                     enter_editmode=False,
