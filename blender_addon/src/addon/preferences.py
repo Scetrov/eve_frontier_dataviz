@@ -1,9 +1,10 @@
+import os
 import traceback
 from pathlib import Path
 
 import bpy
 from bpy.props import BoolProperty, FloatProperty, StringProperty
-from bpy.types import AddonPreferences
+from bpy.types import AddonPreferences, Operator
 
 
 def _default_db_path():
@@ -20,7 +21,11 @@ def _default_db_path():
         return ""
 
 
-_DEFAULT_USER_DB = str((Path.home() / "Documents" / "static.db").resolve())
+ENV_DB_VAR = "EVE_STATIC_DB"
+_ENV_DB_PATH = os.environ.get(ENV_DB_VAR)
+_DEFAULT_USER_DB = str(
+    (Path.home() / "Documents" / "static.db").resolve()
+)  # kept for documentation only
 
 
 class EVEVisualizerPreferences(AddonPreferences):
@@ -37,8 +42,8 @@ class EVEVisualizerPreferences(AddonPreferences):
     db_path: StringProperty(  # type: ignore[valid-type]
         name="Database Path",
         subtype="FILE_PATH",
-        default=_DEFAULT_USER_DB,
-        description="Path to static.db SQLite file (default: ~/Documents/static.db)",
+        default=_ENV_DB_PATH or "",  # empty if no ENV override
+        description="Path to static.db (set here, use Locate, or define env EVE_STATIC_DB)",
     )
     scale_factor: FloatProperty(  # type: ignore[valid-type]
         name="Coordinate Scale",
@@ -59,9 +64,24 @@ class EVEVisualizerPreferences(AddonPreferences):
         for prop_name in ("db_path", "scale_factor", "enable_cache"):
             if prop_name in self.__class__.__dict__:
                 try:
-                    col.prop(self, prop_name)
+                    # If env var override is active, show db_path disabled to communicate source.
+                    if prop_name == "db_path" and _ENV_DB_PATH:
+                        row = col.row()
+                        row.enabled = False
+                        row.prop(self, prop_name)
+                    else:
+                        col.prop(self, prop_name)
                 except Exception as e:  # pragma: no cover - Blender UI safety
                     col.label(text=f"(Failed prop {prop_name}: {e})", icon="ERROR")
+        # Locate / override info
+        row = col.row(align=True)
+        row.operator("eve.locate_static_db", text="Locate", icon="FILE_FOLDER")
+        if _ENV_DB_PATH:
+            col.label(text=f"Env {ENV_DB_VAR} in use (read-only)", icon="INFO")
+        elif not self.db_path:
+            col.label(
+                text="Set a database path, click Locate, or define EVE_STATIC_DB", icon="INFO"
+            )
         # Show path existence hint
         try:
             if isinstance(self.db_path, str) and self.db_path:
@@ -78,8 +98,8 @@ try:  # pragma: no cover - runtime safety
         EVEVisualizerPreferences.db_path = StringProperty(  # type: ignore[attr-defined]
             name="Database Path",
             subtype="FILE_PATH",
-            default=_DEFAULT_USER_DB,
-            description="Path to static.db SQLite file (default: ~/Documents/static.db)",
+            default=_ENV_DB_PATH or "",
+            description="Path to static.db (set here, use Locate, or define env EVE_STATIC_DB)",
         )
         _missing.append("db_path")
     if not hasattr(EVEVisualizerPreferences, "scale_factor"):
@@ -117,7 +137,7 @@ def get_prefs(context):  # pragma: no cover - Blender runtime usage
     raise KeyError(f"EVEVisualizerPreferences not found (expected addon key '{key}')")
 
 
-def register():  # noqa: D401
+def _register_prefs():  # internal helper
     try:
         bpy.utils.register_class(EVEVisualizerPreferences)
     except Exception as e:  # pragma: no cover - show why preferences might be blank
@@ -127,22 +147,52 @@ def register():  # noqa: D401
     try:  # pragma: no cover - Blender runtime only
         print(
             f"[EVEVisualizer] Preferences registered: bl_idname='{EVEVisualizerPreferences.bl_idname}', "
-            f"folder='{Path(__file__).parent.name}'"
+            f"folder='{Path(__file__).parent.name}', env_override={'yes' if _ENV_DB_PATH else 'no'}"
         )
-        # If the folder name is literally 'addon', Blender may register the add-on under
-        # a different key (e.g. archive name). Provide a runtime sanity check hint.
-        prefs = getattr(bpy.context, "preferences", None)
-        if prefs is not None:
-            keys = list(getattr(prefs, "addons", {}).keys())
-            if EVEVisualizerPreferences.bl_idname not in keys:
-                print(
-                    "[EVEVisualizer][warn] bl_idname not in addons keys; keys=",
-                    keys,
-                    "— preferences panel may be blank.",
-                )
     except Exception:
         pass
 
 
+def _unregister_prefs():  # pragma: no cover - Blender runtime usage
+    try:
+        bpy.utils.unregister_class(EVEVisualizerPreferences)
+    except Exception:
+        pass
+
+
+class EVE_OT_locate_static_db(Operator):  # pragma: no cover - Blender runtime usage
+    bl_idname = "eve.locate_static_db"
+    bl_label = "Locate static.db"
+    bl_description = "Browse for a static.db file and set it as database path"
+
+    filepath: StringProperty(subtype="FILE_PATH")  # type: ignore[valid-type]
+
+    def execute(self, context):
+        prefs = get_prefs(context)
+        if self.filepath and self.filepath.lower().endswith("static.db"):
+            prefs.db_path = self.filepath
+            self.report({"INFO"}, f"Database path set: {self.filepath}")
+            return {"FINISHED"}
+        self.report({"ERROR"}, "Please select a static.db file")
+        return {"CANCELLED"}
+
+    def invoke(self, context, event):  # noqa: D401
+        context.window_manager.fileselect_add(self)
+        return {"RUNNING_MODAL"}
+
+
+# Public register/unregister
+def register():  # noqa: D401
+    _register_prefs()
+    try:  # operator
+        bpy.utils.register_class(EVE_OT_locate_static_db)
+    except Exception as e:  # pragma: no cover
+        print(f"[EVEVisualizer][warn] Failed to register locate operator: {e}")
+
+
 def unregister():  # pragma: no cover - Blender runtime usage
-    bpy.utils.unregister_class(EVEVisualizerPreferences)
+    try:
+        bpy.utils.unregister_class(EVE_OT_locate_static_db)
+    except Exception:
+        pass
+    _unregister_prefs()

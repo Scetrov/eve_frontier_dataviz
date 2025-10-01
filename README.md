@@ -12,7 +12,7 @@ This repository contains a Blender add-on and supporting Python tooling to visua
 1. Download (or build) the add-on zip: `python blender_addon/scripts/build_addon.py` → creates `dist/eve_frontier_visualizer.zip`.
 1. In Blender: `Edit > Preferences > Add-ons > Install…` and pick the zip.
 1. Enable: search for `EVE Frontier: Data Visualizer` and tick the checkbox.
-1. Still in Preferences, expand the add-on panel and set the path to your `static.db` (default: `data/static.db` relative to repo root if you launched Blender from there).
+1. Still in Preferences, expand the add-on panel and set the path to your `static.db` (or use the Locate button; see Database File section below).
 1. Close Preferences. In the 3D Viewport press `N` to open the Sidebar → find the `EVE Frontier` tab.
 1. Click `Load / Refresh Data`, then `Build Scene`, then `Apply` to attach a shader strategy.
 
@@ -131,6 +131,28 @@ blender -b my_scene.blend -P blender_addon/scripts/export_batch.py -- --modes Na
 1. (Optional) Delete any `EVE_` collections from existing .blend files manually if you want a clean slate.
 
 ---
+
+## Database File
+
+You need a `static.db` SQLite file containing the source data.
+
+Ways to point the add-on at it (precedence top → bottom):
+
+1. Environment variable `EVE_STATIC_DB` (read-only in UI while set)
+1. Locate button in the add-on preferences (opens file browser for `static.db`)
+1. Manual edit of the path field in preferences
+
+
+If none are provided, the field starts blank (no misleading placeholder). Set one before loading data. The environment variable is ideal for headless runs or when launching Blender from other directories.
+
+Example (PowerShell on Windows):
+
+```powershell
+$env:EVE_STATIC_DB = "C:\\data\\eve\\static.db"
+blender
+```
+
+Or permanently via system environment settings.
 
 ## 🚀 Usage Workflow
 
