@@ -31,21 +31,21 @@ class EVEVisualizerPreferences(AddonPreferences):
     # Blender matches this to the add-on package name key in context.preferences.addons
     bl_idname = _top_level_addon_name()
 
-    db_path = StringProperty(  # type: ignore[valid-type]
+    db_path: StringProperty(  # type: ignore[valid-type]
         name="Database Path",
         subtype="FILE_PATH",
         default=_default_db_path(),
         description="Path to static.db SQLite file",
     )
 
-    scale_factor = FloatProperty(  # type: ignore[valid-type]
+    scale_factor: FloatProperty(  # type: ignore[valid-type]
         name="Coordinate Scale",
         default=0.001,
         min=0.0000001,
         description="Multiply raw coordinates by this factor",
     )
 
-    enable_cache = BoolProperty(  # type: ignore[valid-type]
+    enable_cache: BoolProperty(  # type: ignore[valid-type]
         name="Enable Data Cache",
         default=True,
         description="Cache parsed data in memory for faster rebuild",
