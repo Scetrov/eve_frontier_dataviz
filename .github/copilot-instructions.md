@@ -1,6 +1,6 @@
 ## AI Contribution Guide (Project-Specific)
 
-Authoritative rules for assisting on the EVE Frontier Blender data visualizer. Favor minimal, targeted edits; keep public behavior stable; prefer incremental, testable changes.
+Authoritative rules for assisting on the EVE Frontier Blender data visualizer. Favor minimal, targeted edits; keep public behavior stable; provably accurate, incremental, testable changes, committed frequently.
 
 ### Current Core Flow
 
@@ -10,8 +10,6 @@ SQLite (data/static.db) -> data_loader (pure Python) -> in-memory systems list
  -> shader strategies apply / reuse materials
 ```
 
-Future (not yet implemented): dedicated `scene_builder.py`, object instancing for planets/moons, geometry nodes.
-
 ### Layer Boundaries (Do NOT cross)
 
 1. Data layer (`src/addon/data_loader.py`): pure Python; no `bpy`; unit tested.
@@ -19,9 +17,8 @@ Future (not yet implemented): dedicated `scene_builder.py`, object instancing fo
 3. Visualization layer (`shader_registry.py`, `shaders_builtin.py`): assign/update materials only; no object creation.
 4. UI / Ops (`operators.py`, `panels.py`, `preferences.py`): orchestration & user triggers; keep loops light.
 
-
-
 ### Key Conventions
+
 - Source layout: `blender_addon/src/addon` is the Python package root.
 - Collections currently created: `EVE_Systems` only (planets/moons represented as counts, not objects).
 - Future reserved names (do not misuse): `EVE_Planets`, `EVE_Moons`.
@@ -44,6 +41,7 @@ class BaseShaderStrategy:
 Idempotent: re-running may reuse or lazily create a bounded set of materials; no unbounded growth. Derive variant names deterministically.
 
 ### Performance & Safety Guidelines
+
 - Bulk SELECT; never open a cursor per entity.
 - Loader cache key: (resolved path, size, mtime_ns, limit_systems) → reuse when enabled.
 - Only touch objects inside `EVE_*` collections you create.
@@ -58,9 +56,8 @@ Idempotent: re-running may reuse or lazily create a bounded set of materials; no
 4. New operator: small, composable; register + expose in panel; user feedback via `self.report`.
 5. Test additions: pure Python only—mocking `bpy` is out of scope for now.
 
-
-
 ### Testing & Tooling
+
 - Tests: `pytest` with coverage (threshold 90%). Only modules without `bpy`.
 - Add fixtures under `tests/fixtures` as `.sql` scripts (see `mini.db.sql`).
 - Lint: `ruff check .` (import ordering, errors, basic best practices).
@@ -68,6 +65,7 @@ Idempotent: re-running may reuse or lazily create a bounded set of materials; no
 - Pre-commit: ruff (fix + format), markdown lint, pytest.
 
 ### Common Pitfalls to Avoid
+
 - Importing `bpy` in pure modules (`data_loader.py`, tests).
 - Material explosion: missing deterministic naming or reuse lookup.
 - Per-row DB queries inside loops.
@@ -75,15 +73,18 @@ Idempotent: re-running may reuse or lazily create a bounded set of materials; no
 - Hard-coded absolute paths—use preference `db_path`.
 
 ### Practical Examples
+
 - Variant material naming: `EVE_ChildCountEmission_{child_count}`.
 - Hue mapping: `NameFirstCharHue` derives hue from first letter ordinal.
 - Parent linking: construct `system_map`, `planet_map` then attach children (see loader implementation pattern).
 - Using custom properties: strategies can read `obj["planet_count"]` / `obj["moon_count"]`.
 
 ### Lightweight Roadmap Awareness
+
 Near-term: scene builder module, planet/moon instancing, node-based attribute-driven shading, security metric visualizations.
 
 ### If Unsure
+
 Add a tiny helper function near related code or start a focused module only when a pattern repeats 3+ times. Document new public surfaces in `docs/`.
 
 ---
