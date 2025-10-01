@@ -21,19 +21,35 @@ def _get_or_create_collection(name: str):  # pragma: no cover - Blender runtime 
 
 
 def _clear_generated():  # pragma: no cover - Blender runtime usage
-    for cname in _generated_collection_names:
-        coll = bpy.data.collections.get(cname)
-        if coll:
-            # Unlink from all scenes that reference it (iterate over all scenes)
+    prev_undo = bpy.context.preferences.edit.use_global_undo
+    bpy.context.preferences.edit.use_global_undo = False
+    try:
+        for cname in _generated_collection_names:
+            coll = bpy.data.collections.get(cname)
+            if not coll:
+                continue
+            coll.hide_viewport = True
+            objs = list(coll.objects)
+            if objs:
+                # Try batch removal for speed (Blender 3.6+/4.x); fallback to loop if unavailable
+                try:
+                    bpy.data.batch_remove(objs)  # type: ignore[attr-defined]
+                except Exception:
+                    for o in objs:
+                        bpy.data.objects.remove(o, do_unlink=True)
+            # Unlink & remove collection
             for scene in list(bpy.data.scenes):
                 if coll.name in scene.collection.children:
                     try:
                         scene.collection.children.unlink(coll)
                     except Exception:
                         pass
-            for obj in list(coll.objects):
-                bpy.data.objects.remove(obj, do_unlink=True)
-            bpy.data.collections.remove(coll)
+            try:
+                bpy.data.collections.remove(coll)
+            except Exception:
+                pass
+    finally:
+        bpy.context.preferences.edit.use_global_undo = prev_undo
 
 
 class EVE_OT_clear_scene(Operator):
@@ -44,25 +60,39 @@ class EVE_OT_clear_scene(Operator):
     def execute(self, context):  # noqa: D401
         removed_objs = 0
         removed_colls = 0
-        for cname in _generated_collection_names:
-            coll = bpy.data.collections.get(cname)
-            if not coll:
-                continue
-            for scene in list(bpy.data.scenes):
-                if coll.name in scene.collection.children:
+        prev_undo = bpy.context.preferences.edit.use_global_undo
+        bpy.context.preferences.edit.use_global_undo = False
+        try:
+            for cname in _generated_collection_names:
+                coll = bpy.data.collections.get(cname)
+                if not coll:
+                    continue
+                coll.hide_viewport = True
+                objs = list(coll.objects)
+                removed_objs += len(objs)
+                if objs:
                     try:
-                        scene.collection.children.unlink(coll)
+                        bpy.data.batch_remove(objs)  # type: ignore[attr-defined]
                     except Exception:
-                        pass
-            for obj in list(coll.objects):
-                removed_objs += 1
-                bpy.data.objects.remove(obj, do_unlink=True)
-            bpy.data.collections.remove(coll)
-            removed_colls += 1
+                        for o in objs:
+                            bpy.data.objects.remove(o, do_unlink=True)
+                for scene in list(bpy.data.scenes):
+                    if coll.name in scene.collection.children:
+                        try:
+                            scene.collection.children.unlink(coll)
+                        except Exception:
+                            pass
+                try:
+                    bpy.data.collections.remove(coll)
+                except Exception:
+                    pass
+                removed_colls += 1
+        finally:
+            bpy.context.preferences.edit.use_global_undo = prev_undo
         if removed_colls == 0:
-            self.report({"INFO"}, "No generated collections present")
+            self.report({"INFO"}, "Nothing to clear")
             return {"CANCELLED"}
-        self.report({"INFO"}, f"Cleared {removed_objs} objects across {removed_colls} collections")
+        self.report({"INFO"}, f"Cleared {removed_objs} objects ({removed_colls} collections)")
         return {"FINISHED"}
 
 
