@@ -1,3 +1,4 @@
+import math
 import os
 
 import bmesh
@@ -607,37 +608,71 @@ class EVE_OT_viewport_fit_systems(Operator):
     bl_description = "Adjust 3D View to frame all generated system objects"
 
     def execute(self, context):  # noqa: D401
-        # Collect system objects
         systems_coll = bpy.data.collections.get("EVE_Systems")
         if not systems_coll or not systems_coll.objects:
             self.report({"WARNING"}, "No systems to frame")
             return {"CANCELLED"}
         objs = list(systems_coll.objects)
-        # Compute bounding box (object-space origins only; spheres small so okay)
+
         xs = [o.location.x for o in objs]
         ys = [o.location.y for o in objs]
         zs = [o.location.z for o in objs]
         min_x, max_x = min(xs), max(xs)
         min_y, max_y = min(ys), max(ys)
         min_z, max_z = min(zs), max(zs)
-        center = ((min_x + max_x) * 0.5, (min_y + max_y) * 0.5, (min_z + max_z) * 0.5)
-        span = max(max_x - min_x, max_y - min_y, max_z - min_z)
-        if span <= 0:
-            span = 1.0
+        size_x = max_x - min_x
+        size_y = max_y - min_y
+        size_z = max_z - min_z
+        # Fallback sizes
+        if size_x <= 0 and size_y <= 0 and size_z <= 0:
+            size_x = size_y = size_z = 1.0
+        center = (
+            (min_x + max_x) * 0.5,
+            (min_y + max_y) * 0.5,
+            (min_z + max_z) * 0.5,
+        )
 
-        # Find an active 3D view region
+        # Diagonal extent for conservative fit
+        diag = math.sqrt(size_x * size_x + size_y * size_y + size_z * size_z)
+        if diag <= 0:
+            diag = 1.0
+
+        # Approximate horizontal FOV for typical viewport lens (50mm ~ 39.6° HFOV on 36mm sensor)
+        # Blender's region_3d.lens is in mm; we extrapolate if accessible for more accuracy.
+        def compute_distance(region3d):
+            lens_mm = getattr(region3d, "lens", 50.0)
+            # Assume 36mm sensor width; HFOV = 2*atan(36/(2*lens))
+            hfov = 2.0 * math.degrees(math.atan(36.0 / (2.0 * max(1.0, lens_mm))))
+            # Use max of XY plane span for horizontal fit
+            horiz_span = max(size_x, size_y, 0.001)
+            # Distance so that half horizontal span fits in half FOV: d = (span/2)/tan(FOV/2)
+            d = (horiz_span * 0.5) / math.tan(math.radians(hfov * 0.5))
+            # Add padding; also ensure covers Z extent
+            # Compare with vertical requirement (approx assuming 24mm sensor height)
+            vfov = 2.0 * math.degrees(math.atan(24.0 / (2.0 * max(1.0, lens_mm))))
+            vert_span = max(size_z, 0.001)
+            d_vert = (vert_span * 0.5) / math.tan(math.radians(vfov * 0.5))
+            d = max(d, d_vert)
+            return d * 1.15  # small padding
+
+        framed = False
         for area in context.screen.areas:
-            if area.type == "VIEW_3D":
-                for space in area.spaces:
-                    if space.type == "VIEW_3D":
-                        region3d = space.region_3d
-                        region3d.view_location = center
-                        # Position view distance so all systems fit; add some padding
-                        region3d.view_distance = span * 0.75
-                        self.report({"INFO"}, "Viewport framed")
-                        return {"FINISHED"}
-        self.report({"WARNING"}, "No VIEW_3D area found")
-        return {"CANCELLED"}
+            if area.type != "VIEW_3D":
+                continue
+            for space in area.spaces:
+                if space.type != "VIEW_3D":
+                    continue
+                region3d = space.region_3d
+                # Preserve current rotation; only move pivot & distance
+                dist = compute_distance(region3d)
+                region3d.view_location = center
+                region3d.view_distance = dist
+                framed = True
+        if not framed:
+            self.report({"WARNING"}, "No VIEW_3D area found")
+            return {"CANCELLED"}
+        self.report({"INFO"}, "Viewport framed")
+        return {"FINISHED"}
 
 
 class EVE_OT_viewport_set_space(Operator):
