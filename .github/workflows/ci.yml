@@ -45,6 +45,7 @@ jobs:
           files: coverage.xml
           fail_ci_if_error: false
           verbose: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Build add-on zip
         run: python blender_addon/scripts/build_addon.py
