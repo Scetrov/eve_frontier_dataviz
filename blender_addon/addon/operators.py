@@ -1,7 +1,12 @@
+import os
+import math
 import bpy
 from bpy.types import Operator
 
 from .shader_registry import get_strategies, get_strategy
+from .preferences import get_prefs
+from .data_loader import load_data
+from . import data_state
 
 _generated_collection_names = ["EVE_Systems", "EVE_Planets", "EVE_Moons"]
 
@@ -32,9 +37,36 @@ class EVE_OT_load_data(Operator):
     bl_label = "Load / Refresh Data"
     bl_description = "Load data from the configured SQLite database"
 
-    def execute(self, context):
-        # TODO: implement real loader
-        self.report({'INFO'}, "(Stub) Data loaded")
+    # Optional developer helper to restrict systems loaded
+    limit_systems = bpy.props.IntProperty(
+        name="Limit Systems",
+        default=0,
+        min=0,
+        description="If > 0, only load this many systems (dev/testing)",
+    )
+
+    def execute(self, context):  # noqa: D401
+        prefs = get_prefs(context)
+        db_path = prefs.db_path
+        if not os.path.exists(db_path):
+            self.report({'ERROR'}, f"Database not found: {db_path}")
+            return {'CANCELLED'}
+        try:
+            systems = load_data(
+                db_path,
+                limit_systems=self.limit_systems or None,
+                enable_cache=prefs.enable_cache,
+            )
+        except Exception as e:  # pragma: no cover - defensive around IO/SQLite errors
+            self.report({'ERROR'}, f"Load failed: {e}")
+            return {'CANCELLED'}
+        data_state.set_loaded_systems(systems)
+        total_planets = sum(len(s.planets) for s in systems)
+        total_moons = sum(len(p.moons) for s in systems for p in s.planets)
+        self.report(
+            {'INFO'},
+            f"Loaded {len(systems)} systems / {total_planets} planets / {total_moons} moons",
+        )
         return {'FINISHED'}
 
 
@@ -44,18 +76,44 @@ class EVE_OT_build_scene(Operator):
     bl_description = "Build or rebuild the scene from loaded data"
     clear_previous = bpy.props.BoolProperty(name="Clear Previous", default=True)
 
-    def execute(self, context):
+    def execute(self, context):  # noqa: D401
+        systems_data = data_state.get_loaded_systems()
+        if not systems_data:
+            # Attempt implicit load if possible
+            prefs = get_prefs(context)
+            if not os.path.exists(prefs.db_path):
+                self.report({'ERROR'}, "No data loaded and database path invalid")
+                return {'CANCELLED'}
+            try:
+                systems_data = load_data(prefs.db_path, enable_cache=prefs.enable_cache)
+                data_state.set_loaded_systems(systems_data)
+            except Exception as e:  # pragma: no cover
+                self.report({'ERROR'}, f"Auto-load failed: {e}")
+                return {'CANCELLED'}
+
+        prefs = get_prefs(context)
+        scale = prefs.scale_factor
+
         if self.clear_previous:
             _clear_generated()
-        systems = _get_or_create_collection("EVE_Systems")
-        # stub: create placeholder objects
-        import math
-        for i in range(5):
-            mesh = bpy.data.meshes.new(f"System_{i}_Mesh")
-            obj = bpy.data.objects.new(f"System_{i}", mesh)
-            systems.objects.link(obj)
-            obj.location = (math.sin(i) * 10, math.cos(i) * 10, i * 2)
-        self.report({'INFO'}, "(Stub) Scene built with placeholder systems")
+        systems_coll = _get_or_create_collection("EVE_Systems")
+
+        # Create one object per system only; encode counts as custom properties
+        created = 0
+        for sys in systems_data:
+            name = sys.name or f"System_{sys.id}"
+            mesh = bpy.data.meshes.new(f"{name}_Mesh")
+            obj = bpy.data.objects.new(name, mesh)
+            systems_coll.objects.link(obj)
+            obj.location = (sys.x * scale, sys.y * scale, sys.z * scale)
+            planet_count = len(sys.planets)
+            moon_count = sum(len(p.moons) for p in sys.planets)
+            # Store counts as custom properties (simple ints) for strategies
+            obj["planet_count"] = planet_count
+            obj["moon_count"] = moon_count
+            created += 1
+
+        self.report({'INFO'}, f"Scene built with {created} systems (planets/moons as counts only)")
         return {'FINISHED'}
 
 
