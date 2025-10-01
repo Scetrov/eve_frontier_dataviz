@@ -311,6 +311,7 @@ class EVE_OT_build_scene_modal(Operator):  # pragma: no cover - Blender runtime 
     _scale = 1.0
     _radius = 2.0
     _representation = "ICO_INST"
+    _timer = None
 
     def _ensure_mesh(self, kind: str, r: float, inst: bool):  # local helper
         suffix = "INST" if inst else "TPL"
@@ -415,10 +416,27 @@ class EVE_OT_build_scene_modal(Operator):  # pragma: no cover - Blender runtime 
         wm.eve_build_in_progress = False
         msg = f"Async build {'cancelled' if cancelled else 'complete'}: {self._created} systems (mode={self._representation}, inst={'yes' if self._instanced else 'no'})"
         self.report({"INFO"}, msg)
+        # Remove timer if we added one
+        try:
+            if self._timer:
+                context.window_manager.event_timer_remove(self._timer)
+        except Exception:
+            pass
+        # Force redraw so panel updates and collection shows
+        try:
+            for area in context.screen.areas:
+                area.tag_redraw()
+        except Exception:
+            pass
 
     def execute(self, context):  # start modal
         if not self._init_build(context):
             return {"CANCELLED"}
+        # Add a timer to guarantee periodic modal callbacks (keeps progress moving without user input)
+        try:
+            self._timer = context.window_manager.event_timer_add(0.01, window=context.window)
+        except Exception:
+            self._timer = None
         context.window_manager.modal_handler_add(self)
         return {"RUNNING_MODAL"}
 
@@ -428,15 +446,17 @@ class EVE_OT_build_scene_modal(Operator):  # pragma: no cover - Blender runtime 
             self._finish(context, cancelled=True)
             return {"CANCELLED"}
         if not wm.eve_build_in_progress:
-            # External cancel
+            # External cancel (e.g. cancel operator) – perform cleanup
+            self._finish(context, cancelled=True)
             return {"CANCELLED"}
         # If init somehow failed earlier, abort safely
         if self._systems_iter is None or self._coll is None:
             self.report({"ERROR"}, "Build state invalid; aborting")
             wm.eve_build_in_progress = False
+            self._finish(context, cancelled=True)
             return {"CANCELLED"}
         # Build a batch each TIMER or redraw event
-        if event.type in {"TIMER", "NONE", "TIMER_REPORT"}:
+        if event.type == "TIMER":
             remaining = self._systems_total - self._created
             if remaining <= 0:
                 self._finish(context)
@@ -476,6 +496,13 @@ class EVE_OT_build_scene_modal(Operator):  # pragma: no cover - Blender runtime 
             wm.eve_build_created = self._created
             if self._systems_total > 0:
                 wm.eve_build_progress = self._created / self._systems_total
+            # Tag redraw so UI progress updates promptly
+            try:
+                for area in context.screen.areas:
+                    if area.type == "VIEW_3D":
+                        area.tag_redraw()
+            except Exception:
+                pass
             return {"RUNNING_MODAL"}
         return {"PASS_THROUGH"}
 
@@ -490,6 +517,11 @@ class EVE_OT_cancel_build(Operator):  # pragma: no cover - Blender runtime usage
         if getattr(wm, "eve_build_in_progress", False):
             wm.eve_build_in_progress = False
             self.report({"INFO"}, "Cancellation requested")
+            try:
+                for area in context.screen.areas:
+                    area.tag_redraw()
+            except Exception:
+                pass
             return {"FINISHED"}
         self.report({"WARNING"}, "No build in progress")
         return {"CANCELLED"}
