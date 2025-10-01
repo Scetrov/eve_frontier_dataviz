@@ -547,6 +547,26 @@ class EVE_OT_cancel_build(Operator):  # pragma: no cover - Blender runtime usage
         return {"CANCELLED"}
 
 
+class EVE_OT_cancel_shader(Operator):  # pragma: no cover - Blender runtime usage
+    bl_idname = "eve.cancel_shader"
+    bl_label = "Cancel Visualization"
+    bl_description = "Cancel the asynchronous visualization (shader) application in progress"
+
+    def execute(self, context):  # noqa: D401
+        wm = context.window_manager
+        if getattr(wm, "eve_shader_in_progress", False):
+            wm.eve_shader_in_progress = False
+            self.report({"INFO"}, "Shader apply cancellation requested")
+            try:
+                for area in context.screen.areas:
+                    area.tag_redraw()
+            except Exception:
+                pass
+            return {"FINISHED"}
+        self.report({"WARNING"}, "No shader application in progress")
+        return {"CANCELLED"}
+
+
 def _strategy_items(self, context):  # pragma: no cover - Blender runtime usage
     try:
         return [(s.id, s.label, "") for s in get_strategies()] or [("__none__", "None", "")]
@@ -1233,6 +1253,7 @@ def register():  # pragma: no cover - Blender runtime usage
     bpy.utils.register_class(EVE_OT_build_scene)
     bpy.utils.register_class(EVE_OT_build_scene_modal)
     bpy.utils.register_class(EVE_OT_cancel_build)
+    bpy.utils.register_class(EVE_OT_cancel_shader)
     bpy.utils.register_class(EVE_OT_apply_shader)
     bpy.utils.register_class(EVE_OT_apply_shader_modal)
     bpy.utils.register_class(EVE_OT_viewport_fit_systems)
@@ -1311,6 +1332,7 @@ def unregister():  # pragma: no cover - Blender runtime usage
     bpy.utils.unregister_class(EVE_OT_apply_shader)
     bpy.utils.unregister_class(EVE_OT_apply_shader_modal)
     bpy.utils.unregister_class(EVE_OT_cancel_build)
+    bpy.utils.unregister_class(EVE_OT_cancel_shader)
     bpy.utils.unregister_class(EVE_OT_build_scene_modal)
     bpy.utils.unregister_class(EVE_OT_build_scene)
     bpy.utils.unregister_class(EVE_OT_load_data)
