@@ -57,6 +57,38 @@ def _file_identity(path: Path) -> Tuple[str, int, int]:
     return (str(path.resolve()), int(st.st_size), int(st.st_mtime_ns))
 
 
+def _resolve_table_names(cur: sqlite3.Cursor) -> Dict[str, str]:
+    """Resolve actual table names in a case / style agnostic way.
+
+    Supports databases that use PascalCase ("Systems") instead of lowercase ("systems").
+    Returns a mapping for logical keys: systems, planets, moons.
+    """
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    existing = {row[0]: row[0] for row in cur.fetchall()}
+    lower_map = {name.lower(): name for name in existing}
+
+    required = ["systems", "planets", "moons"]
+    resolved: Dict[str, str] = {}
+    for logical in required:
+        if logical in existing:  # exact lowercase
+            resolved[logical] = logical
+            continue
+        # case-insensitive match
+        match = lower_map.get(logical.lower())
+        if match:
+            resolved[logical] = match
+            continue
+        # Attempt simple PascalCase variant
+        pascal = logical.capitalize()
+        if pascal in existing:
+            resolved[logical] = pascal
+            continue
+        raise RuntimeError(
+            f"Expected table '{logical}' (any case) not found. Available: {', '.join(sorted(existing)) or '<<none>>'}"
+        )
+    return resolved
+
+
 def load_data(
     db_path: str | os.PathLike, *, limit_systems: int | None = None, enable_cache: bool = True
 ) -> List[System]:
@@ -84,8 +116,11 @@ def load_data(
         con.row_factory = sqlite3.Row
         cur = con.cursor()
 
+        # Resolve table names (case-insensitive / style tolerant)
+        tables = _resolve_table_names(cur)
+
         # Fetch systems (optionally limited)
-        sys_query = "SELECT id, name, x, y, z, security FROM systems ORDER BY id"
+        sys_query = f"SELECT id, name, x, y, z, security FROM {tables['systems']} ORDER BY id"
         if limit_systems is not None:
             sys_query += f" LIMIT {int(limit_systems)}"
         cur.execute(sys_query)
@@ -112,7 +147,7 @@ def load_data(
         sys_ids = tuple(system_map.keys())
         placeholder = ",".join(["?"] * len(sys_ids))
         cur.execute(
-            f"SELECT id, system_id, name, orbit_index, planet_type FROM planets WHERE system_id IN ({placeholder})",
+            f"SELECT id, system_id, name, orbit_index, planet_type FROM {tables['planets']} WHERE system_id IN ({placeholder})",
             sys_ids,
         )
         planet_rows = cur.fetchall()
@@ -135,7 +170,7 @@ def load_data(
             planet_ids = tuple(planet_map.keys())
             placeholder = ",".join(["?"] * len(planet_ids))
             cur.execute(
-                f"SELECT id, planet_id, name, orbit_index FROM moons WHERE planet_id IN ({placeholder})",
+                f"SELECT id, planet_id, name, orbit_index FROM {tables['moons']} WHERE planet_id IN ({placeholder})",
                 planet_ids,
             )
             moon_rows = cur.fetchall()

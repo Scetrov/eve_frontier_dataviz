@@ -36,9 +36,9 @@ class Moon:
 
 | Table | Columns (core) | Notes |
 |-------|----------------|-------|
-| systems | id, name, x, y, z, security | coordinates likely large: apply scale factor |
-| planets | id, system_id, name, orbit_index, planet_type | orbit_index may be null |
-| moons | id, planet_id, name, orbit_index | similar hierarchy principle |
+| systems (or Systems) | id, name, x, y, z, security | coordinates likely large: apply scale factor |
+| planets (or Planets) | id, system_id, name, orbit_index, planet_type | orbit_index may be null |
+| moons (or Moons) | id, planet_id, name, orbit_index | similar hierarchy principle |
 
 ## Relationships
 
@@ -71,5 +71,9 @@ Add new dataclasses & tables (e.g. Stations, Belts):
 2. Fetch table with minimal SELECT.
 3. Link into parent entity attribute.
 4. Update `objects_by_type` keys and strategies that can leverage new data.
+
+### Table Name Case
+
+The loader now resolves table names case-insensitively and accepts either snake/lower (`systems`) or PascalCase (`Systems`). If a required table (systems / planets / moons) is missing in any case form, a clear error is raised listing available tables.
 
 Following these guides helps to keep the project organized.
