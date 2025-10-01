@@ -155,6 +155,46 @@ PRs welcome—focus on: new shader strategies, performance improvements (bulk bm
 
 ## 🙏 Acknowledgements
 
+## 📦 Releases & Packaging
+
+Two quick ways to build the add-on zip locally:
+
+### Make (Linux/macOS / Git Bash)
+
+```sh
+make build
+```
+
+Outputs: `dist/eve_frontier_visualizer-<version>.zip`
+
+### PowerShell (Windows)
+
+```powershell
+./build_addon.ps1
+```
+
+Or override the file name:
+
+```powershell
+./build_addon.ps1 -Name custom.zip
+```
+
+### Python Direct
+
+```sh
+python blender_addon/scripts/build_addon.py
+```
+
+### Publishing a Release
+
+1. Update version in `blender_addon/pyproject.toml`.
+2. Commit the change.
+3. Tag it: `git tag v<version>` (or `make release`).
+4. Push tag: `git push origin v<version>`.
+5. GitHub Actions builds zip & attaches it to a GitHub Release automatically.
+
+Artifacts live under `dist/` and contain the top-level `addon/` folder suitable for Blender installation.
+
 These visualizations would not have been possible without the work of the following individuals and organizations:
 
 - **CCP Games**: for taking the time and brain space to build something meaningful.
