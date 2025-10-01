@@ -729,6 +729,90 @@ class EVE_OT_viewport_set_space(Operator):
         return {"FINISHED"}
 
 
+class EVE_OT_viewport_set_hdri(Operator):  # pragma: no cover - Blender runtime usage
+    bl_idname = "eve.viewport_set_hdri"
+    bl_label = "Set Space HDRI"
+    bl_description = "Use bundled space HDRI environment texture"
+
+    strength: bpy.props.FloatProperty(  # type: ignore[valid-type]
+        name="Strength",
+        default=1.0,
+        min=0.0,
+        soft_max=10.0,
+        description="Background emission strength",
+    )
+
+    def execute(self, context):  # noqa: D401
+        from pathlib import Path
+
+        # Resolve HDRI path relative to repo root (two parents from addon module)
+        try:
+            hdri_path = (
+                Path(__file__).resolve().parents[2]
+                / "hdris"
+                / "space_hdri_deepblue_darker_v2_4k_float32.tiff"
+            )
+        except Exception:
+            self.report({"ERROR"}, "Failed to resolve HDRI path")
+            return {"CANCELLED"}
+        if not hdri_path.exists():
+            self.report({"ERROR"}, f"HDRI not found: {hdri_path.name}")
+            return {"CANCELLED"}
+
+        world = bpy.context.scene.world
+        if not world:
+            world = bpy.data.worlds.new("EVE_World")
+            bpy.context.scene.world = world
+        world.use_nodes = True
+        nt = world.node_tree
+        nodes = nt.nodes
+        links = nt.links
+        out = next((n for n in nodes if n.type == "OUTPUT_WORLD"), None)
+        if not out:
+            out = nodes.new("ShaderNodeOutputWorld")
+        bg = next((n for n in nodes if n.type == "BACKGROUND"), None)
+        if not bg:
+            bg = nodes.new("ShaderNodeBackground")
+        bg.inputs[1].default_value = self.strength
+        env = next((n for n in nodes if n.type == "TEX_ENVIRONMENT"), None)
+        if not env:
+            env = nodes.new("ShaderNodeTexEnvironment")
+            env.location = (-400, 0)
+        # Load or reuse image
+        img = bpy.data.images.get(hdri_path.name)
+        if not img:
+            try:
+                img = bpy.data.images.load(str(hdri_path))
+            except Exception as e:
+                self.report({"ERROR"}, f"Load failed: {e}")
+                return {"CANCELLED"}
+        env.image = img
+        try:
+            if hasattr(env.image, "colorspace_settings"):
+                env.image.colorspace_settings.name = "Linear"
+        except Exception:
+            pass
+        # Rewire links
+        try:
+            for link in list(env.outputs[0].links):
+                nt.links.remove(link)
+        except Exception:
+            pass
+        if not any(link.from_node == env and link.to_node == bg for link in nt.links):
+            links.new(env.outputs[0], bg.inputs[0])
+        if not any(link.from_node == bg and link.to_node == out for link in nt.links):
+            links.new(bg.outputs[0], out.inputs[0])
+        # Enable scene world
+        for area in context.screen.areas:
+            if area.type == "VIEW_3D":
+                for space in area.spaces:
+                    if space.type == "VIEW_3D":
+                        space.shading.use_scene_world = True
+                        space.shading.background_type = "WORLD"
+        self.report({"INFO"}, "HDRI applied")
+        return {"FINISHED"}
+
+
 class EVE_OT_viewport_set_clip(Operator):
     bl_idname = "eve.viewport_set_clip"
     bl_label = "Set Clip End 100km"
@@ -795,6 +879,7 @@ def register():  # pragma: no cover - Blender runtime usage
     bpy.utils.register_class(EVE_OT_apply_shader)
     bpy.utils.register_class(EVE_OT_viewport_fit_systems)
     bpy.utils.register_class(EVE_OT_viewport_set_space)
+    bpy.utils.register_class(EVE_OT_viewport_set_hdri)
     bpy.utils.register_class(EVE_OT_viewport_set_clip)
     bpy.utils.register_class(EVE_OT_viewport_hide_overlays)
     # WindowManager properties for progress
@@ -840,6 +925,7 @@ def unregister():  # pragma: no cover - Blender runtime usage
     bpy.utils.unregister_class(EVE_OT_viewport_hide_overlays)
     bpy.utils.unregister_class(EVE_OT_clear_scene)
     bpy.utils.unregister_class(EVE_OT_viewport_set_space)
+    bpy.utils.unregister_class(EVE_OT_viewport_set_hdri)
     bpy.utils.unregister_class(EVE_OT_viewport_fit_systems)
     bpy.utils.unregister_class(EVE_OT_apply_shader)
     bpy.utils.unregister_class(EVE_OT_cancel_build)
