@@ -54,17 +54,19 @@ class EVE_PT_main(Panel):
                 prefs = getattr(prefs_container, "preferences", None)
                 if prefs:
                     if hasattr(prefs, "build_percentage"):
-                        box_build.prop(prefs, "build_percentage", text="Build %")
+                        box_build.prop(
+                            prefs, "build_percentage", text="Sample Proportion (0.0 to 1.0)"
+                        )
                     # Coordinate scale now panel-only (removed from preferences UI)
                     if hasattr(prefs, "scale_factor"):
                         box_build.prop(prefs, "scale_factor", text="Scale")
                     if hasattr(prefs, "system_point_radius"):
-                        box_build.prop(prefs, "system_point_radius", text="Radius")
+                        box_build.prop(prefs, "system_point_radius", text="Star Radius")
                     if hasattr(prefs, "system_representation"):
                         box_build.prop(prefs, "system_representation", text="Display")
                     # Black hole scale remains accessible where user tweaks visualization
                     if hasattr(prefs, "blackhole_scale_multiplier"):
-                        box_build.prop(prefs, "blackhole_scale_multiplier", text="BH Scale")
+                        box_build.prop(prefs, "blackhole_scale_multiplier", text="Black Hole Scale")
         except Exception:
             pass
 
@@ -77,20 +79,8 @@ class EVE_PT_main(Panel):
             wm = context.window_manager
             if hasattr(wm, "eve_strategy_id"):
                 box_vis.prop(wm, "eve_strategy_id", text="Strategy")
-            shader_in_progress = getattr(wm, "eve_shader_in_progress", False)
-            if not shader_in_progress:
-                row_vis = box_vis.row(align=True)
-                row_vis.operator("eve.apply_shader", text="Apply Sync", icon="PLAY")
-                row_vis.operator("eve.apply_shader_modal", text="Apply Async", icon="TIME")
-            else:
-                total = getattr(wm, "eve_shader_total", 0)
-                processed = getattr(wm, "eve_shader_processed", 0)
-                prog = getattr(wm, "eve_shader_progress", 0.0)
-                box_vis.label(text=f"Shading {processed}/{total} ({prog*100:.1f}%)")
-                row_bar = box_vis.row(align=True)
-                if hasattr(wm, "eve_shader_progress"):
-                    row_bar.enabled = False
-                    row_bar.prop(wm, "eve_shader_progress", text="Progress")
+            row_vis = box_vis.row(align=True)
+            row_vis.operator("eve.apply_shader", text="Apply", icon="PLAY")
         else:
             row_vis = box_vis.row(align=True)
             row_vis.label(text="No strategies registered")
@@ -99,12 +89,13 @@ class EVE_PT_main(Panel):
         box_view = layout.box()
         box_view.label(text="View / Camera", icon="VIEW_CAMERA")
         row_view = box_view.row(align=True)
-        row_view.operator("eve.viewport_fit_systems", text="Frame Systems", icon="VIEWZOOM")
+        row_view.operator("eve.viewport_fit_systems", text="Frame (Top)", icon="VIEWZOOM")
+        row_view.operator("eve.viewport_fit_preserve", text="Frame (Keep Angle)", icon="VIEWZOOM")
         row_view2 = box_view.row(align=True)
         row_view2.operator(
             "eve.viewport_set_space", text="Set Background to Black", icon="WORLD_DATA"
         )
-        row_view2.operator("eve.viewport_set_hdri", text="Apply Space HDRI", icon="IMAGE_DATA")
+        row_view2.operator("eve.viewport_fit_selection", text="Frame Selection", icon="VIEW_RESET")
         row_view3 = box_view.row(align=True)
         op_clip = row_view3.operator(
             "eve.viewport_set_clip", text="Set Clipping to 100km", icon="VIEW_PERSPECTIVE"

@@ -860,6 +860,184 @@ class EVE_OT_viewport_fit_systems(Operator):
         return {"FINISHED"}
 
 
+class EVE_OT_viewport_fit_systems_preserve(Operator):
+    bl_idname = "eve.viewport_fit_preserve"
+    bl_label = "Frame Systems (Keep Angle)"
+    bl_description = "Frame all systems without changing current view angle (uses view_selected)"
+
+    def execute(self, context):  # noqa: D401
+        systems_coll = bpy.data.collections.get("EVE_Systems")
+        if not systems_coll or not systems_coll.objects:
+            self.report({"WARNING"}, "No systems to frame")
+            return {"CANCELLED"}
+        objs = list(systems_coll.objects)
+        if not objs:
+            self.report({"WARNING"}, "No systems to frame")
+            return {"CANCELLED"}
+        view_layer = context.view_layer
+        prev_selected = set(bpy.context.selected_objects)
+        prev_active = view_layer.objects.active
+        restore_mode = None
+        try:
+            if bpy.context.mode != "OBJECT":
+                restore_mode = bpy.context.mode
+                bpy.ops.object.mode_set(mode="OBJECT")
+        except Exception:
+            restore_mode = None
+        # Deselect then select systems
+        try:
+            bpy.ops.object.select_all(action="DESELECT")
+        except Exception:
+            for o in bpy.context.selected_objects:
+                try:
+                    o.select_set(False)
+                except Exception:
+                    pass
+        for o in objs:
+            try:
+                o.select_set(True)
+            except Exception:
+                pass
+        try:
+            view_layer.objects.active = objs[0]
+        except Exception:
+            pass
+        framed_any = False
+        for area in context.screen.areas:
+            if area.type != "VIEW_3D":
+                continue
+            region = next((r for r in area.regions if r.type == "WINDOW"), None)
+            space = next((s for s in area.spaces if s.type == "VIEW_3D"), None)
+            if not (region and space):
+                continue
+            override = {
+                "window": context.window,
+                "screen": context.screen,
+                "area": area,
+                "region": region,
+                "space_data": space,
+                "scene": context.scene,
+                "view_layer": view_layer,
+            }
+            try:
+                bpy.ops.view3d.view_selected(override, use_all_regions=False)
+            except TypeError:
+                try:
+                    bpy.ops.view3d.view_selected(override)
+                except Exception:
+                    pass
+            except Exception:
+                pass
+            # Slight outward padding
+            try:
+                r3d = space.region_3d
+                if hasattr(r3d, "view_distance"):
+                    r3d.view_distance *= 1.02
+            except Exception:
+                pass
+            framed_any = True
+        # Restore selection
+        try:
+            bpy.ops.object.select_all(action="DESELECT")
+        except Exception:
+            for o in bpy.context.selected_objects:
+                try:
+                    o.select_set(False)
+                except Exception:
+                    pass
+        for o in prev_selected:
+            try:
+                o.select_set(True)
+            except Exception:
+                pass
+        try:
+            view_layer.objects.active = prev_active
+        except Exception:
+            pass
+        if restore_mode:
+            try:
+                bpy.ops.object.mode_set(mode=restore_mode)
+            except Exception:
+                pass
+        if not framed_any:
+            self.report({"WARNING"}, "No VIEW_3D area found")
+            return {"CANCELLED"}
+        self.report({"INFO"}, f"Viewport framed (preserve angle, {len(objs)} systems)")
+        return {"FINISHED"}
+
+
+class EVE_OT_viewport_fit_selection(Operator):
+    bl_idname = "eve.viewport_fit_selection"
+    bl_label = "Frame Selection"
+    bl_description = "Frame only the currently selected system objects (keeps angle)"
+
+    def execute(self, context):  # noqa: D401
+        selected = list(bpy.context.selected_objects)
+        if not selected:
+            self.report({"WARNING"}, "No objects selected")
+            return {"CANCELLED"}
+        view_layer = context.view_layer
+        prev_selected = set(selected)
+        prev_active = view_layer.objects.active
+        # Ensure in object mode
+        restore_mode = None
+        try:
+            if bpy.context.mode != "OBJECT":
+                restore_mode = bpy.context.mode
+                bpy.ops.object.mode_set(mode="OBJECT")
+        except Exception:
+            restore_mode = None
+        # (Selection already as desired) set active if missing
+        try:
+            if prev_active not in prev_selected and selected:
+                view_layer.objects.active = selected[0]
+        except Exception:
+            pass
+        framed_any = False
+        for area in context.screen.areas:
+            if area.type != "VIEW_3D":
+                continue
+            region = next((r for r in area.regions if r.type == "WINDOW"), None)
+            space = next((s for s in area.spaces if s.type == "VIEW_3D"), None)
+            if not (region and space):
+                continue
+            override = {
+                "window": context.window,
+                "screen": context.screen,
+                "area": area,
+                "region": region,
+                "space_data": space,
+                "scene": context.scene,
+                "view_layer": view_layer,
+            }
+            try:
+                bpy.ops.view3d.view_selected(override, use_all_regions=False)
+            except TypeError:
+                try:
+                    bpy.ops.view3d.view_selected(override)
+                except Exception:
+                    pass
+            except Exception:
+                pass
+            try:
+                r3d = space.region_3d
+                if hasattr(r3d, "view_distance"):
+                    r3d.view_distance *= 1.015
+            except Exception:
+                pass
+            framed_any = True
+        if restore_mode:
+            try:
+                bpy.ops.object.mode_set(mode=restore_mode)
+            except Exception:
+                pass
+        if not framed_any:
+            self.report({"WARNING"}, "No VIEW_3D area found")
+            return {"CANCELLED"}
+        self.report({"INFO"}, f"Framed current selection ({len(selected)} objects)")
+        return {"FINISHED"}
+
+
 class EVE_OT_viewport_set_space(Operator):
     bl_idname = "eve.viewport_set_space"
     bl_label = "Set Space Black"
@@ -1058,6 +1236,8 @@ def register():  # pragma: no cover - Blender runtime usage
     bpy.utils.register_class(EVE_OT_apply_shader)
     bpy.utils.register_class(EVE_OT_apply_shader_modal)
     bpy.utils.register_class(EVE_OT_viewport_fit_systems)
+    bpy.utils.register_class(EVE_OT_viewport_fit_systems_preserve)
+    bpy.utils.register_class(EVE_OT_viewport_fit_selection)
     bpy.utils.register_class(EVE_OT_viewport_set_space)
     bpy.utils.register_class(EVE_OT_viewport_set_hdri)
     bpy.utils.register_class(EVE_OT_viewport_set_clip)
