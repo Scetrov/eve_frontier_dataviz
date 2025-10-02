@@ -20,7 +20,7 @@ Scene Build (Python, once)
   ↓
 Calculate Properties → Store on Objects
   ↓
-[Custom Properties: char_index_0_ord, eve_planet_count, etc.]
+[Custom Properties: eve_name_char_index_0_ord, eve_planet_count, etc.]
   ↓
 Shader Nodes (GPU, every frame)
   ↓
@@ -39,11 +39,11 @@ All properties are calculated during scene build and stored as custom properties
 
 | Property | Type | Range | Description |
 |----------|------|-------|-------------|
-| `char_index_0_ord` | `float` | -1.0 to 1.0 | First character normalized ordinal |
-| `char_index_1_ord` | `float` | -1.0 to 1.0 | Second character normalized ordinal |
-| `char_index_2_ord` | `float` | -1.0 to 1.0 | Third character normalized ordinal |
+| `eve_name_char_index_0_ord` | `float` | -1.0 to 1.0 | First character normalized ordinal |
+| `eve_name_char_index_1_ord` | `float` | -1.0 to 1.0 | Second character normalized ordinal |
+| `eve_name_char_index_2_ord` | `float` | -1.0 to 1.0 | Third character normalized ordinal |
 | ... | ... | ... | ... |
-| `char_index_9_ord` | `float` | -1.0 to 1.0 | Tenth character normalized ordinal |
+| `eve_name_char_index_9_ord` | `float` | -1.0 to 1.0 | Tenth character normalized ordinal |
 
 **Value Mapping:**
 
@@ -60,16 +60,16 @@ All properties are calculated during scene build and stored as custom properties
 **Example**: System name "ABC-123"
 
 ```python
-char_index_0_ord = 0.000  # A
-char_index_1_ord = 0.029  # B
-char_index_2_ord = 0.057  # C
-char_index_3_ord = -1.0   # dash (non-alphanumeric)
-char_index_4_ord = 0.771  # 1
-char_index_5_ord = 0.800  # 2
-char_index_6_ord = 0.829  # 3
-char_index_7_ord = -1.0   # (beyond string)
-char_index_8_ord = -1.0   # (beyond string)
-char_index_9_ord = -1.0   # (beyond string)
+eve_name_char_index_0_ord = 0.000  # A
+eve_name_char_index_1_ord = 0.029  # B
+eve_name_char_index_2_ord = 0.057  # C
+eve_name_char_index_3_ord = -1.0   # dash (non-alphanumeric)
+eve_name_char_index_4_ord = 0.771  # 1
+eve_name_char_index_5_ord = 0.800  # 2
+eve_name_char_index_6_ord = 0.829  # 3
+eve_name_char_index_7_ord = -1.0   # (beyond string)
+eve_name_char_index_8_ord = -1.0   # (beyond string)
+eve_name_char_index_9_ord = -1.0   # (beyond string)
 ```
 
 ### Semantic Properties
@@ -115,7 +115,7 @@ Each strategy should be implemented as a **Shader Node Group** with this structu
 **Concept**: Color based on first character, brightness based on child count
 
 ```text
-[Attribute "char_index_0_ord"]
+[Attribute "eve_name_char_index_0_ord"]
   → [Math: Max with 0.0] (clamp -1 to 0)
   → [Math: Multiply by 0.9] (normalize to hue range 0-0.9)
   → [Combine HSV] (Hue input, Sat=1.0, Val=1.0)
@@ -152,9 +152,9 @@ Each strategy should be implemented as a **Shader Node Group** with this structu
 **Concept**: Use multiple character positions for complex patterns
 
 ```text
-[Attribute "char_index_0_ord"] → [ColorRamp] → R channel
-[Attribute "char_index_1_ord"] → [ColorRamp] → G channel
-[Attribute "char_index_2_ord"] → [ColorRamp] → B channel
+[Attribute "eve_name_char_index_0_ord"] → [ColorRamp] → R channel
+[Attribute "eve_name_char_index_1_ord"] → [ColorRamp] → G channel
+[Attribute "eve_name_char_index_2_ord"] → [ColorRamp] → B channel
   → [Combine RGB]
   → [Output: Color]
 
@@ -214,7 +214,7 @@ Update UI panel to show dropdown that modifies this property.
 ### ✅ Phase 1: Properties (Complete)
 
 - [x] Calculate character indices during scene build
-- [x] Store `char_index_0_ord` through `char_index_9_ord` on objects
+- [x] Store `eve_name_char_index_0_ord` through `eve_name_char_index_9_ord` on objects
 - [x] Maintain semantic properties (pattern, bucket, counts, blackhole)
 - [x] Test property calculations
 
@@ -270,10 +270,10 @@ Combine multiple `char_index_N_ord` properties for complex patterns:
 
 ```text
 # Detect "ABC-" pattern (A at pos 0, dash at pos 3)
-[Attribute "char_index_0_ord"]
+[Attribute "eve_name_char_index_0_ord"]
   → [Math: Less Than 0.1] (is it A-C?)
   → [Math: Multiply]
-  ← [Attribute "char_index_3_ord"]
+  ← [Attribute "eve_name_char_index_3_ord"]
       → [Math: Equal -1.0] (is it non-alphanumeric?)
   → [Boolean output: 1.0 if matches, 0.0 otherwise]
 ```

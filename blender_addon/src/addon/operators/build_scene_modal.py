@@ -190,7 +190,7 @@ if bpy:
                     # -1.0 = non-alphanumeric/missing, 0.0-1.0 = alphanumeric position
                     char_indices = calculate_char_indices(system_name, max_chars=10)
                     for char_idx, ord_val in enumerate(char_indices):
-                        obj[f"char_index_{char_idx}_ord"] = ord_val
+                        obj[f"eve_name_char_index_{char_idx}_ord"] = ord_val
 
                     # Optional hierarchy collections
                     const_coll = None
