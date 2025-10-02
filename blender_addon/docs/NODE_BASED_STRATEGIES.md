@@ -166,9 +166,45 @@ Each strategy should be implemented as a **Shader Node Group** with this structu
 
 ## Material Strategy Switching
 
-### Method 1: Node Group Switcher (Recommended)
+### Current Implementation (Phase 2)
 
-Create a master material with a **Mix Shader** or **Switch** node to select between strategies:
+The add-on creates a single material `EVE_NodeGroupStrategies` with all three strategy node groups:
+
+**Structure:**
+
+- **Character Rainbow** node group (outputs Color + Strength)
+- **Pattern Categories** node group (outputs Color + Strength)
+- **Position Encoding** node group (outputs Color + Strength)
+- **StrategySelector** value node (0.0, 1.0, or 2.0)
+- **Mix nodes** to switch between strategies based on selector value
+- **Emission shader** receives final Color and Strength
+- **Material Output**
+
+**Switching mechanism:**
+
+- Two cascading Mix (RGBA) nodes for color
+- Two cascading Mix (FLOAT) nodes for strength
+- First mix: CharacterRainbow (0) vs PatternCategories (1)
+- Second mix: Result vs PositionEncoding (2)
+- Factor values computed from StrategySelector
+
+**To change strategy manually:**
+
+1. Open Shading workspace
+2. Select material `EVE_NodeGroupStrategies`
+3. Find `StrategySelector` value node
+4. Set value: 0.0 (Rainbow), 1.0 (Pattern), or 2.0 (Position)
+
+**Benefits:**
+
+- All strategies pre-loaded and ready
+- Instant switching (no material reassignment)
+- Can manually tweak node groups in Blender
+- GPU evaluates everything in parallel
+
+### Future: UI-Based Switching (Phase 3)
+
+Add panel dropdown to control StrategySelector from UI:
 
 ```text
 [Scene Attribute "eve_active_strategy"]
@@ -187,7 +223,7 @@ Create a master material with a **Mix Shader** or **Switch** node to select betw
 - Instant strategy changes
 - Easy to add new strategies
 
-### Method 2: Driver-Based Mixing
+### Alternative: Driver-Based Mixing
 
 Use drivers to blend between strategies based on scene properties:
 
@@ -218,13 +254,15 @@ Update UI panel to show dropdown that modifies this property.
 - [x] Maintain semantic properties (pattern, bucket, counts, blackhole)
 - [x] Test property calculations
 
-### 🚧 Phase 2: Node Groups (In Progress)
+### ✅ Phase 2: Node Groups (Complete)
 
-- [ ] Create node group template
-- [ ] Implement Character Rainbow strategy as node group
-- [ ] Implement Pattern Category strategy as node group
-- [ ] Implement Child Count strategy as node group
-- [ ] Test node groups with Attribute nodes
+- [x] Create node group module structure (`node_groups/`)
+- [x] Implement Character Rainbow strategy as node group
+- [x] Implement Pattern Categories strategy as node group
+- [x] Implement Position Encoding strategy as node group
+- [x] Create material with Mix node switcher
+- [x] Update operator to use node group material
+- [x] Test node groups with Attribute nodes
 
 ### 📋 Phase 3: Material Switching (Planned)
 
