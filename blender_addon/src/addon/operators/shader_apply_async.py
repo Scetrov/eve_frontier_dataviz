@@ -43,6 +43,28 @@ if bpy:
             coll = bpy.data.collections.get("EVE_Systems")  # type: ignore[union-attr]
             if coll:
                 systems.extend(coll.objects)
+            # If instanced geometry was used (all objects share one mesh), per-object
+            # material assignment will collapse to the last applied material.
+            # Duplicate the mesh per object (single-user copy) so strategies that
+            # rely on variant materials work correctly. This is a trade-off: more
+            # memory, but correct visualization. Consider future node/attribute
+            # approach for truly instanced + per-object color without duplication.
+            try:
+                if systems:
+                    shared_data = None
+                    # Detect if majority share same mesh datablock
+                    first = systems[0]
+                    if hasattr(first, "data") and getattr(first.data, "users", 1) > 1:
+                        shared_data = first.data
+                    if shared_data is not None:
+                        for obj in systems:
+                            if (
+                                getattr(obj, "data", None) is shared_data
+                                and getattr(shared_data, "users", 1) > 1
+                            ):
+                                obj.data = shared_data.copy()
+            except Exception:  # noqa: BLE001
+                pass
             self._objects = systems
             self._total = len(systems)
 
