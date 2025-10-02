@@ -11,6 +11,7 @@ This document catalogs available visualization ("shader") strategies and the dat
   - `DASH` (AAA-BBB style)
   - `COLON` (A:1234 style)
   - `DOTSEQ` (A.AAAA.BBBB with 3–4 length segments)
+  - `PIPE` (AAA|1BB where left = 3 alnum, right = digit + 2 alnum, e.g. MVT|1IT)
   - `OTHER` fallback gray
 - Each category maps to a fixed emission color; materials reused per category.
 - Notes: Regexes intentionally broad to capture alphanumeric hybrids.

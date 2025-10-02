@@ -11,10 +11,11 @@ class NamePatternCategory(BaseShaderStrategy):
     """Highlight systems by detected name pattern category (relaxed).
 
     Categories:
-      DASH:   3 alnum - 3 alnum
-      COLON:  A:DDDD
-      DOTSEQ: A.XXX.XXX (3-4 length segments allowed)
-      OTHER:  fallback
+        DASH:   3 alnum - 3 alnum
+        COLON:  A:DDDD
+        DOTSEQ: A.XXX.XXX (3-4 length segments allowed)
+        PIPE:   3 alnum | digit + 2 alnum (e.g. MVT|1IT)
+        OTHER:  fallback
     """
 
     id = "NamePatternCategory"
@@ -24,11 +25,13 @@ class NamePatternCategory(BaseShaderStrategy):
     _re_dash = re.compile(r"^[A-Z0-9]{3}-[A-Z0-9]{3}$")
     _re_colon = re.compile(r"^[A-Z]:[0-9]{4}$")
     _re_dotseq = re.compile(r"^[A-Z]\.[A-Z0-9]{3,4}\.[A-Z0-9]{3,4}$")
+    _re_pipe = re.compile(r"^[A-Z0-9]{3}\|[0-9][A-Z0-9]{2}$")
 
     _CATEGORY_COLORS = {
         "DASH": (0.0, 0.8, 1.0),
         "COLON": (1.0, 0.0, 1.0),
         "DOTSEQ": (1.0, 1.0, 0.0),
+        "PIPE": (0.0, 1.0, 0.25),  # bright greenish
         "OTHER": (0.5, 0.5, 0.5),
     }
 
@@ -40,6 +43,8 @@ class NamePatternCategory(BaseShaderStrategy):
             return "COLON"
         if self._re_dotseq.match(nm):
             return "DOTSEQ"
+        if self._re_pipe.match(nm):
+            return "PIPE"
         return "OTHER"
 
     def build(self, context, objects_by_type: dict):  # noqa: D401

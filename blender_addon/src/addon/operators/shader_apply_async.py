@@ -71,20 +71,19 @@ if bpy:
                 out = next(n for n in nodes if n.type == "OUTPUT_MATERIAL")
                 obj_info = nodes.new("ShaderNodeObjectInfo")
                 obj_info.location = (-600, 0)
-                attr_strength = nodes.new("ShaderNodeAttribute")
-                attr_strength.attribute_name = "eve_attr_strength"
-                attr_strength.location = (-600, -250)
                 emission = nodes.new("ShaderNodeEmission")
-                emission.location = (-200, 0)
-                # Use object color directly for emission color
-                links.new(obj_info.outputs[0], emission.inputs[0])
-                # Multiply emission strength by attribute (if present)
+                emission.location = (-150, 0)
+                # Map per-object color to emission color (use Color output, not Location)
+                # Object Info outputs order: Location, Color, Alpha, Object Index, Material Index, Random
+                links.new(obj_info.outputs[1], emission.inputs[0])  # Color -> Emission Color
+                # Use Alpha channel (per-object) for emission strength via a multiply (allows global scaling if updated later)
                 math_mult = nodes.new("ShaderNodeMath")
                 math_mult.operation = "MULTIPLY"
-                math_mult.location = (-400, -80)
-                math_mult.inputs[0].default_value = 1.0
-                links.new(attr_strength.outputs[1], math_mult.inputs[1])
-                links.new(math_mult.outputs[0], emission.inputs[1])
+                math_mult.location = (-350, -80)
+                math_mult.inputs[0].default_value = 1.0  # will be overridden by Alpha link
+                math_mult.inputs[1].default_value = 1.0  # global scale placeholder
+                links.new(obj_info.outputs[2], math_mult.inputs[0])  # Alpha -> Math input
+                links.new(math_mult.outputs[0], emission.inputs[1])  # Math -> Emission Strength
                 links.new(emission.outputs[0], out.inputs[0])
                 return mat
             except Exception:  # noqa: BLE001
@@ -116,6 +115,8 @@ if bpy:
                     return (1.0, 0.0, 1.0, 1.0), 1.0  # COLON
                 if up.count(".") == 2:
                     return (1.0, 1.0, 0.0, 1.0), 1.0  # DOTSEQ
+                if len(up) == 7 and up[3] == "|" and up.count("|") == 1:
+                    return (0.0, 1.0, 0.25, 1.0), 1.0  # PIPE pattern (e.g. MVT|1IT)
                 return (0.5, 0.5, 0.5, 1.0), 1.0
             if "NameChar" in strat.id or "FirstChar" in strat.id:
                 up = name.upper()
@@ -188,8 +189,11 @@ if bpy:
                     obj = objs[i]
                     try:
                         color_rgba, strength = self._color_from_strategy(strat, obj)
-                        obj.color = color_rgba  # object display color (Object Info node)
-                        obj["eve_attr_strength"] = float(strength) * self._strength_scale
+                        # Pack strength (after global scale) into alpha channel for emission strength
+                        scaled = float(strength) * self._strength_scale
+                        r, g, b, _ = color_rgba
+                        obj.color = (r, g, b, max(0.0, min(1.0, scaled)))
+                        obj["eve_attr_strength"] = scaled  # retain for inspection
                     except Exception:  # noqa: BLE001
                         pass
                 self._index = end

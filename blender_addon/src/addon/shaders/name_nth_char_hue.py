@@ -135,22 +135,10 @@ def _ordinal_suffix(n: int) -> str:
     return {1: "st", 2: "nd", 3: "rd"}.get(last, "th")
 
 
-# Register unified forms for 1st-5th characters. We keep backward compatibility by
-# also registering an alias class with the original ID 'NameFirstCharHue'.
+# Register unified forms for 1st-5th characters.
 for i, order in [(0, 10), (1, 11), (2, 12), (3, 13), (4, 14)]:  # indexes 0..4
     Strat = _make_strategy(i, order)  # noqa: N806
     register_strategy(Strat)
-
-
-# Back-compat alias: ID used previously by standalone first-char strategy
-class NameFirstCharHue(_NthCharHueBase):  # noqa: D401
-    id = "NameFirstCharHue"
-    label = "Name First Char -> Hue (Unified)"
-    order = 9  # ensure it appears before the unified numbered variants
-    _char_index = 0
-
-
-register_strategy(NameFirstCharHue)
 
 
 def register():  # pragma: no cover
