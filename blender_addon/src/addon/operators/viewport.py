@@ -139,6 +139,50 @@ if bpy:
             self.report({"INFO"}, f"Toggled overlays in {toggled} view(s)")
             return {"FINISHED"}
 
+    class EVE_OT_viewport_frame_all(bpy.types.Operator):  # type: ignore
+        bl_idname = "eve.viewport_frame_all"
+        bl_label = "Frame All Stars"
+        bl_description = "Zoom viewport to fit all star systems in view"
+
+        def execute(self, context):  # noqa: D401
+            # Find all system objects in the Frontier collection
+            systems = []
+            frontier = bpy.data.collections.get("Frontier")  # type: ignore[union-attr]
+            if frontier:
+
+                def _collect_recursive(collection):
+                    systems.extend(collection.objects)
+                    for child in collection.children:
+                        _collect_recursive(child)
+
+                _collect_recursive(frontier)
+
+            if not systems:
+                self.report({"WARNING"}, "No systems found in Frontier collection")
+                return {"CANCELLED"}
+
+            # Deselect all, then select all systems
+            try:
+                bpy.ops.object.select_all(action="DESELECT")
+                for obj in systems:
+                    obj.select_set(True)
+
+                # Frame selected objects in all 3D viewports
+                for area in context.screen.areas:
+                    if area.type != "VIEW_3D":
+                        continue
+                    for region in area.regions:
+                        if region.type == "WINDOW":
+                            with context.temp_override(area=area, region=region):
+                                bpy.ops.view3d.view_selected()
+
+                self.report({"INFO"}, f"Framed {len(systems)} systems in viewport")
+            except Exception as e:  # noqa: BLE001
+                self.report({"ERROR"}, f"Failed to frame view: {e}")
+                return {"CANCELLED"}
+
+            return {"FINISHED"}
+
 
 def register():  # pragma: no cover
     if not bpy:
@@ -147,11 +191,13 @@ def register():  # pragma: no cover
     bpy.utils.register_class(EVE_OT_viewport_set_hdri)
     bpy.utils.register_class(EVE_OT_viewport_set_clip)
     bpy.utils.register_class(EVE_OT_viewport_hide_overlays)
+    bpy.utils.register_class(EVE_OT_viewport_frame_all)
 
 
 def unregister():  # pragma: no cover
     if not bpy:
         return
+    bpy.utils.unregister_class(EVE_OT_viewport_frame_all)
     bpy.utils.unregister_class(EVE_OT_viewport_hide_overlays)
     bpy.utils.unregister_class(EVE_OT_viewport_set_clip)
     bpy.utils.unregister_class(EVE_OT_viewport_set_hdri)
