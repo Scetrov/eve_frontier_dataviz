@@ -445,6 +445,17 @@ def _on_strategy_change(self, context):  # pragma: no cover
             print(
                 f"[EVEVisualizer][strategy_change] Found {len(systems)} objects to apply material to"
             )
+
+            # Debug: Check if objects have the required properties
+            if systems:
+                sample_obj = systems[0]
+                print(
+                    f"[EVEVisualizer][strategy_change] Sample object '{sample_obj.name}' properties:"
+                )
+                for key in sample_obj.keys():
+                    if key.startswith("eve_"):
+                        print(f"  {key}: {sample_obj[key]}")
+
             # Assign material to all systems
             for obj in systems:
                 try:
