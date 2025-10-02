@@ -398,10 +398,6 @@ def _on_strategy_change(self, context):  # pragma: no cover
 
     if not mat:
         # Material doesn't exist yet - need to create it
-        # We'll do this by simulating what _ensure_node_group_material does
-        # but in a simpler way for the callback
-        from ..operators.shader_apply_async import EVE_OT_apply_shader_modal
-
         # Create temporary operator instance to use its method
         op = EVE_OT_apply_shader_modal()
         mat = op._ensure_node_group_material(strategy_name)

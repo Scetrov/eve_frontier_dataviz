@@ -75,6 +75,8 @@ class EVE_PT_main(Panel):
         # Node-based strategy selector - auto-applies on change
         if hasattr(context.scene, "eve_active_strategy"):
             box_vis.prop(context.scene, "eve_active_strategy", text="Strategy")
+        else:
+            box_vis.label(text="Reload add-on to enable strategies", icon="INFO")
 
         # --- View Section ---
         box_view = layout.box()
