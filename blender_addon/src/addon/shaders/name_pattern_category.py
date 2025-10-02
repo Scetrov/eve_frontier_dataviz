@@ -27,12 +27,14 @@ class NamePatternCategory(BaseShaderStrategy):
     _re_dotseq = re.compile(r"^[A-Z]\.[A-Z0-9]{3,4}\.[A-Z0-9]{3,4}$")
     _re_pipe = re.compile(r"^[A-Z0-9]{3}\|[0-9][A-Z0-9]{2}$")
 
+    # High-contrast, color-blind friendlier-ish palette (distinct hue + luminance):
+    # DASH  -> Blue, COLON -> Orange, DOTSEQ -> Purple, PIPE -> Green, OTHER -> Gray
     _CATEGORY_COLORS = {
-        "DASH": (0.0, 0.8, 1.0),
-        "COLON": (1.0, 0.0, 1.0),
-        "DOTSEQ": (1.0, 1.0, 0.0),
-        "PIPE": (0.0, 1.0, 0.25),  # bright greenish
-        "OTHER": (0.5, 0.5, 0.5),
+        "DASH": (0.20, 0.50, 1.00),  # blue
+        "COLON": (1.00, 0.55, 0.00),  # orange
+        "DOTSEQ": (0.60, 0.20, 0.85),  # purple
+        "PIPE": (0.00, 0.90, 0.30),  # green
+        "OTHER": (0.50, 0.50, 0.50),  # neutral gray
     }
 
     def _category(self, name: str) -> str:

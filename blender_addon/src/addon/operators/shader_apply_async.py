@@ -110,13 +110,13 @@ if bpy:
             if "NamePatternCategory" in strat.id:
                 up = name.upper()
                 if len(up) == 7 and up[3] == "-":
-                    return (0.0, 0.8, 1.0, 1.0), 1.0  # DASH
+                    return (0.20, 0.50, 1.00, 1.0), 1.0  # DASH (blue)
                 if ":" in up and len(up) == 6:
-                    return (1.0, 0.0, 1.0, 1.0), 1.0  # COLON
+                    return (1.00, 0.55, 0.00, 1.0), 1.0  # COLON (orange)
                 if up.count(".") == 2:
-                    return (1.0, 1.0, 0.0, 1.0), 1.0  # DOTSEQ
+                    return (0.60, 0.20, 0.85, 1.0), 1.0  # DOTSEQ (purple)
                 if len(up) == 7 and up[3] == "|" and up.count("|") == 1:
-                    return (0.0, 1.0, 0.25, 1.0), 1.0  # PIPE pattern (e.g. MVT|1IT)
+                    return (0.00, 0.90, 0.30, 1.0), 1.0  # PIPE (green)
                 return (0.5, 0.5, 0.5, 1.0), 1.0
             if "NameChar" in strat.id or "FirstChar" in strat.id:
                 up = name.upper()

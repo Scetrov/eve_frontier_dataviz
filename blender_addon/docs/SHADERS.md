@@ -8,10 +8,10 @@ This document catalogs available visualization ("shader") strategies and the dat
 
 - ID: `NamePatternCategory`
 - Mapping: System name matched against relaxed regex categories:
-  - `DASH` (AAA-BBB style)
-  - `COLON` (A:1234 style)
-  - `DOTSEQ` (A.AAAA.BBBB with 3–4 length segments)
-  - `PIPE` (AAA|1BB where left = 3 alnum, right = digit + 2 alnum, e.g. MVT|1IT)
+  - `DASH` (AAA-BBB style) → Blue
+  - `COLON` (A:1234 style) → Orange
+  - `DOTSEQ` (A.AAAA.BBBB with 3–4 length segments) → Purple
+  - `PIPE` (AAA|1BB where left = 3 alnum, right = digit + 2 alnum, e.g. MVT|1IT) → Green
   - `OTHER` fallback gray
 - Each category maps to a fixed emission color; materials reused per category.
 - Notes: Regexes intentionally broad to capture alphanumeric hybrids.
