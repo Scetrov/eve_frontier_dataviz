@@ -6,6 +6,7 @@ Only systems are instantiated (planets/moons counts kept as custom props).
 from __future__ import annotations
 
 import random
+import re
 
 try:  # pragma: no cover  # noqa: I001 (dynamic bpy import grouping)
     import bmesh  # type: ignore
@@ -68,6 +69,24 @@ if bpy:
                 self.report({"ERROR"}, "No data loaded")
                 return False
             prefs = get_prefs(context)
+            # --- Optional exclusions (apply before sampling so percentage reflects kept set) ---
+            try:
+                excl_ad = bool(getattr(prefs, "exclude_ad_systems", False))
+                excl_vdash = bool(getattr(prefs, "exclude_vdash_systems", False))
+            except Exception:
+                excl_ad = excl_vdash = False
+            if excl_ad or excl_vdash:
+                filtered = []
+                re_ad = re.compile(r"^AD\d{3}$", re.IGNORECASE)
+                re_vdash = re.compile(r"^V-\d{3}$", re.IGNORECASE)
+                for s in systems:
+                    nm = (getattr(s, "name", "") or "").strip()
+                    if excl_ad and re_ad.match(nm):
+                        continue
+                    if excl_vdash and re_vdash.match(nm):
+                        continue
+                    filtered.append(s)
+                systems = filtered
             pct = float(getattr(prefs, "build_percentage", 1.0) or 1.0)
             pct = max(0.01, min(1.0, pct))
             if pct < 0.9999:
