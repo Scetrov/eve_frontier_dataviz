@@ -80,6 +80,95 @@ Idempotent: re-running may reuse or lazily create a bounded set of materials; no
 - Parent linking: construct `system_map`, `planet_map` then attach children (see loader implementation pattern).
 - Using custom properties: strategies can read `obj["planet_count"]` / `obj["moon_count"]`.
 
+### Database Schema Reference
+
+The SQLite database (`data/static.db`) contains the following tables:
+
+#### SolarSystems
+
+```sql
+CREATE TABLE SolarSystems (
+    solarSystemId INTEGER PRIMARY KEY,
+    name TEXT,
+    constellationId INTEGER,
+    regionId INTEGER,
+    centerX REAL,
+    centerY REAL,
+    centerZ REAL,
+    frost_line REAL,
+    habitable_zone_inner REAL,
+    habitable_zone_outer REAL,
+    star_age REAL,
+    star_luminosity REAL,
+    star_mass REAL,
+    star_metallicity REAL,
+    star_radius REAL,
+    star_spectral_class TEXT,
+    star_temperature REAL,
+    FOREIGN KEY (constellationId) REFERENCES Constellations (constellationId),
+    FOREIGN KEY (regionId) REFERENCES Regions (regionId)
+)
+```
+
+#### Regions
+
+```sql
+CREATE TABLE Regions (
+    regionId INTEGER PRIMARY KEY,
+    name TEXT,
+    centerX REAL,
+    centerY REAL,
+    centerZ REAL
+)
+```
+
+#### Constellations
+
+```sql
+CREATE TABLE Constellations (
+    constellationId INTEGER PRIMARY KEY,
+    name TEXT,
+    regionId INTEGER,
+    centerX REAL,
+    centerY REAL,
+    centerZ REAL,
+    FOREIGN KEY (regionId) REFERENCES Regions (regionId)
+)
+```
+
+#### Planets
+
+```sql
+CREATE TABLE Planets (
+    planetId INTEGER PRIMARY KEY,
+    solarSystemId INTEGER,
+    name TEXT,
+    orbit_index INTEGER,
+    planet_type TEXT,
+    FOREIGN KEY (solarSystemId) REFERENCES SolarSystems (solarSystemId)
+)
+```
+
+#### Moons
+
+```sql
+CREATE TABLE Moons (
+    moonId INTEGER PRIMARY KEY,
+    planetId INTEGER,
+    name TEXT,
+    orbit_index INTEGER,
+    FOREIGN KEY (planetId) REFERENCES Planets (planetId)
+)
+```
+
+**Notes:**
+- Table names use PascalCase (e.g., `SolarSystems`, not `systems` or `solar_systems`)
+- Foreign key columns use camelCase (e.g., `constellationId`, `regionId`)
+- Constellation names in the database are currently numeric IDs (e.g., "20000001")
+- Region names are descriptive strings (e.g., "000-0Y-0", "DG8-Y-D3")
+- Data loader performs LEFT JOINs to populate `region_name` and `constellation_name` on System dataclass
+- Additional tables: `Jumps`, `NpcStations` (not currently loaded by visualizer)
+
 ### Lightweight Roadmap Awareness
 
 Near-term: scene builder module, planet/moon instancing, node-based attribute-driven shading, security metric visualizations.
