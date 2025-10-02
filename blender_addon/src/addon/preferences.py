@@ -191,6 +191,13 @@ class EVEVisualizerPreferences(_BasePrefs):
         ),
         precision=3,
     )
+    auto_apply_default_visualization: BoolProperty(  # type: ignore[valid-type]
+        name="Auto-Apply Visualization",
+        default=True,
+        description=(
+            "After building the scene, automatically run the default visualization (NamePatternCategory or first available)"
+        ),
+    )
 
     def draw(self, context):  # noqa: D401
         if not bpy:  # skip UI logic in test / non-Blender env
@@ -223,6 +230,7 @@ class EVEVisualizerPreferences(_BasePrefs):
             "exclude_vdash_systems",
             "blackhole_scale_multiplier",
             "emission_strength_scale",
+            "auto_apply_default_visualization",
         ):
             if prop_name in self.__class__.__dict__:
                 try:
@@ -363,6 +371,15 @@ try:  # pragma: no cover - runtime safety
             precision=3,
         )
         _missing.append("emission_strength_scale")
+    if not hasattr(EVEVisualizerPreferences, "auto_apply_default_visualization"):
+        EVEVisualizerPreferences.auto_apply_default_visualization = BoolProperty(  # type: ignore[attr-defined]
+            name="Auto-Apply Visualization",
+            default=True,
+            description=(
+                "After building the scene, automatically run the default visualization (NamePatternCategory or first available)"
+            ),
+        )
+        _missing.append("auto_apply_default_visualization")
     if _missing:
         print(f"[EVEVisualizer][info] Injected fallback properties: {_missing}")
     else:

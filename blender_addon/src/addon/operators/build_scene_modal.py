@@ -124,6 +124,14 @@ if bpy:
             coll = bpy.data.collections.get("EVE_Systems")
             if coll:
                 coll.hide_viewport = False
+            # Optionally auto-apply default visualization
+            try:
+                prefs = get_prefs(context)
+                if getattr(prefs, "auto_apply_default_visualization", False):
+                    # Invoke shader apply operator (will choose default strategy if none selected)
+                    bpy.ops.eve.apply_shader_modal("INVOKE_DEFAULT")  # type: ignore[attr-defined]
+            except Exception:
+                pass
 
         def execute(self, context):  # noqa: D401
             if not self._init(context):
@@ -135,10 +143,13 @@ if bpy:
         def modal(self, context, event):  # noqa: D401
             if event.type == "TIMER":
                 batch_end = min(self._index + self.batch_size, self._total)
-                coll = bpy.data.collections.get("EVE_Systems")  # type: ignore[union-attr]
+                coll = bpy.data.collections.get("EVE_Systems") if bpy else None  # type: ignore[union-attr]
                 created = 0
+                systems = self._systems or []
                 for i in range(self._index, batch_end):
-                    sys = self._systems[i]
+                    if i >= len(systems):
+                        break
+                    sys = systems[i]
                     x, y, z = sys.x * self._scale, sys.y * self._scale, sys.z * self._scale
                     if self._apply_axis:  # Rx-90 transformation (X,Y,Z) -> (X,Z,-Y)
                         x, y, z = x, z, -y
