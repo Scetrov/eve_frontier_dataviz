@@ -335,8 +335,8 @@ if bpy:
                     continue
 
         def execute(self, context):  # noqa: D401
-            # Get selected strategy from scene property
-            strategy_name = context.scene.eve_active_strategy
+            # Get selected strategy from scene property (with fallback)
+            strategy_name = getattr(context.scene, "eve_active_strategy", "CharacterRainbow")
 
             # Gather system objects
             self._gather()
@@ -372,15 +372,14 @@ def register():  # pragma: no cover
     bpy.utils.register_class(EVE_OT_cancel_shader)
 
     # Scene property for node-based strategy selection
-    scene = bpy.types.Scene
-    if not hasattr(scene, "eve_active_strategy"):
-        scene.eve_active_strategy = bpy.props.EnumProperty(  # type: ignore[attr-defined]
-            name="Active Strategy",
-            description="Select visualization strategy",
-            items=_node_strategy_enum_items,
-            default="CharacterRainbow",
-            update=_on_strategy_change,
-        )
+    # Always set it - Blender will not duplicate if it already exists
+    bpy.types.Scene.eve_active_strategy = bpy.props.EnumProperty(  # type: ignore[attr-defined]
+        name="Active Strategy",
+        description="Select visualization strategy",
+        items=_node_strategy_enum_items,
+        default="CharacterRainbow",
+        update=_on_strategy_change,
+    )
 
 
 def _on_strategy_change(self, context):  # pragma: no cover
@@ -411,5 +410,9 @@ def _on_strategy_change(self, context):  # pragma: no cover
 def unregister():  # pragma: no cover
     if not bpy:
         return
+    # Remove scene property
+    if hasattr(bpy.types.Scene, "eve_active_strategy"):
+        del bpy.types.Scene.eve_active_strategy
+
     bpy.utils.unregister_class(EVE_OT_cancel_shader)
     bpy.utils.unregister_class(EVE_OT_apply_shader_modal)
