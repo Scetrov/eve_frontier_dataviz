@@ -1,6 +1,6 @@
 ## AI Contribution Guide (Project-Specific)
 
-Authoritative rules for assisting on the EVE Frontier Blender data visualizer. Favor minimal, targeted edits; keep public behavior stable; provably accurate, incremental, testable changes, committed frequently. Commit and push each change before next prompt.pr
+Authoritative rules for assisting on the EVE Frontier Blender data visualizer. Favor minimal, targeted edits; keep public behavior stable; provably accurate, incremental, testable changes, committed frequently. Each change should include updates to relevant documentation and tests where applicable. Commit and push each change before the next prompt.
 
 ### Current Core Flow
 
@@ -20,7 +20,7 @@ SQLite (data/static.db) -> data_loader (pure Python) -> in-memory systems list
 ### Key Conventions
 
 - Source layout: `blender_addon/src/addon` is the Python package root.
-- Collections currently created: `Frontier_Systems` (flat) or optional hierarchy `Frontier_Regions/<Region>/<Constellation>`; planets/moons represented as counts for now.
+- Collections currently created: `EVE_Systems` only (planets/moons represented as counts, not objects).
 - Future reserved names (do not misuse): `EVE_Planets`, `EVE_Moons`.
 - Per-system custom properties:
     - `planet_count` (int)
