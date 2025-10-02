@@ -392,12 +392,15 @@ def register():  # pragma: no cover
             name="Active Strategy",
             description="Select visualization strategy",
             items=_node_strategy_enum_items,
-            default="CharacterRainbow",
+            default=0,  # Index 0 = CharacterRainbow (first item in the enum function)
             update=_on_strategy_change,
         )
         print("[EVEVisualizer][shader_apply_async] Registered eve_active_strategy property")
     except Exception as e:
         print(f"[EVEVisualizer][shader_apply_async] ERROR registering eve_active_strategy: {e}")
+        import traceback
+
+        traceback.print_exc()
         import traceback
 
         traceback.print_exc()

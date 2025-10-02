@@ -103,7 +103,7 @@ class EVEVisualizerPreferences(_BasePrefs):
     )
     scale_factor: FloatProperty(  # type: ignore[valid-type]
         name="Coordinate Scale",
-        default=1e-18,
+        default=1e-16,
         min=1e-18,
         soft_min=1e-18,
         soft_max=1e-10,
