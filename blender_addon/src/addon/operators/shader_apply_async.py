@@ -412,6 +412,7 @@ def _on_strategy_change(self, context):  # pragma: no cover
         return
 
     strategy_name = context.scene.eve_active_strategy
+    print(f"[EVEVisualizer][strategy_change] Strategy changed to: {strategy_name}")
 
     # Ensure node groups exist
     ensure_strategy_node_groups()
@@ -421,10 +422,12 @@ def _on_strategy_change(self, context):  # pragma: no cover
     mat = bpy.data.materials.get(mat_name)  # type: ignore[attr-defined]
 
     if not mat:
+        print("[EVEVisualizer][strategy_change] Material doesn't exist, creating it...")
         # Material doesn't exist yet - need to create it
         # Create temporary operator instance to use its method
         op = EVE_OT_apply_shader_modal()
         mat = op._ensure_node_group_material(strategy_name)
+        print(f"[EVEVisualizer][strategy_change] Material created: {mat.name if mat else 'FAILED'}")
 
         if mat:
             # Apply to all system objects
@@ -439,6 +442,9 @@ def _on_strategy_change(self, context):  # pragma: no cover
 
                 _collect_recursive(frontier)
 
+            print(
+                f"[EVEVisualizer][strategy_change] Found {len(systems)} objects to apply material to"
+            )
             # Assign material to all systems
             for obj in systems:
                 try:
@@ -449,6 +455,8 @@ def _on_strategy_change(self, context):  # pragma: no cover
                             obj.data.materials.append(mat)
                 except Exception:  # noqa: BLE001
                     pass
+    else:
+        print("[EVEVisualizer][strategy_change] Material already exists, updating selector...")
 
     # Update the StrategySelector value
     if mat and mat.node_tree:
@@ -459,7 +467,13 @@ def _on_strategy_change(self, context):  # pragma: no cover
                 "PatternCategories": 1.0,
                 "PositionEncoding": 2.0,
             }
-            selector.outputs[0].default_value = strategy_map.get(strategy_name, 0.0)
+            new_value = strategy_map.get(strategy_name, 0.0)
+            selector.outputs[0].default_value = new_value
+            print(f"[EVEVisualizer][strategy_change] Updated StrategySelector to {new_value}")
+        else:
+            print("[EVEVisualizer][strategy_change] ERROR: StrategySelector node not found!")
+    else:
+        print("[EVEVisualizer][strategy_change] ERROR: Material or node tree not found!")
 
 
 def unregister():  # pragma: no cover
