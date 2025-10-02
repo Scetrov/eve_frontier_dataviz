@@ -22,11 +22,7 @@ def _load_modules():  # lazy import to avoid bpy dependency in pure-Python tests
         "preferences",
         "operators",  # now a package with submodules
         "panels",
-        "shader_registry",
-        "shaders_builtin",
-        # shader strategy modules
-        "shaders.name_pattern_category",
-        "shaders.name_nth_char_hue",  # unified nth-char + alias for NameFirstCharHue
+        "node_groups",  # Node-based shader strategies
     ]
     mods = []
     for name in module_names:

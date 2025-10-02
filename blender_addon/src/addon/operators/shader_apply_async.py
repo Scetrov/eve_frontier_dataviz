@@ -10,18 +10,8 @@ except Exception:  # noqa: BLE001
 from typing import Optional
 
 from ..node_groups import ensure_strategy_node_groups
-from ..shader_registry import get_strategies, get_strategy
 
 if bpy:
-
-    def _strategy_enum_items(self, context):  # pragma: no cover
-        try:
-            items = [(s.id, s.label, s.id) for s in get_strategies()]
-            if not items:
-                return [("__none__", "(no strategies)", "")]  # type: ignore
-            return items  # type: ignore
-        except Exception:  # noqa: BLE001
-            return [("__error__", "(error)", "")]  # type: ignore
 
     def _node_strategy_enum_items(self, context):  # pragma: no cover
         """Enum items for node-based strategies."""
@@ -46,13 +36,8 @@ if bpy:
             "Apply property-driven material (reads custom properties via Attribute nodes)"
         )
 
-        strategy_id: bpy.props.StringProperty(  # type: ignore[valid-type]
-            name="Strategy Id", default=""
-        )
-
         _objects = None
         _total = 0
-        _strategy = None
 
         def _gather(self):
             systems = []
@@ -349,81 +334,20 @@ if bpy:
                 except Exception:  # noqa: BLE001
                     continue
 
-        def _map_strategy_to_node_group(self, strategy_id: str) -> str:
-            """Map old strategy ID to new node group strategy name.
-
-            Returns:
-                Strategy name for node group (CharacterRainbow, PatternCategories, or PositionEncoding)
-            """
-            # Map old strategy IDs to new node group names
-            mapping = {
-                "NameFirstCharHue": "CharacterRainbow",
-                "NamePatternCategory": "PatternCategories",
-                "ChildCountEmission": "CharacterRainbow",  # Similar to rainbow
-                # Default to CharacterRainbow for unknown strategies
-            }
-            return mapping.get(strategy_id, "CharacterRainbow")
-
-        def _resolve_strategy(self, context):
-            sid = self.strategy_id.strip()
-            wm = context.window_manager
-            if not sid and hasattr(wm, "eve_strategy_id"):
-                sid = wm.eve_strategy_id  # type: ignore[attr-defined]
-            if not sid:
-                # Prefer NamePatternCategory as default if available
-                npc = get_strategy("NamePatternCategory")
-                if npc:
-                    sid = npc.id
-                else:
-                    strategies = get_strategies()
-                    if not strategies:
-                        self.report({"ERROR"}, "No strategies registered")
-                        return False
-                    sid = strategies[0].id
-            strat = get_strategy(sid)
-            if not strat:
-                self.report({"ERROR"}, f"Strategy not found: {sid}")
-                return False
-            self._strategy = strat
-            if hasattr(wm, "eve_shader_strategy"):
-                wm.eve_shader_strategy = sid  # type: ignore[attr-defined]
-            if hasattr(wm, "eve_strategy_id"):
-                # Persist selection so subsequent runs use same strategy unless changed
-                try:
-                    wm.eve_strategy_id = sid  # type: ignore[attr-defined]
-                except Exception:  # noqa: BLE001
-                    pass
-            return True
-
         def execute(self, context):  # noqa: D401
-            if not self._resolve_strategy(context):
-                return {"CANCELLED"}
+            # Get selected strategy from scene property
+            strategy_name = context.scene.eve_active_strategy
 
-            # Since properties are pre-calculated on objects, we just need to apply the material!
-            # No iteration needed - shader reads properties directly via Attribute nodes
+            # Gather system objects
             self._gather()
             if self._total == 0:
                 self.report({"WARNING"}, "No system objects to shade")
                 return {"CANCELLED"}
 
-            # Map old strategy ID to node group strategy name
-            node_group_strategy = self._map_strategy_to_node_group(
-                self._strategy.id if self._strategy else ""
-            )
-
             # Apply node-group-based material with switcher to all objects
-            self._apply_node_group_material(self._objects, node_group_strategy)
+            self._apply_node_group_material(self._objects, strategy_name)
 
-            # Sync scene property to match applied strategy
-            if hasattr(context.scene, "eve_active_strategy"):
-                try:
-                    context.scene.eve_active_strategy = node_group_strategy
-                except Exception:  # noqa: BLE001
-                    pass  # Property might be read-only in some contexts
-
-            self.report(
-                {"INFO"}, f"Applied {node_group_strategy} strategy to {self._total} objects"
-            )
+            self.report({"INFO"}, f"Applied {strategy_name} strategy to {self._total} objects")
             return {"FINISHED"}
 
     class EVE_OT_cancel_shader(bpy.types.Operator):  # type: ignore
@@ -446,22 +370,6 @@ def register():  # pragma: no cover
         return
     bpy.utils.register_class(EVE_OT_apply_shader_modal)
     bpy.utils.register_class(EVE_OT_cancel_shader)
-    wm = bpy.types.WindowManager
-    # Progress properties (shader)
-    if not hasattr(wm, "eve_shader_in_progress"):
-        wm.eve_shader_in_progress = bpy.props.BoolProperty(default=False)  # type: ignore
-    if not hasattr(wm, "eve_shader_progress"):
-        wm.eve_shader_progress = bpy.props.FloatProperty(default=0.0)  # type: ignore
-    if not hasattr(wm, "eve_shader_total"):
-        wm.eve_shader_total = bpy.props.IntProperty(default=0)  # type: ignore
-    if not hasattr(wm, "eve_shader_processed"):
-        wm.eve_shader_processed = bpy.props.IntProperty(default=0)  # type: ignore
-    if not hasattr(wm, "eve_shader_strategy"):
-        wm.eve_shader_strategy = bpy.props.StringProperty(default="")  # type: ignore
-    if not hasattr(wm, "eve_strategy_id"):
-        wm.eve_strategy_id = bpy.props.EnumProperty(  # type: ignore[attr-defined]
-            name="Strategy", items=_strategy_enum_items
-        )
 
     # Scene property for node-based strategy selection
     scene = bpy.types.Scene

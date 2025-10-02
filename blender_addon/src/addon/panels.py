@@ -1,8 +1,6 @@
 import bpy
 from bpy.types import Panel
 
-from .shader_registry import get_strategies
-
 
 class EVE_PT_main(Panel):
     bl_label = "EVE Frontier"
@@ -74,39 +72,13 @@ class EVE_PT_main(Panel):
         box_vis = layout.box()
         box_vis.label(text="Visualization", icon="MATERIAL")
 
-        # Node-based strategy selector (new)
+        # Node-based strategy selector
         if hasattr(context.scene, "eve_active_strategy"):
             box_vis.prop(context.scene, "eve_active_strategy", text="Strategy")
 
-        # Legacy strategy dropdown (for old Python-based strategies)
-        strategies = get_strategies()
-        if strategies:
-            # Dropdown from WindowManager (legacy)
-            wm = context.window_manager
-            if hasattr(wm, "eve_strategy_id"):
-                box_vis.prop(wm, "eve_strategy_id", text="Legacy Strategy")
-            shader_in_progress = getattr(wm, "eve_shader_in_progress", False)
-            if not shader_in_progress:
-                row_vis = box_vis.row(align=True)
-                # Only async apply retained (sync removed for reliability)
-                row_vis.operator(
-                    "eve.apply_shader_modal", text="Apply (Async)", icon="PLAY_REVERSE"
-                )
-            else:
-                prog = getattr(wm, "eve_shader_progress", 0.0)
-                processed = getattr(wm, "eve_shader_processed", 0)
-                total = getattr(wm, "eve_shader_total", 0)
-                sid = getattr(wm, "eve_shader_strategy", "?")
-                box_vis.label(text=f"Applying {sid}: {processed}/{total} ({prog*100:.1f}%)")
-                row_bar = box_vis.row(align=True)
-                if hasattr(wm, "eve_shader_progress"):
-                    row_bar.enabled = False
-                    row_bar.prop(wm, "eve_shader_progress", text="Progress")
-                row_cancel = box_vis.row(align=True)
-                row_cancel.operator("eve.cancel_shader", text="Cancel", icon="CANCEL")
-        else:
-            row_vis = box_vis.row(align=True)
-            row_vis.label(text="No strategies registered")
+        # Apply button
+        row_vis = box_vis.row(align=True)
+        row_vis.operator("eve.apply_shader_modal", text="Apply Visualization", icon="PLAY")
 
         # --- View Section ---
         box_view = layout.box()
