@@ -7,7 +7,11 @@ try:  # pragma: no cover  # noqa: I001 (dynamic bpy import grouping)
 except Exception:  # noqa: BLE001
     bpy = None  # type: ignore
 
+from typing import Optional
+
+from ..preferences import get_prefs  # type: ignore
 from ..shader_registry import get_strategies, get_strategy
+from ..shaders_builtin import _BLACKHOLE_NAMES
 
 if bpy:
 
@@ -37,36 +41,97 @@ if bpy:
         _total = 0
         _strategy = None
         _timer = None
+        _strength_scale = 1.0
 
         def _gather(self):
             systems = []
             coll = bpy.data.collections.get("EVE_Systems")  # type: ignore[union-attr]
             if coll:
                 systems.extend(coll.objects)
-            # If instanced geometry was used (all objects share one mesh), per-object
-            # material assignment will collapse to the last applied material.
-            # Duplicate the mesh per object (single-user copy) so strategies that
-            # rely on variant materials work correctly. This is a trade-off: more
-            # memory, but correct visualization. Consider future node/attribute
-            # approach for truly instanced + per-object color without duplication.
-            try:
-                if systems:
-                    shared_data = None
-                    # Detect if majority share same mesh datablock
-                    first = systems[0]
-                    if hasattr(first, "data") and getattr(first.data, "users", 1) > 1:
-                        shared_data = first.data
-                    if shared_data is not None:
-                        for obj in systems:
-                            if (
-                                getattr(obj, "data", None) is shared_data
-                                and getattr(shared_data, "users", 1) > 1
-                            ):
-                                obj.data = shared_data.copy()
-            except Exception:  # noqa: BLE001
-                pass
             self._objects = systems
             self._total = len(systems)
+
+        # --- Attribute Driven Material Infrastructure ---
+        def _ensure_attribute_material(self) -> Optional["bpy.types.Material"]:  # type: ignore[name-defined]
+            if not hasattr(bpy, "data"):
+                return None
+            try:
+                mat_name = "EVE_AttrDriven"
+                mat = bpy.data.materials.get(mat_name)  # type: ignore[attr-defined]
+                if mat:
+                    return mat
+                mat = bpy.data.materials.new(mat_name)  # type: ignore[attr-defined]
+                mat.use_nodes = True
+                nt = mat.node_tree
+                nodes = nt.nodes
+                links = nt.links
+                for n in list(nodes):
+                    if n.type != "OUTPUT_MATERIAL":
+                        nodes.remove(n)
+                out = next(n for n in nodes if n.type == "OUTPUT_MATERIAL")
+                obj_info = nodes.new("ShaderNodeObjectInfo")
+                obj_info.location = (-600, 0)
+                attr_strength = nodes.new("ShaderNodeAttribute")
+                attr_strength.attribute_name = "eve_attr_strength"
+                attr_strength.location = (-600, -250)
+                emission = nodes.new("ShaderNodeEmission")
+                emission.location = (-200, 0)
+                # Use object color directly for emission color
+                links.new(obj_info.outputs[0], emission.inputs[0])
+                # Multiply emission strength by attribute (if present)
+                math_mult = nodes.new("ShaderNodeMath")
+                math_mult.operation = "MULTIPLY"
+                math_mult.location = (-400, -80)
+                math_mult.inputs[0].default_value = 1.0
+                links.new(attr_strength.outputs[1], math_mult.inputs[1])
+                links.new(math_mult.outputs[0], emission.inputs[1])
+                links.new(emission.outputs[0], out.inputs[0])
+                return mat
+            except Exception:  # noqa: BLE001
+                return None
+
+        def _apply_attribute_material(self, objs):
+            mat = self._ensure_attribute_material()
+            if mat is None:
+                return
+            for o in objs:
+                try:
+                    if getattr(o, "data", None) and hasattr(o.data, "materials"):
+                        if o.data.materials:
+                            o.data.materials[0] = mat
+                        else:
+                            o.data.materials.append(mat)
+                except Exception:  # noqa: BLE001
+                    continue
+
+        def _color_from_strategy(self, strat, obj):
+            name = obj.name or "?"
+            if obj.name in _BLACKHOLE_NAMES:
+                return (1.0, 0.45, 0.0, 1.0), 5.0
+            if "NamePatternCategory" in strat.id:
+                up = name.upper()
+                if len(up) == 7 and up[3] == "-":
+                    return (0.0, 0.8, 1.0, 1.0), 1.0  # DASH
+                if ":" in up and len(up) == 6:
+                    return (1.0, 0.0, 1.0, 1.0), 1.0  # COLON
+                if up.count(".") == 2:
+                    return (1.0, 1.0, 0.0, 1.0), 1.0  # DOTSEQ
+                return (0.5, 0.5, 0.5, 1.0), 1.0
+            if "NameChar" in strat.id or "FirstChar" in strat.id:
+                up = name.upper()
+                ch = up[0] if up else "A"
+                if ch.isalpha():
+                    idx = ord(ch) - ord("A")
+                    hue = (idx / 26.0) % 1.0
+                elif ch.isdigit():
+                    hue = (ord(ch) - ord("0")) / 10.0 * 0.15
+                else:
+                    hue = 0.9
+                import colorsys
+
+                r, g, b = colorsys.hsv_to_rgb(hue, 0.8, 1.0)
+                return (r, g, b, 1.0), 1.0
+            return (0.8, 0.8, 0.8, 1.0), 1.0
 
         def _resolve_strategy(self, context):
             sid = self.strategy_id.strip()
@@ -95,6 +160,14 @@ if bpy:
             if self._total == 0:
                 self.report({"WARNING"}, "No system objects to shade")
                 return {"CANCELLED"}
+            # Cache emission strength scale from preferences (fallback to 1.0 if absent)
+            try:
+                prefs = get_prefs(context)
+                self._strength_scale = float(getattr(prefs, "emission_strength_scale", 1.0))
+            except Exception:  # noqa: BLE001
+                self._strength_scale = 1.0
+            # Assign unified attribute-driven material
+            self._apply_attribute_material(self._objects)
             wm = context.window_manager
             wm.eve_shader_in_progress = True
             wm.eve_shader_progress = 0.0
@@ -114,9 +187,9 @@ if bpy:
                 for i in range(self._index, end):
                     obj = objs[i]
                     try:
-                        # Support both build(context, dict) and apply(context, obj)
-                        if hasattr(strat, "apply"):
-                            strat.apply(context, obj)  # type: ignore[attr-defined]
+                        color_rgba, strength = self._color_from_strategy(strat, obj)
+                        obj.color = color_rgba  # object display color (Object Info node)
+                        obj["eve_attr_strength"] = float(strength) * self._strength_scale
                     except Exception:  # noqa: BLE001
                         pass
                 self._index = end

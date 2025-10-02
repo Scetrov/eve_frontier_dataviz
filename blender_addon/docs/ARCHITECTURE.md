@@ -12,7 +12,8 @@
 ```text
 SQLite --> data_loader (pure Python) --> [System dataclasses (+ planets/moons in-memory)]
   --> build_scene (systems only, via operators/build_scene_modal.py) --> Blender objects (custom props: planet_count, moon_count)
-  --> shader strategy (e.g. NameFirstCharHue, NamePatternCategory) --> Materials
+  --> shader operator (attribute-driven) assigns single material + per-object color/strength attributes
+  --> strategies influence derived color/strength (no per-object material duplication)
 ```
 
 ## Planned Flow (Future Extraction)
@@ -33,6 +34,8 @@ SQLite -> data_loader -> entities -> scene_builder.build() -> objects -> strateg
 - Single bulk SELECT per table; filter by limited system IDs when slicing.
 - In-memory cache keyed by `(path, size, mtime_ns, limit_systems)`.
 - Avoid full scene rebuild for visualization-only changes (strategies operate in-place).
+- Attribute-driven shading uses one shared material (`EVE_AttrDriven`), reducing material count and memory.
+- Global emission intensity scalable via preference `Emission Strength Scale`.
 - Future: geometry nodes + instancing for large numbers of child bodies.
 
 ## Extensibility Points

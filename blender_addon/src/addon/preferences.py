@@ -2,9 +2,31 @@ import os
 import traceback
 from pathlib import Path
 
-import bpy
-from bpy.props import BoolProperty, EnumProperty, FloatProperty, StringProperty
-from bpy.types import AddonPreferences, Operator
+try:  # pragma: no cover - allows tests without Blender runtime
+    import bpy  # type: ignore
+    from bpy.props import BoolProperty, EnumProperty, FloatProperty, StringProperty  # type: ignore
+    from bpy.types import AddonPreferences, Operator  # type: ignore
+except Exception:  # noqa: BLE001
+    bpy = None  # type: ignore
+
+    # Lightweight shims so type checkers / tests don't explode if accidentally imported
+    class AddonPreferences:  # type: ignore
+        pass
+
+    class Operator:  # type: ignore
+        pass
+
+    def BoolProperty(**_kwargs):  # type: ignore
+        return None
+
+    def EnumProperty(**_kwargs):  # type: ignore
+        return None
+
+    def FloatProperty(**_kwargs):  # type: ignore
+        return None
+
+    def StringProperty(**_kwargs):  # type: ignore
+        return None
 
 
 def _default_db_path():
@@ -28,7 +50,41 @@ _DEFAULT_USER_DB = str(
 )  # kept for documentation only
 
 
-class EVEVisualizerPreferences(AddonPreferences):
+if bpy:
+    _BasePrefs = AddonPreferences  # type: ignore
+else:  # pragma: no cover - non-Blender test environment
+
+    class _BasePrefs:  # type: ignore
+        # Provide minimal shim attributes used in draw()
+        layout = None
+
+        def __init__(self):  # mimic Blender behavior lightly
+            self.layout = type(
+                "_Layout",
+                (),
+                {
+                    "column": lambda *a, **k: type(
+                        "_Col",
+                        (),
+                        {
+                            "row": lambda *a, **k: type(
+                                "_Row",
+                                (),
+                                {
+                                    "prop": lambda *a, **k: None,
+                                    "operator": lambda *a, **k: None,
+                                    "label": lambda *a, **k: None,
+                                },
+                            )(),
+                            "prop": lambda *a, **k: None,
+                            "label": lambda *a, **k: None,
+                        },
+                    )()
+                },
+            )()
+
+
+class EVEVisualizerPreferences(_BasePrefs):
     """Add-on preferences.
 
     Uses annotation-style definitions (Blender 4.x recommended) with a runtime
@@ -125,10 +181,25 @@ class EVEVisualizerPreferences(AddonPreferences):
         description="Visual scale multiplier applied to special black hole systems (A 2560, M 974, U 3183)",
         precision=2,
     )
+    emission_strength_scale: FloatProperty(  # type: ignore[valid-type]
+        name="Emission Strength Scale",
+        default=1.0,
+        min=0.01,
+        soft_max=50.0,
+        description=(
+            "Global multiplier applied to visualization emission strength when using the attribute-driven material"
+        ),
+        precision=3,
+    )
 
     def draw(self, context):  # noqa: D401
-        layout = self.layout
-        col = layout.column(align=True)
+        if not bpy:  # skip UI logic in test / non-Blender env
+            return
+        layout = self.layout  # type: ignore[attr-defined]
+        try:
+            col = layout.column(align=True)  # type: ignore[attr-defined]
+        except Exception:  # pragma: no cover - safety in odd Blender states
+            return
         # Draw DB path first with Locate just beneath
         if "db_path" in self.__class__.__dict__:
             row = col.row()
@@ -151,6 +222,7 @@ class EVEVisualizerPreferences(AddonPreferences):
             "exclude_ad_systems",
             "exclude_vdash_systems",
             "blackhole_scale_multiplier",
+            "emission_strength_scale",
         ):
             if prop_name in self.__class__.__dict__:
                 try:
@@ -279,6 +351,18 @@ try:  # pragma: no cover - runtime safety
             precision=2,
         )
         _missing.append("blackhole_scale_multiplier")
+    if not hasattr(EVEVisualizerPreferences, "emission_strength_scale"):
+        EVEVisualizerPreferences.emission_strength_scale = FloatProperty(  # type: ignore[attr-defined]
+            name="Emission Strength Scale",
+            default=1.0,
+            min=0.01,
+            soft_max=50.0,
+            description=(
+                "Global multiplier applied to visualization emission strength when using the attribute-driven material"
+            ),
+            precision=3,
+        )
+        _missing.append("emission_strength_scale")
     if _missing:
         print(f"[EVEVisualizer][info] Injected fallback properties: {_missing}")
     else:
@@ -300,29 +384,38 @@ def get_prefs(context):  # pragma: no cover - Blender runtime usage
 
 
 def _register_prefs():  # internal helper
+    if not bpy:
+        return
     try:
         bpy.utils.register_class(EVEVisualizerPreferences)
+        print(
+            f"[EVEVisualizer] Preferences registered: bl_idname='{getattr(EVEVisualizerPreferences, 'bl_idname', 'unknown')}', "
+            f"folder='{Path(__file__).parent.name}', env_override={'yes' if _ENV_DB_PATH else 'no'}"
+        )
     except Exception as e:  # pragma: no cover - show why preferences might be blank
         print(f"[EVEVisualizer][error] register_class(EVEVisualizerPreferences) failed: {e}")
         traceback.print_exc()
-        return
-    try:  # pragma: no cover - Blender runtime only
-        print(
-            f"[EVEVisualizer] Preferences registered: bl_idname='{EVEVisualizerPreferences.bl_idname}', "
-            f"folder='{Path(__file__).parent.name}', env_override={'yes' if _ENV_DB_PATH else 'no'}"
-        )
-    except Exception:
-        pass
 
 
 def _unregister_prefs():  # pragma: no cover - Blender runtime usage
+    if not bpy:
+        return
     try:
         bpy.utils.unregister_class(EVEVisualizerPreferences)
     except Exception:
         pass
 
 
-class EVE_OT_locate_static_db(Operator):  # pragma: no cover - Blender runtime usage
+if bpy:
+    _BaseOp = Operator  # type: ignore
+else:  # pragma: no cover
+
+    class _BaseOp:  # type: ignore
+        def report(self, *_a, **_k):  # no-op shim
+            return None
+
+
+class EVE_OT_locate_static_db(_BaseOp):  # pragma: no cover - Blender runtime usage
     bl_idname = "eve.locate_static_db"
     bl_label = "Locate static.db"
     bl_description = "Browse for a static.db file and set it as database path"
@@ -346,6 +439,8 @@ class EVE_OT_locate_static_db(Operator):  # pragma: no cover - Blender runtime u
 # Public register/unregister
 def register():  # noqa: D401
     _register_prefs()
+    if not bpy:
+        return
     try:  # operator
         bpy.utils.register_class(EVE_OT_locate_static_db)
     except Exception as e:  # pragma: no cover
@@ -353,8 +448,9 @@ def register():  # noqa: D401
 
 
 def unregister():  # pragma: no cover - Blender runtime usage
-    try:
-        bpy.utils.unregister_class(EVE_OT_locate_static_db)
-    except Exception:
-        pass
+    if bpy:
+        try:
+            bpy.utils.unregister_class(EVE_OT_locate_static_db)
+        except Exception:
+            pass
     _unregister_prefs()

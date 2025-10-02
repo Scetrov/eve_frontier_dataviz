@@ -50,6 +50,19 @@ Provided by `shaders/name_nth_char_hue.py`:
 5. Test in a small scene slice before running on full dataset.
 6. Document here.
 
+## Attribute-Driven Material (Current Implementation Basis)
+
+The modal shader operator now assigns a single shared material `EVE_AttrDriven` to all system objects. Per-object variation is achieved via:
+
+- Object color (from the Object Info node) → Emission color.
+- Custom object property `eve_attr_strength` (accessed through an Attribute node) → Multiplied into the emission strength.
+
+This replaces prior per-object material duplication and drastically reduces material count and memory overhead.
+
+Global scaling of the emission intensity can be tuned in Add-on Preferences using the setting `Emission Strength Scale`.
+
+Fallback behavior: if running outside Blender or node creation fails, shading silently degrades without throwing an exception.
+
 ## Optimization Considerations
 
 - Prefer node group parameterization instead of copying full materials once scale grows > 100s of variants (e.g., refactor `CharIndexHue` later if growth accelerates).
@@ -59,6 +72,6 @@ Provided by `shaders/name_nth_char_hue.py`:
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Materials all identical | Strategy not setting per-object parameters | Validate material copy logic |
+| Materials all identical | Attribute material missing or object colors unset | Re-run Apply Visualization; ensure objects have `obj.color` set |
 | Excess materials count | Strategy creates new material every run | Add lookup + reuse for existing names |
-| Performance drop | Too many unique materials | Consolidate using node groups + drivers |
+| Performance drop | Extremely high emission strength scale | Lower `Emission Strength Scale` in preferences |

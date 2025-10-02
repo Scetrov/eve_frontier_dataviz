@@ -72,8 +72,8 @@ Then install the produced zip in Blender.
 1. Set DB path in Add-on Preferences if not default.
 2. Click "Load / Refresh Data" to parse and cache entities.
 3. Click "Build Scene" to instantiate objects.
-4. Choose a Visualization Mode (e.g. `NameFirstCharHue`, `HierarchyDepthGlow`).
-5. Press "Apply Shader" to update materials.
+4. Choose a Visualization Mode (e.g. `NameFirstCharHue`, `NamePatternCategory`).
+5. Press "Apply Visualization" to update colors using the unified attribute-driven material (single material, per-object color & strength attributes).
 6. (Optional) Run batch export:
 
 ```sh
@@ -117,7 +117,7 @@ The database is assumed to be SQLite with tables resembling:
 | Concept | Example Mapping |
 |---------|-----------------|
 | First char of name | Hue via HSV index (A→0°, Z→~360°) |
-| Count of children (planets, moons) | Emission strength / size |
+| Count of children (planets, moons) | (Future) attribute-driven emission scaling |
 | Hierarchy depth | Gradient emission or outline |
 | Orbital index | Saturation or value shift |
 
@@ -144,6 +144,12 @@ MIT
 ## 🙌 Contributions
 
 PRs welcome—focus on: new shader strategies, performance improvements (bulk bmesh, instancing), better color ramps.
+
+## ⚙ Preference Highlights (Shading)
+
+| Preference | Effect |
+|------------|--------|
+| Emission Strength Scale | Global multiplier for per-object emission values used by the attribute-driven material |
 
 ## ❓ Troubleshooting
 
