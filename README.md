@@ -3,7 +3,7 @@
 [![CI](https://github.com/Scetrov/eve_frontier_dataviz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Scetrov/eve_frontier_dataviz/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/Scetrov/eve_frontier_dataviz/branch/main/graph/badge.svg)](https://codecov.io/gh/Scetrov/eve_frontier_dataviz)
 
-This repository contains a Blender add-on and supporting Python tooling to visualize astronomical / game world data stored in `data/static.db` inside a 3D scene. It focuses on representing systems, planets, moons, stations, and other entities with procedural shaders that encode metrics (counts, categorical codes, characters of names) into colors, emission, shape modifiers, or geometry node inputs.
+This repository contains a Blender add-on and supporting Python tooling to visualize astronomical / game world data stored in `data/static.db` inside a 3D scene. It uses **GPU-driven, node-based shader strategies** to encode metrics (counts, categorical codes, characters of names) into colors and emission strength with instant switching capability.
 
 ---
 
@@ -14,7 +14,9 @@ This repository contains a Blender add-on and supporting Python tooling to visua
 1. Enable: search for `EVE Frontier: Data Visualizer` and tick the checkbox.
 1. Still in Preferences, expand the add-on panel and set the path to your `static.db` (or use the Locate button; see Database File section below).
 1. Close Preferences. In the 3D Viewport press `N` to open the Sidebar → find the `EVE Frontier` tab.
-1. Click `Load / Refresh Data`, then `Build Scene`, then `Apply` to attach a shader strategy.
+1. Click `Load / Refresh Data`, then `Build Scene`.
+1. Select a visualization strategy from the dropdown (Character Rainbow, Pattern Categories, or Position Encoding).
+1. Click `Apply Visualization` to create the node-based material and see instant GPU-driven colors.
 
 If the tab or operators don’t show up, see Troubleshooting below.
 
@@ -24,32 +26,34 @@ If the tab or operators don’t show up, see Troubleshooting below.
 
 - Parse a large SQLite database (`static.db`) without committing it to version control.
 - Transform raw rows (systems, planets, moons, etc.) into a normalized in-memory scene graph.
-- Instantiate Blender objects in collections (e.g. `Systems`, `Planets`, `Moons`).
-- Provide multiple visualization modes ("shaders") mapping attributes (first letter, hierarchy depth, child counts) to material properties.
-- Offer an extensible plug-in style registry for adding new shader strategies.
+- Instantiate Blender objects in collections with pre-calculated visualization properties.
+- Provide **node-based visualization strategies** with instant GPU-driven switching (no Python iteration).
+- Pre-calculate character indices and semantic properties once during scene build.
 - Allow batch re-render/export (stills or animation) via headless `blender --background`.
 
 ## 🗂 Project Structure
 
 ```text
+```text
 blender_addon/
   copilot-instructions.md   # AI contribution guidance
-  addon/
+  src/addon/
     __init__.py             # Add-on entry (lazy module loading)
     preferences.py          # Add-on preferences (DB path, scale, caching)
-    operators.py            # Operators: load data, build scene, apply shader
+    operators/              # Modular operators (data, build, shader, viewport, property calculators)
     panels.py               # UI panel (N sidebar)
     data_loader.py          # Pure-Python SQLite → dataclasses (tested)
-    shader_registry.py      # Strategy registry
-    shaders_builtin.py      # Example strategies
-    (future) scene_builder.py, materials.py, utils.py
+    data_state.py           # In-memory cache
+    node_groups/            # Node-based visualization strategies
   scripts/
     export_batch.py         # Headless batch render script
     dev_reload.py           # Reload helper (during active Blender session)
   docs/
     ARCHITECTURE.md         # Layered design overview
+    NODE_BASED_STRATEGIES.md # Comprehensive node system guide
+    SHADERS.md              # Strategy catalog
+    SHADER_PROPERTIES.md    # Custom property reference
     DATA_MODEL.md           # Entity dataclasses & relationships
-    SHADERS.md              # Strategy catalogue & guidelines
   tests/
     fixtures/mini.db.sql    # Schema + tiny dataset
     test_data_loader.py     # Unit tests for loader
