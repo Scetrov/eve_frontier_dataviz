@@ -383,28 +383,63 @@ def register():  # pragma: no cover
 
 
 def _on_strategy_change(self, context):  # pragma: no cover
-    """Update material when strategy changes."""
+    """Update material when strategy changes - creates material if needed."""
     if not bpy or not hasattr(bpy, "data"):
         return
 
-    # Get the material
-    mat = bpy.data.materials.get("EVE_NodeGroupStrategies")  # type: ignore[attr-defined]
-    if not mat or not mat.node_tree:
-        return
-
-    # Find the StrategySelector node
-    selector = mat.node_tree.nodes.get("StrategySelector")
-    if not selector:
-        return
-
-    # Map enum to value
-    strategy_map = {
-        "CharacterRainbow": 0.0,
-        "PatternCategories": 1.0,
-        "PositionEncoding": 2.0,
-    }
     strategy_name = context.scene.eve_active_strategy
-    selector.outputs[0].default_value = strategy_map.get(strategy_name, 0.0)
+
+    # Ensure node groups exist
+    ensure_strategy_node_groups()
+
+    # Get or create the material
+    mat_name = "EVE_NodeGroupStrategies"
+    mat = bpy.data.materials.get(mat_name)  # type: ignore[attr-defined]
+
+    if not mat:
+        # Material doesn't exist yet - need to create it
+        # We'll do this by simulating what _ensure_node_group_material does
+        # but in a simpler way for the callback
+        from ..operators.shader_apply_async import EVE_OT_apply_shader_modal
+
+        # Create temporary operator instance to use its method
+        op = EVE_OT_apply_shader_modal()
+        mat = op._ensure_node_group_material(strategy_name)
+
+        if mat:
+            # Apply to all system objects
+            systems = []
+            frontier = bpy.data.collections.get("Frontier")  # type: ignore[union-attr]
+            if frontier:
+
+                def _collect_recursive(collection):
+                    systems.extend(collection.objects)
+                    for child in collection.children:
+                        _collect_recursive(child)
+
+                _collect_recursive(frontier)
+
+            # Assign material to all systems
+            for obj in systems:
+                try:
+                    if getattr(obj, "data", None) and hasattr(obj.data, "materials"):
+                        if obj.data.materials:
+                            obj.data.materials[0] = mat
+                        else:
+                            obj.data.materials.append(mat)
+                except Exception:  # noqa: BLE001
+                    pass
+
+    # Update the StrategySelector value
+    if mat and mat.node_tree:
+        selector = mat.node_tree.nodes.get("StrategySelector")
+        if selector:
+            strategy_map = {
+                "CharacterRainbow": 0.0,
+                "PatternCategories": 1.0,
+                "PositionEncoding": 2.0,
+            }
+            selector.outputs[0].default_value = strategy_map.get(strategy_name, 0.0)
 
 
 def unregister():  # pragma: no cover

@@ -72,13 +72,9 @@ class EVE_PT_main(Panel):
         box_vis = layout.box()
         box_vis.label(text="Visualization", icon="MATERIAL")
 
-        # Node-based strategy selector
+        # Node-based strategy selector - auto-applies on change
         if hasattr(context.scene, "eve_active_strategy"):
             box_vis.prop(context.scene, "eve_active_strategy", text="Strategy")
-
-        # Apply button
-        row_vis = box_vis.row(align=True)
-        row_vis.operator("eve.apply_shader_modal", text="Apply Visualization", icon="PLAY")
 
         # --- View Section ---
         box_view = layout.box()

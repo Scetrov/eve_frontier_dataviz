@@ -34,7 +34,6 @@ If the tab or operators don’t show up, see Troubleshooting below.
 ## 🗂 Project Structure
 
 ```text
-```text
 blender_addon/
   copilot-instructions.md   # AI contribution guidance
   src/addon/
@@ -69,15 +68,15 @@ data/static.db (ignored)    # Large real dataset (not in repo)
 1. Ensure the SQLite database exists at `data/static.db` (or set a custom path in Add-on Preferences inside Blender).
 1. (Optional) Create a virtual environment & install dev deps:
 
-```bash
-pip install -e .[dev]
-```
+   ```bash
+   pip install -e .[dev]
+   ```
 
 1. Zip the add-on directory or point Blender at it directly:
 
-```bash
-python -m zipfile -c eve_frontier_visualizer.zip blender_addon/addon
-```
+   ```bash
+   python -m zipfile -c eve_frontier_visualizer.zip blender_addon/addon
+   ```
 
 1. In Blender: Edit > Preferences > Add-ons > Install… → choose the zip (or copy folder into scripts/addons) and enable it (`EVE Frontier: Data Visualizer`).
 1. Open the 3D Viewport > N panel > "EVE Frontier" tab.
@@ -118,15 +117,15 @@ Note: structural changes (renaming modules or adding new files imported at regis
 
 You can run a headless build + shader application in future workflows. Example skeleton (scene build pending expansion):
 
-```bash
-blender -b -P blender_addon/scripts/dev_reload.py -- --auto
-```
+   ```bash
+   blender -b -P blender_addon/scripts/dev_reload.py -- --auto
+   ```
 
-Or batch export with strategies:
+   Or batch export with strategies:
 
-```bash
-blender -b my_scene.blend -P blender_addon/scripts/export_batch.py -- --modes NameFirstCharHue ChildCountEmission
-```
+   ```bash
+   blender -b my_scene.blend -P blender_addon/scripts/export_batch.py -- --modes NameFirstCharHue ChildCountEmission
+   ```
 
 ### Uninstall / Clean
 
@@ -151,12 +150,12 @@ If none are provided, the field starts blank (no misleading placeholder). Set on
 
 Example (PowerShell on Windows):
 
-```powershell
-$env:EVE_STATIC_DB = "C:\\data\\eve\\static.db"
-blender
-```
+   ```powershell
+   $env:EVE_STATIC_DB = "C:\\data\\eve\\static.db"
+   blender
+   ```
 
-Or permanently via system environment settings.
+   Or permanently via system environment settings.
 
 ## 🚀 Usage Workflow
 
@@ -166,9 +165,9 @@ Or permanently via system environment settings.
 4. Pick and apply a visualization strategy (e.g. `NameFirstCharHue`).
 5. (Optional) Batch export renders:
 
-```bash
-blender -b your_scene.blend -P blender_addon/scripts/export_batch.py -- --modes NameFirstCharHue ChildCountEmission
-```
+   ```bash
+   blender -b your_scene.blend -P blender_addon/scripts/export_batch.py -- --modes NameFirstCharHue ChildCountEmission
+   ```
 
 ## 🧩 Adding a New Shader Strategy
 
@@ -212,16 +211,16 @@ This repo ships a `.pre-commit-config.yaml` that runs Ruff (lint & format), the 
 
 Install & enable:
 
-```bash
-pip install pre-commit
-pre-commit install
-```
+   ```bash
+   pip install pre-commit
+   pre-commit install
+   ```
 
-Run manually on all files:
+   Run manually on all files:
 
-```bash
-pre-commit run --all-files
-```
+   ```bash
+   pre-commit run --all-files
+   ```
 
 ## 🙌 Contributions
 
