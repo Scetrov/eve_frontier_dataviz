@@ -4,20 +4,6 @@ This document catalogs available visualization ("shader") strategies and the dat
 
 ## Built-in Strategies
 
-### NameFirstCharHue
-
-- ID: `NameFirstCharHue`
-- Mapping: First letter (A–Z) -> hue across color wheel (HSV). Saturation fixed at 0.8, value 1.0.
-- Objects: Systems (only systems instantiated currently; planets/moons available as counts on system objects).
-- Notes: Creates a shared base material then per-initial copies to set emission color.
-
-### ChildCountEmission
-
-- ID: `ChildCountEmission`
-- Mapping: Number of mesh children under a system object -> emission strength (0.1–10.0 bounded).
-- Objects: Systems.
-- Notes: Creates a base emission material and clones per distinct child count.
-
 ### NamePatternCategory
 
 - ID: `NamePatternCategory`
@@ -29,12 +15,13 @@ This document catalogs available visualization ("shader") strategies and the dat
 - Each category maps to a fixed emission color; materials reused per category.
 - Notes: Regexes intentionally broad to capture alphanumeric hybrids.
 
-### CharIndexHue
+### Unified Nth Character Hue Strategies
 
-- ID: `CharIndexHue`
-- Mapping: Aggregated per-character hue contributions (first 12 chars). Each character contributes a hue derived from (ordinal + index * offset). Final RGB is the averaged (clamped) accumulation.
-- Digits compressed into a partial hue range; punctuation bucketed.
-- Notes: Produces one variant material per system (hash-suffixed) — acceptable for current scale; future optimization could parameterize via node groups.
+Provided by `shaders/name_nth_char_hue.py`:
+
+- IDs: `NameFirstCharHue` (alias), plus `NameChar1HueUnified` .. `NameChar5HueUnified`
+- Mapping: Character at index N (0–4) in system name -> hue across wheel. Digits & punctuation mapped to stable sub‑ranges.
+- Notes: Consolidates previously separate per-character modules into one deterministic generator. Materials are reused per (index, character) pair.
 
 ## Future Strategy Ideas
 

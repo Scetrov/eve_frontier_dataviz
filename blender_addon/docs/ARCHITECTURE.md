@@ -3,16 +3,16 @@
 ## Layered Design (Current vs Planned)
 
 1. Data Layer (implemented): `src/addon/data_loader.py` converts SQLite tables → dataclasses (Systems with nested Planets + Moons).
-2. Scene Layer (partial): Implemented inline in `operators.EVE_OT_build_scene` (systems only). Planned extraction to `scene_builder.py`.
+2. Scene Layer (partial): Implemented inline in `operators.build_scene` / `operators.build_scene_modal` (systems only). Planned extraction to `scene_builder.py`.
 3. Visualization Layer: `shader_registry.py`, `shaders_builtin.py` apply / reuse materials per system.
-4. UI / Orchestration: `operators.py`, `panels.py`, `preferences.py` route user actions.
+4. UI / Orchestration: `operators/` package (modular operator modules), `panels.py`, `preferences.py` route user actions.
 
 ## Current Flow
 
 ```text
 SQLite --> data_loader (pure Python) --> [System dataclasses (+ planets/moons in-memory)]
-  --> build_scene (systems only) --> Blender objects (custom props: planet_count, moon_count)
-  --> shader strategy (NameFirstCharHue, ChildCountEmission) --> Materials
+  --> build_scene (systems only, via operators/build_scene_modal.py) --> Blender objects (custom props: planet_count, moon_count)
+  --> shader strategy (e.g. NameFirstCharHue, NamePatternCategory) --> Materials
 ```
 
 ## Planned Flow (Future Extraction)
@@ -42,7 +42,7 @@ SQLite -> data_loader -> entities -> scene_builder.build() -> objects -> strateg
 | Data Model | Add dataclass + bulk fetch + parent linking pattern |
 | Scene (future) | New builder functions in `scene_builder.py` |
 | Strategies | New subclass + `@register_strategy` decorator |
-| Operators | New `EVE_OT_*` with concise `execute` and clear reporting |
+| Operators | Add new module under `operators/` (e.g. `my_feature.py`) exposing `EVE_OT_*` and let `operators.__init__` aggregate |
 
 ## Error Handling & Reporting
 

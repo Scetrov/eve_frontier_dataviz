@@ -27,10 +27,11 @@ blender_addon/
       data_loader.py      – Pure Python SQLite loader (systems→planets→moons)
       data_state.py       – In‑memory cache of loaded systems
       preferences.py      – Add-on preferences (db path, scale, cache toggle)
-      operators.py        – Operators: load data, build scene, apply shader
+      operators/          – Modular operators (data, build async, shader async, viewport)
       panels.py           – UI panel (N‑panel) integrating operators
       shader_registry.py  – Strategy registry + base class
-      shaders_builtin.py  – Built-in visualization strategies
+      shaders_builtin.py  – Legacy/basic helper utilities (may migrate)
+      shaders/            – Strategy modules (pattern category, unified nth-char hue)
   docs/
     ARCHITECTURE.md       – Layer boundaries & design notes
     DATA_MODEL.md         – Database tables / dataclass mapping
@@ -131,7 +132,7 @@ The database is assumed to be SQLite with tables resembling:
 - [ ] Add preferences for DB path & scale
 - [ ] Implement data loader with caching
 - [ ] Scene builder with collections & parenting
-- [ ] Basic shader strategies (NameFirstCharHue, ChildCountEmission)
+- [ ] Basic shader strategies (NamePatternCategory, unified nth-char hue)
 - [ ] Batch export script
 - [ ] Documentation: DATA_MODEL, SHADERS, ARCHITECTURE
 - [ ] Add minimal CI to lint Python (flake8 or ruff)

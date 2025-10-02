@@ -19,7 +19,8 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = [".", "blender_addon/src"]
-addopts = "-q --cov --cov-report=term-missing"
+# Enforce coverage threshold (>=90%) and fail on Ruff lint issues by running Ruff first in pre-commit.
+addopts = "-q --cov --cov-report=term-missing --cov-fail-under=90"
 
 [tool.ruff]
 line-length = 100

@@ -82,7 +82,7 @@ class EVE_PT_main(Panel):
             shader_in_progress = getattr(wm, "eve_shader_in_progress", False)
             if not shader_in_progress:
                 row_vis = box_vis.row(align=True)
-                row_vis.operator("eve.apply_shader", text="Apply (Sync)", icon="PLAY")
+                # Only async apply retained (sync removed for reliability)
                 row_vis.operator(
                     "eve.apply_shader_modal", text="Apply (Async)", icon="PLAY_REVERSE"
                 )
@@ -105,16 +105,9 @@ class EVE_PT_main(Panel):
         # --- View Section ---
         box_view = layout.box()
         box_view.label(text="View / Camera", icon="VIEW_CAMERA")
-        row_view = box_view.row(align=True)
-        row_view.operator("eve.viewport_fit_systems", text="Frame (Top)", icon="VIEWZOOM")
-        row_view.operator("eve.viewport_fit_preserve", text="Frame (Keep Angle)", icon="VIEWZOOM")
         row_view2 = box_view.row(align=True)
         row_view2.operator(
             "eve.viewport_set_space", text="Set Background to Black", icon="WORLD_DATA"
-        )
-        # Use a valid icon that conveys zoom-to-selection; VIEW_RESET isn't a valid enum.
-        row_view2.operator(
-            "eve.viewport_fit_selection", text="Frame Selection", icon="ZOOM_SELECTED"
         )
         row_view_hdri = box_view.row(align=True)
         op_hdri = row_view_hdri.operator(

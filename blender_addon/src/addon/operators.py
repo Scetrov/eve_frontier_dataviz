@@ -574,71 +574,7 @@ def _strategy_items(self, context):  # pragma: no cover - Blender runtime usage
         return [("__error__", "(error)", "Failed to enumerate strategies")]
 
 
-class EVE_OT_apply_shader(Operator):
-    bl_idname = "eve.apply_shader"
-    bl_label = "Apply Visualization"
-    bl_description = "Apply selected shader strategy to generated objects"
-
-    # Proper EnumProperty declaration (annotation only) to avoid _PropertyDeferred leakage on reload.
-    strategy_id: bpy.props.EnumProperty(  # type: ignore[valid-type]
-        name="Strategy",
-        description="Shader / visualization strategy to apply",
-        items=_strategy_items,
-    )
-
-    def execute(self, context):  # noqa: D401
-        objs_by_type = {"systems": []}
-        systems_coll = None
-        for cname in _generated_collection_names:
-            coll = bpy.data.collections.get(cname)
-            if not coll:
-                continue
-            if cname == "EVE_Systems":
-                objs_by_type["systems"].extend(coll.objects)
-                systems_coll = coll
-        # Resolve selected strategy id; handle reload edge cases where EnumProperty is still deferred.
-        # Prefer global dropdown selection if present
-        wm = context.window_manager
-        sid = None
-        sid_wm = getattr(wm, "eve_strategy_id", None)
-        if isinstance(sid_wm, str) and sid_wm not in {"__none__", "__error__"}:
-            sid = sid_wm
-        else:
-            sid = getattr(self, "strategy_id", None)
-        if not isinstance(sid, str) or sid in {"__none__", "__error__"}:
-            # Pick first available strategy as fallback
-            strats = get_strategies()
-            if strats:
-                sid = strats[0].id
-            else:
-                self.report({"ERROR"}, "No strategies registered")
-                return {"CANCELLED"}
-        strat = get_strategy(sid)
-        if not strat:
-            self.report({"ERROR"}, f"Strategy {sid} not found")
-            return {"CANCELLED"}
-        self.strategy_id = sid  # persist chosen id
-        # Performance optimizations: disable undo & hide collection during bulk material assignment
-        prev_undo = bpy.context.preferences.edit.use_global_undo
-        prev_hide = None
-        if systems_coll is not None:
-            prev_hide = systems_coll.hide_viewport
-            systems_coll.hide_viewport = True
-        bpy.context.preferences.edit.use_global_undo = False
-        try:
-            strat.build(context, objs_by_type)
-        finally:
-            bpy.context.preferences.edit.use_global_undo = prev_undo
-            if systems_coll is not None and prev_hide is not None:
-                systems_coll.hide_viewport = prev_hide
-            # Force a redraw after bulk apply
-            try:
-                for area in context.screen.areas:
-                    area.tag_redraw()
-            except Exception:
-                pass
-        self.report({"INFO"}, f"Applied {sid}")
-        return {"FINISHED"}
+## Removed EVE_OT_apply_shader (sync) per request; async version retained.
 
 
 class EVE_OT_apply_shader_modal(Operator):  # pragma: no cover - Blender runtime usage
@@ -736,7 +672,7 @@ class EVE_OT_apply_shader_modal(Operator):  # pragma: no cover - Blender runtime
             for i in range(self._index, end):
                 obj = self._objects[i]
                 try:
-                    self._strategy.apply(context, obj)
+                    self._strategy.apply(context, obj)  # type: ignore[attr-defined]
                 except Exception:
                     pass
         else:
@@ -794,309 +730,7 @@ class EVE_OT_apply_shader_modal(Operator):  # pragma: no cover - Blender runtime
             pass
 
 
-class EVE_OT_viewport_fit_systems(Operator):
-    bl_idname = "eve.viewport_fit_systems"
-    bl_label = "Frame All Systems"
-    bl_description = "Adjust 3D View to frame all generated system objects"
-
-    def execute(self, context):  # noqa: D401
-        systems_coll = bpy.data.collections.get("EVE_Systems")
-        if not systems_coll or not systems_coll.objects:
-            self.report({"WARNING"}, "No systems to frame")
-            return {"CANCELLED"}
-        objs = list(systems_coll.objects)
-        # Safety: avoid attempting to frame if too many objects for selection-based method
-        count = len(objs)
-        if count == 0:
-            self.report({"WARNING"}, "No systems to frame")
-            return {"CANCELLED"}
-
-        # Preserve current selection / active
-        view_layer = context.view_layer
-        prev_selected = set(bpy.context.selected_objects)
-        prev_active = view_layer.objects.active
-        restore_mode = None
-        try:
-            if bpy.context.mode != "OBJECT":  # leave edit/sculpt modes cleanly
-                restore_mode = bpy.context.mode
-                bpy.ops.object.mode_set(mode="OBJECT")
-        except Exception:
-            restore_mode = None
-
-        # Deselect all then select system objects
-        try:
-            bpy.ops.object.select_all(action="DESELECT")
-        except Exception:
-            for o in bpy.context.selected_objects:
-                try:
-                    o.select_set(False)
-                except Exception:
-                    pass
-        for o in objs:
-            try:
-                o.select_set(True)
-            except Exception:
-                pass
-        # Set an active object (helps view_selected stability)
-        try:
-            view_layer.objects.active = objs[0]
-        except Exception:
-            pass
-
-        framed_any = False
-        for area in context.screen.areas:
-            if area.type != "VIEW_3D":
-                continue
-            region = next((r for r in area.regions if r.type == "WINDOW"), None)
-            space = next((s for s in area.spaces if s.type == "VIEW_3D"), None)
-            if not (region and space):
-                continue
-            override = {
-                "window": context.window,
-                "screen": context.screen,
-                "area": area,
-                "region": region,
-                "space_data": space,
-                "scene": context.scene,
-                "view_layer": view_layer,
-            }
-            # Force top view
-            try:
-                bpy.ops.view3d.view_axis(override, type="TOP")
-            except Exception:
-                pass
-            # Ensure orthographic
-            try:
-                space.region_3d.view_perspective = "ORTHO"
-            except Exception:
-                pass
-            # Frame selection using Blender's internal logic (robust for all sizes)
-            try:
-                bpy.ops.view3d.view_selected(override, use_all_regions=False)
-            except TypeError:
-                # Older / different Blender signature fallback
-                try:
-                    bpy.ops.view3d.view_selected(override)
-                except Exception:
-                    pass
-            except Exception:
-                pass
-            # Add a tiny padding (zoom out slightly) so nothing hugs edge
-            try:
-                r3d = space.region_3d
-                if hasattr(r3d, "view_distance"):
-                    r3d.view_distance *= 1.02
-            except Exception:
-                pass
-            framed_any = True
-
-        # Restore previous selection
-        try:
-            bpy.ops.object.select_all(action="DESELECT")
-        except Exception:
-            for o in bpy.context.selected_objects:
-                try:
-                    o.select_set(False)
-                except Exception:
-                    pass
-        for o in prev_selected:
-            try:
-                o.select_set(True)
-            except Exception:
-                pass
-        try:
-            view_layer.objects.active = prev_active
-        except Exception:
-            pass
-        if restore_mode:
-            try:
-                bpy.ops.object.mode_set(mode=restore_mode)
-            except Exception:
-                pass
-
-        if not framed_any:
-            self.report({"WARNING"}, "No VIEW_3D area found")
-            return {"CANCELLED"}
-        self.report({"INFO"}, f"Viewport framed (Top Ortho, {count} systems)")
-        return {"FINISHED"}
-
-
-class EVE_OT_viewport_fit_systems_preserve(Operator):
-    bl_idname = "eve.viewport_fit_preserve"
-    bl_label = "Frame Systems (Keep Angle)"
-    bl_description = "Frame all systems without changing current view angle (uses view_selected)"
-
-    def execute(self, context):  # noqa: D401
-        systems_coll = bpy.data.collections.get("EVE_Systems")
-        if not systems_coll or not systems_coll.objects:
-            self.report({"WARNING"}, "No systems to frame")
-            return {"CANCELLED"}
-        objs = list(systems_coll.objects)
-        if not objs:
-            self.report({"WARNING"}, "No systems to frame")
-            return {"CANCELLED"}
-        view_layer = context.view_layer
-        prev_selected = set(bpy.context.selected_objects)
-        prev_active = view_layer.objects.active
-        restore_mode = None
-        try:
-            if bpy.context.mode != "OBJECT":
-                restore_mode = bpy.context.mode
-                bpy.ops.object.mode_set(mode="OBJECT")
-        except Exception:
-            restore_mode = None
-        # Deselect then select systems
-        try:
-            bpy.ops.object.select_all(action="DESELECT")
-        except Exception:
-            for o in bpy.context.selected_objects:
-                try:
-                    o.select_set(False)
-                except Exception:
-                    pass
-        for o in objs:
-            try:
-                o.select_set(True)
-            except Exception:
-                pass
-        try:
-            view_layer.objects.active = objs[0]
-        except Exception:
-            pass
-        framed_any = False
-        for area in context.screen.areas:
-            if area.type != "VIEW_3D":
-                continue
-            region = next((r for r in area.regions if r.type == "WINDOW"), None)
-            space = next((s for s in area.spaces if s.type == "VIEW_3D"), None)
-            if not (region and space):
-                continue
-            override = {
-                "window": context.window,
-                "screen": context.screen,
-                "area": area,
-                "region": region,
-                "space_data": space,
-                "scene": context.scene,
-                "view_layer": view_layer,
-            }
-            try:
-                bpy.ops.view3d.view_selected(override, use_all_regions=False)
-            except TypeError:
-                try:
-                    bpy.ops.view3d.view_selected(override)
-                except Exception:
-                    pass
-            except Exception:
-                pass
-            # Slight outward padding
-            try:
-                r3d = space.region_3d
-                if hasattr(r3d, "view_distance"):
-                    r3d.view_distance *= 1.02
-            except Exception:
-                pass
-            framed_any = True
-        # Restore selection
-        try:
-            bpy.ops.object.select_all(action="DESELECT")
-        except Exception:
-            for o in bpy.context.selected_objects:
-                try:
-                    o.select_set(False)
-                except Exception:
-                    pass
-        for o in prev_selected:
-            try:
-                o.select_set(True)
-            except Exception:
-                pass
-        try:
-            view_layer.objects.active = prev_active
-        except Exception:
-            pass
-        if restore_mode:
-            try:
-                bpy.ops.object.mode_set(mode=restore_mode)
-            except Exception:
-                pass
-        if not framed_any:
-            self.report({"WARNING"}, "No VIEW_3D area found")
-            return {"CANCELLED"}
-        self.report({"INFO"}, f"Viewport framed (preserve angle, {len(objs)} systems)")
-        return {"FINISHED"}
-
-
-class EVE_OT_viewport_fit_selection(Operator):
-    bl_idname = "eve.viewport_fit_selection"
-    bl_label = "Frame Selection"
-    bl_description = "Frame only the currently selected system objects (keeps angle)"
-
-    def execute(self, context):  # noqa: D401
-        selected = list(bpy.context.selected_objects)
-        if not selected:
-            self.report({"WARNING"}, "No objects selected")
-            return {"CANCELLED"}
-        view_layer = context.view_layer
-        prev_selected = set(selected)
-        prev_active = view_layer.objects.active
-        # Ensure in object mode
-        restore_mode = None
-        try:
-            if bpy.context.mode != "OBJECT":
-                restore_mode = bpy.context.mode
-                bpy.ops.object.mode_set(mode="OBJECT")
-        except Exception:
-            restore_mode = None
-        # (Selection already as desired) set active if missing
-        try:
-            if prev_active not in prev_selected and selected:
-                view_layer.objects.active = selected[0]
-        except Exception:
-            pass
-        framed_any = False
-        for area in context.screen.areas:
-            if area.type != "VIEW_3D":
-                continue
-            region = next((r for r in area.regions if r.type == "WINDOW"), None)
-            space = next((s for s in area.spaces if s.type == "VIEW_3D"), None)
-            if not (region and space):
-                continue
-            override = {
-                "window": context.window,
-                "screen": context.screen,
-                "area": area,
-                "region": region,
-                "space_data": space,
-                "scene": context.scene,
-                "view_layer": view_layer,
-            }
-            try:
-                bpy.ops.view3d.view_selected(override, use_all_regions=False)
-            except TypeError:
-                try:
-                    bpy.ops.view3d.view_selected(override)
-                except Exception:
-                    pass
-            except Exception:
-                pass
-            try:
-                r3d = space.region_3d
-                if hasattr(r3d, "view_distance"):
-                    r3d.view_distance *= 1.015
-            except Exception:
-                pass
-            framed_any = True
-        if restore_mode:
-            try:
-                bpy.ops.object.mode_set(mode=restore_mode)
-            except Exception:
-                pass
-        if not framed_any:
-            self.report({"WARNING"}, "No VIEW_3D area found")
-            return {"CANCELLED"}
-        self.report({"INFO"}, f"Framed current selection ({len(selected)} objects)")
-        return {"FINISHED"}
+## Removed viewport framing operators (fit systems, preserve, selection) per request.
 
 
 class EVE_OT_viewport_set_space(Operator):
@@ -1295,11 +929,7 @@ def register():  # pragma: no cover - Blender runtime usage
     bpy.utils.register_class(EVE_OT_build_scene_modal)
     bpy.utils.register_class(EVE_OT_cancel_build)
     bpy.utils.register_class(EVE_OT_cancel_shader)
-    bpy.utils.register_class(EVE_OT_apply_shader)
     bpy.utils.register_class(EVE_OT_apply_shader_modal)
-    bpy.utils.register_class(EVE_OT_viewport_fit_systems)
-    bpy.utils.register_class(EVE_OT_viewport_fit_systems_preserve)
-    bpy.utils.register_class(EVE_OT_viewport_fit_selection)
     bpy.utils.register_class(EVE_OT_viewport_set_space)
     bpy.utils.register_class(EVE_OT_viewport_set_hdri)
     bpy.utils.register_class(EVE_OT_viewport_set_clip)
@@ -1356,11 +986,7 @@ def register():  # pragma: no cover - Blender runtime usage
             items=_strategy_enum_items,
         )
     # Fallback: ensure strategy_id materialized (rare on some reload sequences)
-    if not hasattr(EVE_OT_apply_shader, "strategy_id"):
-        print(
-            "[EVEVisualizer][warn] strategy_id EnumProperty missing; injecting StringProperty fallback"
-        )
-        EVE_OT_apply_shader.strategy_id = bpy.props.StringProperty(name="Strategy")  # type: ignore[attr-defined]
+    # Removed sync strategy operator; no fallback injection needed.
 
 
 def unregister():  # pragma: no cover - Blender runtime usage
@@ -1369,8 +995,6 @@ def unregister():  # pragma: no cover - Blender runtime usage
     bpy.utils.unregister_class(EVE_OT_clear_scene)
     bpy.utils.unregister_class(EVE_OT_viewport_set_space)
     bpy.utils.unregister_class(EVE_OT_viewport_set_hdri)
-    bpy.utils.unregister_class(EVE_OT_viewport_fit_systems)
-    bpy.utils.unregister_class(EVE_OT_apply_shader)
     bpy.utils.unregister_class(EVE_OT_apply_shader_modal)
     bpy.utils.unregister_class(EVE_OT_cancel_build)
     bpy.utils.unregister_class(EVE_OT_cancel_shader)

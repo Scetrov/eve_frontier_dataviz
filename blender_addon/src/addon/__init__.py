@@ -20,16 +20,13 @@ def _load_modules():  # lazy import to avoid bpy dependency in pure-Python tests
         return _loaded_modules
     module_names = [
         "preferences",
-        "operators",
+        "operators",  # now a package with submodules
         "panels",
         "shader_registry",
         "shaders_builtin",
-        # individual shader strategy modules (modularized)
-        "shaders.child_count_emission",
+        # shader strategy modules
         "shaders.name_pattern_category",
-        "shaders.char_index_hue",
-        # unified nth-character hue strategies (2nd-5th)
-        "shaders.name_nth_char_hue",
+        "shaders.name_nth_char_hue",  # unified nth-char + alias for NameFirstCharHue
     ]
     mods = []
     for name in module_names:
