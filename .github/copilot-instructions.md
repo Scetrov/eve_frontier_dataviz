@@ -47,6 +47,8 @@ Idempotent: re-running may reuse or lazily create a bounded set of materials; no
 - Only touch objects inside `EVE_*` collections you create.
 - Avoid scanning all materials each loop—cache lookups by name.
 - Keep operator `execute` methods fast; heavy work belongs in pure Python helpers where possible.
+- Ensure long-running operators (e.g. scene build) support cancellation and report progress.
+- Check the schema below if unsure about where to get data from.
 
 ### When Extending
 
@@ -64,6 +66,7 @@ Idempotent: re-running may reuse or lazily create a bounded set of materials; no
 - Markdown: `python blender_addon/scripts/markdown_lint.py` in CI.
 - Pre-commit: ruff (fix + format), markdown lint, pytest.
 - Commit messages: Conventional Commits style (chore:, feat:, fix:, docs:, test:, refactor:, etc).
+- MCP servers: Pylance MCP for running python scripts, GitHub for accessing builds, PRs and issues.
 
 ### Common Pitfalls to Avoid
 
