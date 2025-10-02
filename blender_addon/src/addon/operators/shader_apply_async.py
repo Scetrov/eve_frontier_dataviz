@@ -48,7 +48,13 @@ if bpy:
             systems = []
             coll = bpy.data.collections.get("Frontier")  # type: ignore[union-attr]
             if coll:
-                systems.extend(coll.objects)
+                # Recursively gather objects from Frontier and all subcollections (Region/Constellation hierarchy)
+                def _collect_recursive(collection):
+                    systems.extend(collection.objects)
+                    for child in collection.children:
+                        _collect_recursive(child)
+
+                _collect_recursive(coll)
             self._objects = systems
             self._total = len(systems)
 
