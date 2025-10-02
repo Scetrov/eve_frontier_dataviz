@@ -1,14 +1,14 @@
 # EVE Frontier 3D Data Visualizer (Blender Add-on)
 
-This repository contains a Blender add-on and supporting scripts to visualize astronomical / game world data stored extracted from [the EVE Frontier Client](https://github.com/frontier-reapers/Phobos/tree/fsdbinary-t1) inside a 3D scene. It focuses on representing systems, planets, moons, stations, and other entities with procedural shaders that encode metrics (counts, categorical codes, characters of names) into colors, emission, shape modifiers, or geometry node inputs.
+This repository contains a Blender add-on and supporting scripts to visualize astronomical / game world data extracted from [the EVE Frontier Client](https://github.com/frontier-reapers/Phobos/tree/fsdbinary-t1) inside a 3D scene. It focuses on representing systems, planets, moons, stations, and other entities with **GPU-driven, node-based shader strategies** that encode metrics (counts, categorical codes, characters of names) into colors and emission strength.
 
 ## ✨ Core Goals
 
 - Read data from a large SQLite database, while remaining separate from it so as not to commit a 30MB file to Git.
 - Transform raw rows (systems, planets, moons, etc.) into a normalized in-memory scene graph.
 - Instantiate Solar Systems as Blender objects in collections.
-- Provide multiple **visualization modes** ("shaders") to map attributes (e.g. first letter of system name, orbital count) to material properties.
-- Offer an extensible plug-in style registry for adding new shader strategies.
+- Provide multiple **node-based visualization strategies** with instant GPU-driven switching.
+- Pre-calculate properties once during scene build for zero-cost strategy changes.
 - Allow batch re-render/export (stills or animation) via command line (headless `blender --background`).
 
 ## 🗂 Project Structure
@@ -27,28 +27,42 @@ blender_addon/
       data_loader.py      – Pure Python SQLite loader (systems→planets→moons)
       data_state.py       – In‑memory cache of loaded systems
       preferences.py      – Add-on preferences (db path, scale, cache toggle)
-      operators/          – Modular operators (data, build async, shader async, viewport)
+      operators/          – Modular operators (data, build, shader, viewport, property calculators)
       panels.py           – UI panel (N‑panel) integrating operators
-      shader_registry.py  – Strategy registry + base class
-      shaders_builtin.py  – Legacy/basic helper utilities (may migrate)
-      shaders/            – Strategy modules (pattern category, unified nth-char hue)
+      node_groups/        – Node-based visualization strategies (CharacterRainbow, PatternCategories, PositionEncoding)
   docs/
     ARCHITECTURE.md       – Layer boundaries & design notes
     DATA_MODEL.md         – Database tables / dataclass mapping
-    SHADERS.md            – Strategy contract & examples
+    NODE_BASED_STRATEGIES.md – Comprehensive node system guide
+    SHADERS.md            – Strategy catalog and usage
+    SHADER_PROPERTIES.md  – Custom property reference
   scripts/
     dev_reload.py         – Helper to reload add-on inside Blender session
     export_batch.py       – Example headless export / batch script
     markdown_lint.py      – Minimal Markdown formatting linter
-  shaders/                – (Placeholder for external .blend / node assets)
   tests/
     conftest.py           – Adds src path for imports
     fixtures/mini.db.sql  – Tiny SQLite schema + seed data for tests
     test_data_loader.py   – Loader hierarchy & cache tests
     test_data_state.py    – In‑memory state tests
+    test_property_calculators.py – Property calculation tests
 ```
 
 Not (yet) present: `scene_builder.py`, geometry node assets, or planet/moon object instancing (the scene currently creates only system objects with planet/moon counts stored as custom properties).
+
+## Key Features
+
+### Node-Based Visualization System
+
+- **GPU-Driven**: All color/strength calculations happen on GPU via shader nodes
+- **Instant Switching**: Change strategies via dropdown with zero Python iteration
+- **Pre-Calculated Properties**: Character indices and semantic data computed once during scene build
+- **Three Built-In Strategies**:
+  - **Character Rainbow**: Color by first character, brightness by child count
+  - **Pattern Categories**: Distinct colors for naming patterns (DASH/COLON/DOTSEQ/PIPE/OTHER)
+  - **Position Encoding**: Multi-character RGB encoding with black hole boost
+- **Single Shared Material**: All systems use `EVE_NodeGroupStrategies` material with Mix node switcher
+- **Extensible**: Add new strategies by creating shader node groups
 
 ## 🔧 Installation (Development Mode)
 
@@ -70,32 +84,42 @@ Then install the produced zip in Blender.
 ## 🚀 Usage Workflow
 
 1. Set DB path in Add-on Preferences if not default.
-2. Click "Load / Refresh Data" to parse and cache entities.
-3. Click "Build Scene" to instantiate objects.
-4. Choose a Visualization Mode (e.g. `NameFirstCharHue`, `NamePatternCategory`).
-5. Press "Apply Visualization" to update colors using the unified attribute-driven material (single material, per-object color & strength attributes).
-6. (Optional) Run batch export:
+2. Click **Load / Refresh Data** to parse and cache entities.
+3. Click **Build Scene** to instantiate objects with pre-calculated properties.
+4. Select a visualization strategy from the **Strategy** dropdown:
+   - Character Rainbow
+   - Pattern Categories
+   - Position Encoding
+5. Click **Apply Visualization** to create/update the shared material.
+6. Change strategies instantly via dropdown (no rebuild needed).
+7. (Optional) Run batch export:
 
 ```sh
-blender -b your_scene.blend -P scripts/export_batch.py -- --modes NameFirstCharHue HierarchyDepthGlow
+blender -b your_scene.blend -P scripts/export_batch.py
 ```
 
-## 🧩 Adding a New Shader Strategy
+## 🧩 Adding a New Visualization Strategy
 
-1. Create a subclass of `BaseShaderStrategy` in `shader_registry.py` or a new module.
-2. Implement:
+The system uses **node-based strategies** implemented as Blender shader node groups:
 
-   ```python
-   id = "MyStrategy"
-   label = "My Custom Strategy"
-   attributes = ["uses_name", "uses_counts"]
+1. Create a new shader node group in Blender:
+   - Name: `EVE_Strategy_YourStrategyName`
+   - Inputs: None (read from Attribute nodes)
+   - Outputs: `Color` (RGBA) and `Strength` (Value)
 
-   def build(self, context, objects):
-       # assign or update materials on provided objects
-   ```
+2. Implement your visualization logic using:
+   - **Attribute nodes** to read `eve_name_char_index_*`, `eve_planet_count`, etc.
+   - **Math/ColorRamp/Mix nodes** for processing
+   - **Combine HSV/RGB nodes** for color generation
 
-3. Register it via the `register_strategy()` call or decorator.
-4. Document it in `docs/SHADERS.md`.
+3. Integrate into the add-on:
+   - Add creation function to `node_groups/__init__.py`
+   - Update `_ensure_node_group_material()` to include your strategy in the Mix node switcher
+   - Add enum item to `_node_strategy_enum_items()` for UI dropdown
+
+4. Document in `docs/SHADERS.md`.
+
+See `docs/NODE_BASED_STRATEGIES.md` for detailed examples and templates.
 
 ## 🗃 Data Expectations
 

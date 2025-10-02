@@ -280,12 +280,14 @@ Update UI panel to show dropdown that modifies this property.
 - [x] Implement update callback for instant switching
 - [x] Sync scene property when operator runs
 
-### 📋 Phase 4: Legacy Cleanup (Planned)
+### ✅ Phase 4: Legacy Cleanup (Complete)
 
-- [ ] Deprecate old Python strategy system (`shader_registry.py`, `shaders_builtin.py`)
-- [ ] Remove legacy strategy dropdown from panel
-- [ ] Clean up unused strategy modules (`shaders/` directory)
-- [ ] Update all documentation to reference node-based system only
+- [x] Deprecate old Python strategy system (`shader_registry.py`, `shaders_builtin.py`)
+- [x] Remove legacy strategy dropdown from panel
+- [x] Clean up unused strategy modules (`shaders/` directory)
+- [x] Update all documentation to reference node-based system only
+- [x] Simplify operator to use scene property directly
+- [x] Remove all WindowManager legacy properties
 
 ### 📋 Phase 5: Documentation & Examples (Planned)
 
