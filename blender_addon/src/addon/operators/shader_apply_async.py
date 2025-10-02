@@ -472,6 +472,7 @@ def _on_strategy_change(self, context):  # pragma: no cover
     # Update the StrategySelector value AND fix broken node group references
     if mat and mat.node_tree:
         nodes = mat.node_tree.nodes
+        links = mat.node_tree.links
 
         # Fix broken node group references (Missing Data nodes)
         node_group_map = {
@@ -480,6 +481,7 @@ def _on_strategy_change(self, context):  # pragma: no cover
             "PositionEncoding": "EVE_Strategy_PositionEncoding",
         }
 
+        needs_reconnect = False
         for node_name, ng_name in node_group_map.items():
             node = nodes.get(node_name)
             if node and node.type == "GROUP":
@@ -491,10 +493,62 @@ def _on_strategy_change(self, context):  # pragma: no cover
                     node.node_tree = bpy.data.node_groups.get(ng_name)  # type: ignore[attr-defined]
                     if node.node_tree:
                         print(f"[EVEVisualizer][strategy_change] Successfully re-linked {ng_name}")
+                        needs_reconnect = True
                     else:
                         print(
                             f"[EVEVisualizer][strategy_change] ERROR: Node group {ng_name} not found!"
                         )
+
+        # Rebuild connections if we re-linked any node groups
+        if needs_reconnect:
+            print("[EVEVisualizer][strategy_change] Rebuilding node connections...")
+
+            # Get all the nodes we need
+            ng_char_rainbow = nodes.get("CharacterRainbow")
+            ng_pattern = nodes.get("PatternCategories")
+            ng_position = nodes.get("PositionEncoding")
+            mix_color_1 = nodes.get("MixColor1")
+            mix_color_2 = nodes.get("MixColor2")
+            mix_strength_1 = nodes.get("MixStrength1")
+            mix_strength_2 = nodes.get("MixStrength2")
+
+            # Reconnect color paths
+            if ng_char_rainbow and ng_pattern and mix_color_1:
+                # Clear existing connections to these inputs
+                for input_socket in [mix_color_1.inputs[6], mix_color_1.inputs[7]]:
+                    for link in input_socket.links:
+                        links.remove(link)
+                # Reconnect
+                links.new(ng_char_rainbow.outputs["Color"], mix_color_1.inputs[6])  # A
+                links.new(ng_pattern.outputs["Color"], mix_color_1.inputs[7])  # B
+                print("[EVEVisualizer][strategy_change] Reconnected MixColor1")
+
+            if mix_color_1 and ng_position and mix_color_2:
+                # Clear existing connections
+                for input_socket in [mix_color_2.inputs[6], mix_color_2.inputs[7]]:
+                    for link in input_socket.links:
+                        links.remove(link)
+                # Reconnect
+                links.new(mix_color_1.outputs[2], mix_color_2.inputs[6])  # A
+                links.new(ng_position.outputs["Color"], mix_color_2.inputs[7])  # B
+                print("[EVEVisualizer][strategy_change] Reconnected MixColor2")
+
+            # Reconnect strength paths
+            if ng_char_rainbow and ng_pattern and mix_strength_1:
+                for input_socket in [mix_strength_1.inputs[0], mix_strength_1.inputs[1]]:
+                    for link in input_socket.links:
+                        links.remove(link)
+                links.new(ng_char_rainbow.outputs["Strength"], mix_strength_1.inputs[0])  # A
+                links.new(ng_pattern.outputs["Strength"], mix_strength_1.inputs[1])  # B
+                print("[EVEVisualizer][strategy_change] Reconnected MixStrength1")
+
+            if mix_strength_1 and ng_position and mix_strength_2:
+                for input_socket in [mix_strength_2.inputs[0], mix_strength_2.inputs[1]]:
+                    for link in input_socket.links:
+                        links.remove(link)
+                links.new(mix_strength_1.outputs[0], mix_strength_2.inputs[0])  # A
+                links.new(ng_position.outputs["Strength"], mix_strength_2.inputs[1])  # B
+                print("[EVEVisualizer][strategy_change] Reconnected MixStrength2")
 
         selector = mat.node_tree.nodes.get("StrategySelector")
         if selector:
