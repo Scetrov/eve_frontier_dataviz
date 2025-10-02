@@ -7,14 +7,15 @@ try:  # pragma: no cover
 except Exception:  # noqa: BLE001
     bpy = None  # type: ignore
 
-GENERATED_COLLECTIONS = ["Frontier_Systems", "EVE_Planets", "EVE_Moons", "Frontier_Regions"]
+GENERATED_COLLECTIONS = ["Frontier_Systems", "EVE_Planets", "EVE_Moons"]
 
 
 def get_or_create_collection(name: str):  # pragma: no cover - needs Blender
     """Get or create a *top-level* collection under the scene root.
 
-    Used for the canonical flat collections (Frontier_Systems, etc.) and the
-    root hierarchy collection Frontier_Regions.
+    Used for the canonical flat collections (Frontier_Systems, etc.). When
+    hierarchy mode is enabled, region and constellation subcollections are
+    nested under Frontier_Systems (Region -> Constellation -> Systems).
     """
     if bpy is None:
         return None

@@ -183,7 +183,8 @@ if bpy:
                         if self._region_cache is None:
                             # cache structure: { region_key: { 'coll': <Collection>, 'const': { const_key: <Collection> } } }
                             self._region_cache = {}
-                        root = get_or_create_collection("Frontier_Regions")
+                        # Root for hierarchy is the main Frontier_Systems collection (nested structure)
+                        root = get_or_create_collection("Frontier_Systems")
                         cache_entry = (
                             self._region_cache.get(region_key) if self._region_cache else None
                         )

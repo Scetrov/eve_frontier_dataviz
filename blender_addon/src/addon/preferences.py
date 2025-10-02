@@ -202,7 +202,7 @@ class EVEVisualizerPreferences(_BasePrefs):
         name="Region/Constellation Collections",
         default=False,
         description=(
-            "If enabled, systems will also be organized under Frontier_Regions/<Region>/<Constellation> collections"
+            "If enabled, Frontier_Systems will contain nested <Region>/<Constellation> subcollections instead of a flat list"
         ),
     )
 
