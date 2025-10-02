@@ -199,10 +199,10 @@ class EVEVisualizerPreferences(_BasePrefs):
         ),
     )
     build_region_hierarchy: BoolProperty(  # type: ignore[valid-type]
-        name="Region/Constellation Collections",
-        default=False,
+        name="Hierarchy (Region/Constellation)",
+        default=True,
         description=(
-            "If enabled, Frontier_Systems will contain nested <Region>/<Constellation> subcollections instead of a flat list"
+            "If enabled (default), Frontier_Systems contains nested <Region>/<Constellation> subcollections instead of only a flat list"
         ),
     )
 

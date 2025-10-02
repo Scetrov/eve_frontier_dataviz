@@ -110,7 +110,7 @@ The database is assumed to be SQLite with tables resembling:
 
 - Units: 1 Blender unit == 1 arbitrary spatial unit (scaled from original coordinates if needed).
 - Systems placed at `(x, y, z)` possibly scaled (configurable factor, default 0.001).
-- Collections: `Frontier_Systems` (flat) or, when enabled, nested hierarchy `Frontier_Systems/<Region>/<Constellation>/<Systems>`
+- Collections: `Frontier_Systems` with nested hierarchy `Frontier_Systems/<Region>/<Constellation>/<Systems>` enabled by default (toggle in preferences: "Hierarchy (Region/Constellation)"). Disable the toggle for a flat list.
 
 ## 🎨 Visualization Concepts
 

@@ -11,7 +11,7 @@
 
 ```text
 SQLite --> data_loader (pure Python) --> [System dataclasses (+ planets/moons in-memory)]
-  --> build_scene (systems only, via operators/build_scene_modal.py) --> Blender objects (custom props: planet_count, moon_count) in `Frontier_Systems` (optional nested `Frontier_Systems/<Region>/<Constellation>` if preference enabled)
+  --> build_scene (systems only, via operators/build_scene_modal.py) --> Blender objects (custom props: planet_count, moon_count) in `Frontier_Systems` (nested `Frontier_Systems/<Region>/<Constellation>` by default; toggle via preference `Hierarchy (Region/Constellation)`)
   --> shader operator (attribute-driven) assigns single material + per-object color/strength attributes
   --> strategies influence derived color/strength (no per-object material duplication)
 ```
