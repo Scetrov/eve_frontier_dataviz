@@ -23,6 +23,12 @@ from ._shared import (
     get_or_create_collection,
     get_or_create_subcollection,
 )
+from .property_calculators import (
+    calculate_child_metrics,
+    calculate_name_char_bucket,
+    calculate_name_pattern_category,
+    is_blackhole_system,
+)
 
 
 def _ensure_mesh(kind: str, r: float):  # pragma: no cover
@@ -163,8 +169,22 @@ if bpy:
                         x, y, z = x, z, -y
                     obj = bpy.data.objects.new(sys.name or f"System_{i}", self._mesh)  # type: ignore[union-attr]
                     obj.location = (x, y, z)
-                    obj["planet_count"] = len(sys.planets)
-                    obj["moon_count"] = sum(len(p.moons) for p in sys.planets)
+
+                    # Store visualization properties (for shader-driven strategies)
+                    system_name = sys.name or ""
+                    planet_count, moon_count = calculate_child_metrics(sys.planets)
+
+                    # Legacy count properties (kept for backward compat)
+                    obj["planet_count"] = planet_count
+                    obj["moon_count"] = moon_count
+
+                    # New semantic properties for instant shader switching
+                    obj["eve_name_pattern"] = calculate_name_pattern_category(system_name)
+                    obj["eve_name_char_bucket"] = calculate_name_char_bucket(system_name)
+                    obj["eve_planet_count"] = planet_count
+                    obj["eve_moon_count"] = moon_count
+                    obj["eve_is_blackhole"] = 1 if is_blackhole_system(system_name) else 0
+
                     # Optional hierarchy collections
                     const_coll = None
                     if self._hierarchy:
