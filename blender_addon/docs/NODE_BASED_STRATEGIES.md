@@ -204,26 +204,34 @@ The add-on creates a single material `EVE_NodeGroupStrategies` with all three st
 
 ### Future: UI-Based Switching (Phase 3)
 
-Add panel dropdown to control StrategySelector from UI:
+**IMPLEMENTED!** The add-on now includes a scene property dropdown for strategy switching.
 
-```text
-[Scene Attribute "eve_active_strategy"]
-  → [Math: Floor] (convert to integer index)
-  → [Switch Node]
-      Branch 0: [Character Rainbow Group] → Emission
-      Branch 1: [Pattern Category Group] → Emission
-      Branch 2: [Position Encoding Group] → Emission
-      ...
-  → [Material Output]
-```
+**Current UI Workflow:**
+
+1. Open EVE Frontier panel in 3D Viewport sidebar
+2. Build scene (if not already built)
+3. Click "Apply (Async)" to create material with all strategies
+4. Use "Strategy" dropdown to switch between:
+   - Character Rainbow
+   - Pattern Categories
+   - Position Encoding
+5. Viewport updates instantly when dropdown changes
+
+**Technical Implementation:**
+
+- Scene property: `bpy.context.scene.eve_active_strategy` (EnumProperty)
+- Update callback: `_on_strategy_change()` modifies StrategySelector value node
+- Panel: `panels.py` displays dropdown with `scene.eve_active_strategy`
+- Persistence: Strategy choice saved with .blend file
 
 **Benefits:**
 
-- Single material for all objects
-- Instant strategy changes
-- Easy to add new strategies
+- No manual node editing required
+- Instant visual feedback
+- Property persists across sessions
+- Foundation for adding more strategies via UI
 
-### Alternative: Driver-Based Mixing
+### Alternative: Scene Attribute with Switch Node (Future Enhancement)
 
 Use drivers to blend between strategies based on scene properties:
 
@@ -264,19 +272,28 @@ Update UI panel to show dropdown that modifies this property.
 - [x] Update operator to use node group material
 - [x] Test node groups with Attribute nodes
 
-### 📋 Phase 3: Material Switching (Planned)
+### ✅ Phase 3: Material Switching (Complete)
 
-- [ ] Create master material with Switch node
-- [ ] Add scene property for strategy selection
-- [ ] Update UI panel with strategy dropdown
-- [ ] Remove old Python strategy code
+- [x] Create master material with Mix node switcher
+- [x] Add scene property `eve_active_strategy` for strategy selection
+- [x] Update UI panel with strategy dropdown
+- [x] Implement update callback for instant switching
+- [x] Sync scene property when operator runs
 
-### 📋 Phase 4: Documentation & Examples (Planned)
+### 📋 Phase 4: Legacy Cleanup (Planned)
+
+- [ ] Deprecate old Python strategy system (`shader_registry.py`, `shaders_builtin.py`)
+- [ ] Remove legacy strategy dropdown from panel
+- [ ] Clean up unused strategy modules (`shaders/` directory)
+- [ ] Update all documentation to reference node-based system only
+
+### 📋 Phase 5: Documentation & Examples (Planned)
 
 - [ ] Record video tutorial of creating custom strategies
 - [ ] Provide .blend file with example strategies
 - [ ] Document node group input/output contracts
 - [ ] Create gallery of community strategies
+- [ ] Add troubleshooting guide for common issues
 
 ## Best Practices
 
