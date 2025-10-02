@@ -42,6 +42,7 @@ if bpy:
         _strategy = None
         _timer = None
         _strength_scale = 1.0
+        _pending_init = True  # defer heavy gather to first timer for responsiveness
 
         def _gather(self):
             systems = []
@@ -157,29 +158,47 @@ if bpy:
         def execute(self, context):  # noqa: D401
             if not self._resolve_strategy(context):
                 return {"CANCELLED"}
-            self._gather()
-            if self._total == 0:
-                self.report({"WARNING"}, "No system objects to shade")
-                return {"CANCELLED"}
-            # Cache emission strength scale from preferences (fallback to 1.0 if absent)
-            try:
-                prefs = get_prefs(context)
-                self._strength_scale = float(getattr(prefs, "emission_strength_scale", 1.0))
-            except Exception:  # noqa: BLE001
-                self._strength_scale = 1.0
-            # Assign unified attribute-driven material
-            self._apply_attribute_material(self._objects)
+            # Defer heavy work (gather + material creation) to first TIMER tick to avoid UI pause.
+            self._pending_init = True
             wm = context.window_manager
             wm.eve_shader_in_progress = True
             wm.eve_shader_progress = 0.0
-            wm.eve_shader_total = self._total
+            wm.eve_shader_total = 0
             wm.eve_shader_processed = 0
+            try:
+                context.workspace.status_text_set("EVE: Preparing visualization…")  # type: ignore[attr-defined]
+            except Exception:  # noqa: BLE001
+                pass
+            self.report({"INFO"}, "Starting visualization (initializing)…")
             self._timer = context.window_manager.event_timer_add(0.01, window=context.window)
             context.window_manager.modal_handler_add(self)
             return {"RUNNING_MODAL"}
 
         def modal(self, context, event):  # noqa: D401
             if event.type == "TIMER":
+                # Perform deferred initialization
+                if self._pending_init:
+                    self._gather()
+                    if self._total == 0:
+                        self.report({"WARNING"}, "No system objects to shade")
+                        context.window_manager.event_timer_remove(self._timer)
+                        wm = context.window_manager
+                        wm.eve_shader_in_progress = False
+                        try:
+                            context.workspace.status_text_set(None)  # type: ignore[attr-defined]
+                        except Exception:  # noqa: BLE001
+                            pass
+                        return {"CANCELLED"}
+                    try:
+                        prefs = get_prefs(context)
+                        self._strength_scale = float(getattr(prefs, "emission_strength_scale", 1.0))
+                    except Exception:  # noqa: BLE001
+                        self._strength_scale = 1.0
+                    self._apply_attribute_material(self._objects)
+                    wm = context.window_manager
+                    wm.eve_shader_total = self._total
+                    self._pending_init = False
+                    # fall through to process first batch same tick
                 end = min(self._index + self.batch_size, self._total)
                 strat = self._strategy
                 objs = self._objects
@@ -200,10 +219,17 @@ if bpy:
                 wm = context.window_manager
                 wm.eve_shader_processed = self._index
                 wm.eve_shader_progress = self._index / self._total if self._total else 1.0
+                if self._index and self._index % (self.batch_size * 10) == 0:
+                    # Periodic lightweight feedback without spamming
+                    self.report({"INFO"}, f"Viz progress: {self._index}/{self._total}")
                 if self._index >= self._total:
                     context.window_manager.event_timer_remove(self._timer)
                     wm.eve_shader_in_progress = False
                     self.report({"INFO"}, f"Applied {strat.id}")
+                    try:
+                        context.workspace.status_text_set(None)  # type: ignore[attr-defined]
+                    except Exception:  # noqa: BLE001
+                        pass
                     return {"FINISHED"}
             return {"RUNNING_MODAL"}
 
