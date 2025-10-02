@@ -66,3 +66,6 @@ htmlcov/
 # Misc
 *.bak
 *.old
+# Ignore stray numeric temp files
+blender_addon/0
+blender_addon/[0-9]
