@@ -23,6 +23,7 @@ _SUBMODULES = [
     ".build_scene_modal",
     ".shader_apply_async",
     ".viewport",
+    ".volumetric",
 ]
 
 _loaded: List[object] = []
