@@ -469,8 +469,33 @@ def _on_strategy_change(self, context):  # pragma: no cover
     else:
         print("[EVEVisualizer][strategy_change] Material already exists, updating selector...")
 
-    # Update the StrategySelector value
+    # Update the StrategySelector value AND fix broken node group references
     if mat and mat.node_tree:
+        nodes = mat.node_tree.nodes
+
+        # Fix broken node group references (Missing Data nodes)
+        node_group_map = {
+            "CharacterRainbow": "EVE_Strategy_CharacterRainbow",
+            "PatternCategories": "EVE_Strategy_PatternCategories",
+            "PositionEncoding": "EVE_Strategy_PositionEncoding",
+        }
+
+        for node_name, ng_name in node_group_map.items():
+            node = nodes.get(node_name)
+            if node and node.type == "GROUP":
+                # Check if node_tree reference is broken (None)
+                if node.node_tree is None:
+                    print(
+                        f"[EVEVisualizer][strategy_change] Fixing broken reference for {node_name}"
+                    )
+                    node.node_tree = bpy.data.node_groups.get(ng_name)  # type: ignore[attr-defined]
+                    if node.node_tree:
+                        print(f"[EVEVisualizer][strategy_change] Successfully re-linked {ng_name}")
+                    else:
+                        print(
+                            f"[EVEVisualizer][strategy_change] ERROR: Node group {ng_name} not found!"
+                        )
+
         selector = mat.node_tree.nodes.get("StrategySelector")
         if selector:
             strategy_map = {
