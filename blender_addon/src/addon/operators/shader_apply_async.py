@@ -368,18 +368,39 @@ if bpy:
 def register():  # pragma: no cover
     if not bpy:
         return
-    bpy.utils.register_class(EVE_OT_apply_shader_modal)
-    bpy.utils.register_class(EVE_OT_cancel_shader)
+
+    print("[EVEVisualizer][shader_apply_async] Starting registration...")
+
+    try:
+        bpy.utils.register_class(EVE_OT_apply_shader_modal)
+        print("[EVEVisualizer][shader_apply_async] Registered EVE_OT_apply_shader_modal")
+    except Exception as e:
+        print(
+            f"[EVEVisualizer][shader_apply_async] ERROR registering EVE_OT_apply_shader_modal: {e}"
+        )
+
+    try:
+        bpy.utils.register_class(EVE_OT_cancel_shader)
+        print("[EVEVisualizer][shader_apply_async] Registered EVE_OT_cancel_shader")
+    except Exception as e:
+        print(f"[EVEVisualizer][shader_apply_async] ERROR registering EVE_OT_cancel_shader: {e}")
 
     # Scene property for node-based strategy selection
     # Always set it - Blender will not duplicate if it already exists
-    bpy.types.Scene.eve_active_strategy = bpy.props.EnumProperty(  # type: ignore[attr-defined]
-        name="Active Strategy",
-        description="Select visualization strategy",
-        items=_node_strategy_enum_items,
-        default="CharacterRainbow",
-        update=_on_strategy_change,
-    )
+    try:
+        bpy.types.Scene.eve_active_strategy = bpy.props.EnumProperty(  # type: ignore[attr-defined]
+            name="Active Strategy",
+            description="Select visualization strategy",
+            items=_node_strategy_enum_items,
+            default="CharacterRainbow",
+            update=_on_strategy_change,
+        )
+        print("[EVEVisualizer][shader_apply_async] Registered eve_active_strategy property")
+    except Exception as e:
+        print(f"[EVEVisualizer][shader_apply_async] ERROR registering eve_active_strategy: {e}")
+        import traceback
+
+        traceback.print_exc()
 
 
 def _on_strategy_change(self, context):  # pragma: no cover
