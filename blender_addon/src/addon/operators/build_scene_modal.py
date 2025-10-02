@@ -109,7 +109,7 @@ if bpy:
             self._hierarchy = bool(getattr(prefs, "build_region_hierarchy", False))
             if self.clear_previous:
                 clear_generated()
-            coll = get_or_create_collection("Frontier_Systems")
+            coll = get_or_create_collection("Frontier")
             # Keep visible when hierarchy enabled so users can still find flat list
             if coll and not self._hierarchy:
                 coll.hide_viewport = True
@@ -129,7 +129,7 @@ if bpy:
                 self.report({"WARNING"}, "Build cancelled")
             else:
                 self.report({"INFO"}, f"Scene built with {wm.eve_build_created} systems")
-            coll = bpy.data.collections.get("Frontier_Systems")
+            coll = bpy.data.collections.get("Frontier")
             if coll:
                 coll.hide_viewport = False
             # Optionally auto-apply default visualization
@@ -151,7 +151,7 @@ if bpy:
         def modal(self, context, event):  # noqa: D401
             if event.type == "TIMER":
                 batch_end = min(self._index + self.batch_size, self._total)
-                coll = bpy.data.collections.get("Frontier_Systems") if bpy else None  # type: ignore[union-attr]
+                coll = bpy.data.collections.get("Frontier") if bpy else None  # type: ignore[union-attr]
                 created = 0
                 systems = self._systems or []
                 for i in range(self._index, batch_end):
@@ -183,8 +183,8 @@ if bpy:
                         if self._region_cache is None:
                             # cache structure: { region_key: { 'coll': <Collection>, 'const': { const_key: <Collection> } } }
                             self._region_cache = {}
-                        # Root for hierarchy is the main Frontier_Systems collection (nested structure)
-                        root = get_or_create_collection("Frontier_Systems")
+                        # Root for hierarchy is the main Frontier collection (nested structure)
+                        root = get_or_create_collection("Frontier")
                         cache_entry = (
                             self._region_cache.get(region_key) if self._region_cache else None
                         )

@@ -38,7 +38,7 @@ Provided by `shaders/name_nth_char_hue.py`:
 ## Implementation Guidelines
 
 - Idempotent: Re-running should not create unbounded duplicate materials.
-- Prefix: Material names start with `EVE_` + strategy id (unchanged by collection rename from `EVE_Systems` to `Frontier_Systems`).
+- Prefix: Material names start with `EVE_` + strategy id (unchanged by collection rename from `EVE_Systems` to `Frontier`).
 - Reuse: Avoid creating one-off materials where a shared node group & per-object attribute could work (optimize later).
 - Failure Safety: Wrap object iteration to skip missing data gracefully.
 
@@ -47,7 +47,7 @@ Provided by `shaders/name_nth_char_hue.py`:
 1. Subclass `BaseShaderStrategy` in a module (e.g. `my_strategies.py`).
 2. Decorate with `@register_strategy`.
 3. Implement `build(context, objects_by_type)`.
-4. Reference objects via keys: `systems` (future keys like `planets`, `moons` will appear once instancing is implemented). Objects live in the `Frontier_Systems` collection or hierarchical constellation collections. Use custom props `planet_count`, `moon_count` on each system if you need child metrics now.
+4. Reference objects via keys: `systems` (future keys like `planets`, `moons` will appear once instancing is implemented). Objects live in the `Frontier` collection or hierarchical constellation collections. Use custom props `planet_count`, `moon_count` on each system if you need child metrics now.
 5. Test in a small scene slice before running on full dataset.
 6. Document here.
 

@@ -202,7 +202,7 @@ class EVEVisualizerPreferences(_BasePrefs):
         name="Hierarchy (Region/Constellation)",
         default=True,
         description=(
-            "If enabled (default), Frontier_Systems contains nested <Region>/<Constellation> subcollections instead of only a flat list"
+            "If enabled (default), Frontier contains nested <Region>/<Constellation> subcollections instead of only a flat list"
         ),
     )
 
