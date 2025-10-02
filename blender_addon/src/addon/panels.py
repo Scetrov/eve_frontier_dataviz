@@ -73,12 +73,18 @@ class EVE_PT_main(Panel):
         # --- Visualization Section ---
         box_vis = layout.box()
         box_vis.label(text="Visualization", icon="MATERIAL")
+
+        # Node-based strategy selector (new)
+        if hasattr(context.scene, "eve_active_strategy"):
+            box_vis.prop(context.scene, "eve_active_strategy", text="Strategy")
+
+        # Legacy strategy dropdown (for old Python-based strategies)
         strategies = get_strategies()
         if strategies:
-            # Dropdown from WindowManager
+            # Dropdown from WindowManager (legacy)
             wm = context.window_manager
             if hasattr(wm, "eve_strategy_id"):
-                box_vis.prop(wm, "eve_strategy_id", text="Strategy")
+                box_vis.prop(wm, "eve_strategy_id", text="Legacy Strategy")
             shader_in_progress = getattr(wm, "eve_shader_in_progress", False)
             if not shader_in_progress:
                 row_vis = box_vis.row(align=True)

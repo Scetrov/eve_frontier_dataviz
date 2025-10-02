@@ -23,6 +23,22 @@ if bpy:
         except Exception:  # noqa: BLE001
             return [("__error__", "(error)", "")]  # type: ignore
 
+    def _node_strategy_enum_items(self, context):  # pragma: no cover
+        """Enum items for node-based strategies."""
+        return [  # type: ignore
+            (
+                "CharacterRainbow",
+                "Character Rainbow",
+                "Color from first character, brightness from child count",
+            ),
+            ("PatternCategories", "Pattern Categories", "Distinct colors per naming pattern"),
+            (
+                "PositionEncoding",
+                "Position Encoding",
+                "RGB from first 3 characters, blackhole boost",
+            ),
+        ]
+
     class EVE_OT_apply_shader_modal(bpy.types.Operator):  # type: ignore
         bl_idname = "eve.apply_shader_modal"
         bl_label = "Apply Visualization (Instant)"
@@ -398,6 +414,13 @@ if bpy:
             # Apply node-group-based material with switcher to all objects
             self._apply_node_group_material(self._objects, node_group_strategy)
 
+            # Sync scene property to match applied strategy
+            if hasattr(context.scene, "eve_active_strategy"):
+                try:
+                    context.scene.eve_active_strategy = node_group_strategy
+                except Exception:  # noqa: BLE001
+                    pass  # Property might be read-only in some contexts
+
             self.report(
                 {"INFO"}, f"Applied {node_group_strategy} strategy to {self._total} objects"
             )
@@ -439,6 +462,42 @@ def register():  # pragma: no cover
         wm.eve_strategy_id = bpy.props.EnumProperty(  # type: ignore[attr-defined]
             name="Strategy", items=_strategy_enum_items
         )
+
+    # Scene property for node-based strategy selection
+    scene = bpy.types.Scene
+    if not hasattr(scene, "eve_active_strategy"):
+        scene.eve_active_strategy = bpy.props.EnumProperty(  # type: ignore[attr-defined]
+            name="Active Strategy",
+            description="Select visualization strategy",
+            items=_node_strategy_enum_items,
+            default="CharacterRainbow",
+            update=_on_strategy_change,
+        )
+
+
+def _on_strategy_change(self, context):  # pragma: no cover
+    """Update material when strategy changes."""
+    if not bpy or not hasattr(bpy, "data"):
+        return
+
+    # Get the material
+    mat = bpy.data.materials.get("EVE_NodeGroupStrategies")  # type: ignore[attr-defined]
+    if not mat or not mat.node_tree:
+        return
+
+    # Find the StrategySelector node
+    selector = mat.node_tree.nodes.get("StrategySelector")
+    if not selector:
+        return
+
+    # Map enum to value
+    strategy_map = {
+        "CharacterRainbow": 0.0,
+        "PatternCategories": 1.0,
+        "PositionEncoding": 2.0,
+    }
+    strategy_name = context.scene.eve_active_strategy
+    selector.outputs[0].default_value = strategy_map.get(strategy_name, 0.0)
 
 
 def unregister():  # pragma: no cover
