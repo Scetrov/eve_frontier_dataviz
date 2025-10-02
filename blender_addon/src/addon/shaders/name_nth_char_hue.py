@@ -135,8 +135,19 @@ def _ordinal_suffix(n: int) -> str:
     return {1: "st", 2: "nd", 3: "rd"}.get(last, "th")
 
 
-# Register unified forms for 1st-5th characters.
-for i, order in [(0, 10), (1, 11), (2, 12), (3, 13), (4, 14)]:  # indexes 0..4
+# Register unified forms for 1st-9th characters (indexes 0..8)
+_indexes_orders = [
+    (0, 10),
+    (1, 11),
+    (2, 12),
+    (3, 13),
+    (4, 14),
+    (5, 15),
+    (6, 16),
+    (7, 17),
+    (8, 18),
+]
+for i, order in _indexes_orders:
     Strat = _make_strategy(i, order)  # noqa: N806
     register_strategy(Strat)
 

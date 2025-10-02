@@ -20,8 +20,8 @@ This document catalogs available visualization ("shader") strategies and the dat
 
 Provided by `shaders/name_nth_char_hue.py`:
 
-- IDs: `NameFirstCharHue` (alias), plus `NameChar1HueUnified` .. `NameChar5HueUnified`
-- Mapping: Character at index N (0–4) in system name -> hue across wheel. Digits & punctuation mapped to stable sub‑ranges.
+- IDs: `NameFirstCharHue` (alias), plus `NameChar1HueUnified` .. `NameChar9HueUnified`
+- Mapping: Character at index N (0–8) in system name -> hue across wheel. Digits & punctuation mapped to stable sub‑ranges.
 - Notes: Consolidates previously separate per-character modules into one deterministic generator. Materials are reused per (index, character) pair.
 
 ## Future Strategy Ideas
