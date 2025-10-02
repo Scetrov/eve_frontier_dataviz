@@ -3,11 +3,82 @@
 from __future__ import annotations
 
 from addon.operators.property_calculators import (
+    calculate_char_indices,
     calculate_child_metrics,
     calculate_name_char_bucket,
     calculate_name_pattern_category,
     is_blackhole_system,
 )
+
+
+class TestCharIndices:
+    """Test character index normalization."""
+
+    def test_alphanumeric_normalization(self):
+        # "ABC" should give normalized ordinals for A, B, C
+        result = calculate_char_indices("ABC", max_chars=3)
+        assert len(result) == 3
+        assert result[0] == 0.0 / 35.0  # A = 0
+        assert result[1] == 1.0 / 35.0  # B = 1
+        assert result[2] == 2.0 / 35.0  # C = 2
+
+    def test_digits_normalization(self):
+        # "123" should give normalized ordinals for digits (offset by 26)
+        result = calculate_char_indices("123", max_chars=3)
+        assert len(result) == 3
+        assert result[0] == 27.0 / 35.0  # 1 = 26+1 = 27
+        assert result[1] == 28.0 / 35.0  # 2 = 26+2 = 28
+        assert result[2] == 29.0 / 35.0  # 3 = 26+3 = 29
+
+    def test_non_alphanumeric_gives_minus_one(self):
+        # Special characters should return -1.0
+        result = calculate_char_indices("A-B", max_chars=3)
+        assert result[0] >= 0.0  # A
+        assert result[1] == -1.0  # dash
+        assert result[2] >= 0.0  # B
+
+    def test_missing_positions_give_minus_one(self):
+        # Positions beyond string length should be -1.0
+        result = calculate_char_indices("AB", max_chars=5)
+        assert len(result) == 5
+        assert result[0] >= 0.0  # A
+        assert result[1] >= 0.0  # B
+        assert result[2] == -1.0  # missing
+        assert result[3] == -1.0  # missing
+        assert result[4] == -1.0  # missing
+
+    def test_case_insensitive(self):
+        # Lowercase should normalize same as uppercase
+        upper = calculate_char_indices("ABC", max_chars=3)
+        lower = calculate_char_indices("abc", max_chars=3)
+        assert upper == lower
+
+    def test_mixed_example(self):
+        # "ABC-123" with 10 char positions
+        result = calculate_char_indices("ABC-123", max_chars=10)
+        assert len(result) == 10
+        assert result[0] == 0.0 / 35.0  # A
+        assert result[1] == 1.0 / 35.0  # B
+        assert result[2] == 2.0 / 35.0  # C
+        assert result[3] == -1.0  # dash
+        assert result[4] == 27.0 / 35.0  # 1 (26+1)
+        assert result[5] == 28.0 / 35.0  # 2 (26+2)
+        assert result[6] == 29.0 / 35.0  # 3 (26+3)
+        assert result[7] == -1.0  # missing
+        assert result[8] == -1.0  # missing
+        assert result[9] == -1.0  # missing
+
+    def test_empty_string(self):
+        # Empty string should give all -1.0
+        result = calculate_char_indices("", max_chars=5)
+        assert result == [-1.0, -1.0, -1.0, -1.0, -1.0]
+
+    def test_z_and_9_are_max_values(self):
+        # Z should be highest letter, 9 should be highest digit
+        result_z = calculate_char_indices("Z", max_chars=1)
+        result_9 = calculate_char_indices("9", max_chars=1)
+        assert result_z[0] == 25.0 / 35.0  # Z = 25
+        assert result_9[0] == 35.0 / 35.0  # 9 = 26+9 = 35
 
 
 class TestNamePatternCategory:

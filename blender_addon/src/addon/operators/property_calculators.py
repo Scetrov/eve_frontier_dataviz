@@ -8,6 +8,53 @@ these properties for instant strategy switching without Python iteration.
 from __future__ import annotations
 
 
+def calculate_char_indices(name: str, max_chars: int = 10) -> list[float]:
+    """Calculate normalized ordinal values for first N characters.
+
+    Each character is converted to a float value:
+    - Alphanumeric (A-Z, 0-9): Normalized to 0.0-1.0 based on ordinal value
+    - Non-alphanumeric or missing: -1.0
+
+    Args:
+        name: System name to analyze
+        max_chars: Number of character positions to calculate (default 10)
+
+    Returns:
+        List of floats, length = max_chars, each value in range [-1.0, 1.0]
+        where -1.0 = non-alphanumeric/missing, 0.0-1.0 = alphanumeric position
+
+    Example:
+        "ABC-123" → [0.0, 0.03, 0.05, -1.0, 0.08, 0.11, 0.14, -1.0, -1.0, -1.0]
+                     A    B    C    -    1    2    3    (empty positions)
+    """
+    result = []
+    upper_name = name.upper() if name else ""
+
+    for i in range(max_chars):
+        if i >= len(upper_name):
+            # Beyond string length
+            result.append(-1.0)
+            continue
+
+        ch = upper_name[i]
+
+        if "A" <= ch <= "Z":
+            # A=0, Z=25, normalize to 0.0-0.72 (26 letters / 36 total alphanumeric)
+            ord_val = ord(ch) - ord("A")
+            normalized = ord_val / 35.0  # 36 alphanumeric chars (26 letters + 10 digits)
+            result.append(normalized)
+        elif "0" <= ch <= "9":
+            # 0=26, 9=35, normalize to 0.72-1.0
+            ord_val = ord(ch) - ord("0") + 26  # Offset by 26 letters
+            normalized = ord_val / 35.0
+            result.append(normalized)
+        else:
+            # Non-alphanumeric (dash, colon, pipe, etc.)
+            result.append(-1.0)
+
+    return result
+
+
 def calculate_name_pattern_category(name: str) -> int:
     """Classify system name into pattern categories.
 

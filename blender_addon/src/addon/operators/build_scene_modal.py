@@ -24,6 +24,7 @@ from ._shared import (
     get_or_create_subcollection,
 )
 from .property_calculators import (
+    calculate_char_indices,
     calculate_child_metrics,
     calculate_name_char_bucket,
     calculate_name_pattern_category,
@@ -178,12 +179,18 @@ if bpy:
                     obj["planet_count"] = planet_count
                     obj["moon_count"] = moon_count
 
-                    # New semantic properties for instant shader switching
+                    # Semantic properties for instant shader switching
                     obj["eve_name_pattern"] = calculate_name_pattern_category(system_name)
                     obj["eve_name_char_bucket"] = calculate_name_char_bucket(system_name)
                     obj["eve_planet_count"] = planet_count
                     obj["eve_moon_count"] = moon_count
                     obj["eve_is_blackhole"] = 1 if is_blackhole_system(system_name) else 0
+
+                    # Character index properties (first 10 chars, normalized ordinals)
+                    # -1.0 = non-alphanumeric/missing, 0.0-1.0 = alphanumeric position
+                    char_indices = calculate_char_indices(system_name, max_chars=10)
+                    for char_idx, ord_val in enumerate(char_indices):
+                        obj[f"char_index_{char_idx}_ord"] = ord_val
 
                     # Optional hierarchy collections
                     const_coll = None
