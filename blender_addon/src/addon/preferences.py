@@ -198,6 +198,13 @@ class EVEVisualizerPreferences(_BasePrefs):
             "After building the scene, automatically run the default visualization (NamePatternCategory or first available)"
         ),
     )
+    build_region_hierarchy: BoolProperty(  # type: ignore[valid-type]
+        name="Region/Constellation Collections",
+        default=False,
+        description=(
+            "If enabled, systems will also be organized under Frontier_Regions/<Region>/<Constellation> collections"
+        ),
+    )
 
     def draw(self, context):  # noqa: D401
         if not bpy:  # skip UI logic in test / non-Blender env
@@ -231,6 +238,7 @@ class EVEVisualizerPreferences(_BasePrefs):
             "blackhole_scale_multiplier",
             "emission_strength_scale",
             "auto_apply_default_visualization",
+            "build_region_hierarchy",
         ):
             if prop_name in self.__class__.__dict__:
                 try:

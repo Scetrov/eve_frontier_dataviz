@@ -62,6 +62,8 @@ if bpy:
         _radius = 2.0
         _scale = 1.0
         _apply_axis = False
+        _hierarchy = False
+        _region_cache = None
 
         def _init(self, context):
             systems = data_state.get_loaded_systems()
@@ -100,6 +102,7 @@ if bpy:
             self._radius = float(getattr(prefs, "system_point_radius", 2.0) or 2.0)
             self._scale = float(getattr(prefs, "scale_factor", 1.0) or 1.0)
             self._apply_axis = bool(getattr(prefs, "apply_axis_transform", False))
+            self._hierarchy = bool(getattr(prefs, "build_region_hierarchy", False))
             if self.clear_previous:
                 clear_generated()
             coll = get_or_create_collection("EVE_Systems")
@@ -157,8 +160,60 @@ if bpy:
                     obj.location = (x, y, z)
                     obj["planet_count"] = len(sys.planets)
                     obj["moon_count"] = sum(len(p.moons) for p in sys.planets)
+                    # Optional hierarchy collections
+                    const_coll = None
+                    if self._hierarchy:
+                        region_name = getattr(sys, "region_name", None) or "UnknownRegion"
+                        const_name = (
+                            getattr(sys, "constellation_name", None) or "UnknownConstellation"
+                        )
+
+                        # sanitize basic characters
+                        def _san(s):
+                            return "".join(c if c.isalnum() or c in ("_", "-") else "_" for c in s)[
+                                :64
+                            ]
+
+                        region_key = _san(region_name)
+                        const_key = _san(const_name)
+                        if self._region_cache is None:
+                            self._region_cache = {}
+                        root = get_or_create_collection("Frontier_Regions")
+                        # Region
+                        reg_coll = (
+                            self._region_cache.get(region_key) if self._region_cache else None
+                        )
+                        if not reg_coll and root:
+                            reg_coll = get_or_create_collection(f"R_{region_key}")
+                            if reg_coll and reg_coll.name not in [c.name for c in root.children]:  # type: ignore[union-attr]
+                                root.children.link(reg_coll)
+                            if self._region_cache is not None:
+                                self._region_cache[region_key] = {"_coll": reg_coll, "const": {}}
+                        # Constellation
+                        const_map = (
+                            self._region_cache[region_key]["const"]
+                            if self._region_cache and region_key in self._region_cache
+                            else {}
+                        )
+                        const_coll = const_map.get(const_key)
+                        if not const_coll:
+                            const_coll = get_or_create_collection(f"C_{const_key}")
+                            # link under region
+                            if (
+                                reg_coll
+                                and const_coll
+                                and const_coll.name not in [c.name for c in reg_coll.children]
+                            ):  # type: ignore[union-attr]
+                                reg_coll.children.link(const_coll)
+                            if self._region_cache and region_key in self._region_cache:
+                                self._region_cache[region_key]["const"][const_key] = const_coll
                     if coll:
                         coll.objects.link(obj)
+                    if self._hierarchy and const_coll is not None:
+                        try:
+                            const_coll.objects.link(obj)
+                        except Exception:  # already linked or error
+                            pass
                     created += 1
                 self._index = batch_end
                 wm = context.window_manager
