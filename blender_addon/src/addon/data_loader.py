@@ -45,6 +45,8 @@ class System:
     y: float
     z: float
     security: Optional[float] | None
+    region_name: Optional[str] = None
+    constellation_name: Optional[str] = None
     planets: List[Planet] = field(default_factory=list)
 
 
@@ -173,6 +175,11 @@ def load_data(
         c_y = sys_col_resolve(_COL_Y)
         c_z = sys_col_resolve(_COL_Z)
         c_sec = sys_col_resolve(_COL_SECURITY)
+
+        # Check for region/constellation foreign keys
+        c_region_id = sys_col_resolve(("regionid", "region_id"))
+        c_const_id = sys_col_resolve(("constellationid", "constellation_id"))
+
         missing_core = [
             n
             for n, v in {"id": c_id, "name": c_name, "x": c_x, "y": c_y, "z": c_z}.items()
@@ -182,8 +189,44 @@ def load_data(
             raise RuntimeError(
                 f"Missing required columns on '{tables['systems']}': {', '.join(missing_core)} (have: {', '.join(sys_cols)})"
             )
-        sys_select_cols = [c for c in [c_id, c_name, c_x, c_y, c_z, c_sec] if c]
-        sys_query = f"SELECT {', '.join(sys_select_cols)} FROM {tables['systems']} ORDER BY {c_id}"
+
+        # Build query with JOINs if foreign keys exist
+        sys_select_cols = [f"s.{c}" for c in [c_id, c_name, c_x, c_y, c_z, c_sec] if c]
+
+        # Add region and constellation names if we have the FK columns
+        if c_region_id:
+            sys_select_cols.append("r.name AS region_name")
+        if c_const_id:
+            sys_select_cols.append("c.name AS constellation_name")
+
+        sys_query = f"SELECT {', '.join(sys_select_cols)} FROM {tables['systems']} s"
+
+        # LEFT JOIN with Regions and Constellations if foreign keys present
+        if c_region_id:
+            # Try to find Regions table
+            try:
+                cur.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND LOWER(name)='regions'"
+                )
+                regions_table = cur.fetchone()
+                if regions_table:
+                    sys_query += f" LEFT JOIN {regions_table[0]} r ON s.{c_region_id} = r.regionId"
+            except Exception:
+                pass
+
+        if c_const_id:
+            # Try to find Constellations table
+            try:
+                cur.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND LOWER(name)='constellations'"
+                )
+                constellations_table = cur.fetchone()
+                if constellations_table:
+                    sys_query += f" LEFT JOIN {constellations_table[0]} c ON s.{c_const_id} = c.constellationId"
+            except Exception:
+                pass
+
+        sys_query += f" ORDER BY s.{c_id}"
         if limit_systems is not None:
             sys_query += f" LIMIT {int(limit_systems)}"
         cur.execute(sys_query)
@@ -192,21 +235,38 @@ def load_data(
         # Build case-insensitive mapping for rows
         system_map: Dict[int, System] = {}
         for r in system_rows:
-            # sqlite3.Row supports key lookup by original names
-            rid = int(r[c_id])
+            # sqlite3.Row supports key lookup by original names and aliases
+            rid = int(r[c_id] if c_id in r.keys() else r[0])
             security_val = None
-            if c_sec and r[c_sec] is not None:
+            if c_sec and c_sec in r.keys() and r[c_sec] is not None:
                 try:
                     security_val = float(r[c_sec])
                 except Exception:
                     security_val = None
+
+            # Extract region and constellation names if available
+            region_name = None
+            constellation_name = None
+            try:
+                if "region_name" in r.keys() and r["region_name"]:
+                    region_name = str(r["region_name"])
+            except Exception:
+                pass
+            try:
+                if "constellation_name" in r.keys() and r["constellation_name"]:
+                    constellation_name = str(r["constellation_name"])
+            except Exception:
+                pass
+
             system_map[rid] = System(
                 id=rid,
-                name=str(r[c_name]),
-                x=float(r[c_x]),
-                y=float(r[c_y]),
-                z=float(r[c_z]),
+                name=str(r[c_name] if c_name in r.keys() else r[1]),
+                x=float(r[c_x] if c_x in r.keys() else r[2]),
+                y=float(r[c_y] if c_y in r.keys() else r[3]),
+                z=float(r[c_z] if c_z in r.keys() else r[4]),
                 security=security_val,
+                region_name=region_name,
+                constellation_name=constellation_name,
             )
 
         if not system_map:
