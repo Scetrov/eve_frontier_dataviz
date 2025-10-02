@@ -141,11 +141,16 @@ if bpy:
             if not sid and hasattr(wm, "eve_strategy_id"):
                 sid = wm.eve_strategy_id  # type: ignore[attr-defined]
             if not sid:
-                strategies = get_strategies()
-                if not strategies:
-                    self.report({"ERROR"}, "No strategies registered")
-                    return False
-                sid = strategies[0].id
+                # Prefer NamePatternCategory as default if available
+                npc = get_strategy("NamePatternCategory")
+                if npc:
+                    sid = npc.id
+                else:
+                    strategies = get_strategies()
+                    if not strategies:
+                        self.report({"ERROR"}, "No strategies registered")
+                        return False
+                    sid = strategies[0].id
             strat = get_strategy(sid)
             if not strat:
                 self.report({"ERROR"}, f"Strategy not found: {sid}")
@@ -153,6 +158,12 @@ if bpy:
             self._strategy = strat
             if hasattr(wm, "eve_shader_strategy"):
                 wm.eve_shader_strategy = sid  # type: ignore[attr-defined]
+            if hasattr(wm, "eve_strategy_id"):
+                # Persist selection so subsequent runs use same strategy unless changed
+                try:
+                    wm.eve_strategy_id = sid  # type: ignore[attr-defined]
+                except Exception:  # noqa: BLE001
+                    pass
             return True
 
         def execute(self, context):  # noqa: D401
