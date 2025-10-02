@@ -9,6 +9,7 @@ except Exception:  # noqa: BLE001
 
 from typing import Optional
 
+from ..node_groups import ensure_strategy_node_groups
 from ..shader_registry import get_strategies, get_strategy
 
 if bpy:
@@ -138,6 +139,171 @@ if bpy:
             except Exception:  # noqa: BLE001
                 return None
 
+        # --- Node Group Strategy Material Infrastructure ---
+        def _ensure_node_group_material(
+            self, strategy_name: str = "CharacterRainbow"
+        ) -> Optional["bpy.types.Material"]:  # type: ignore[name-defined]
+            """Create or update material using node group strategies with switcher.
+
+            Args:
+                strategy_name: Name of the strategy to use (without EVE_Strategy_ prefix)
+
+            Returns:
+                The material instance or None
+            """
+            if not hasattr(bpy, "data"):
+                return None
+            try:
+                # Ensure all strategy node groups exist
+                ensure_strategy_node_groups()
+
+                mat_name = "EVE_NodeGroupStrategies"
+                mat = bpy.data.materials.get(mat_name)  # type: ignore[attr-defined]
+
+                # Create material if it doesn't exist
+                if not mat:
+                    mat = bpy.data.materials.new(mat_name)  # type: ignore[attr-defined]
+                    mat.use_nodes = True
+                    nt = mat.node_tree
+                    nodes = nt.nodes
+                    links = nt.links
+
+                    # Clear default nodes except output
+                    for n in list(nodes):
+                        if n.type != "OUTPUT_MATERIAL":
+                            nodes.remove(n)
+                    out = next(n for n in nodes if n.type == "OUTPUT_MATERIAL")
+                    out.location = (800, 0)
+
+                    # Create node group references for each strategy
+                    ng_char_rainbow = nodes.new("ShaderNodeGroup")
+                    ng_char_rainbow.node_tree = bpy.data.node_groups.get(
+                        "EVE_Strategy_CharacterRainbow"
+                    )  # type: ignore[attr-defined]
+                    ng_char_rainbow.location = (-400, 300)
+                    ng_char_rainbow.name = "CharacterRainbow"
+
+                    ng_pattern = nodes.new("ShaderNodeGroup")
+                    ng_pattern.node_tree = bpy.data.node_groups.get(
+                        "EVE_Strategy_PatternCategories"
+                    )  # type: ignore[attr-defined]
+                    ng_pattern.location = (-400, 0)
+                    ng_pattern.name = "PatternCategories"
+
+                    ng_position = nodes.new("ShaderNodeGroup")
+                    ng_position.node_tree = bpy.data.node_groups.get(
+                        "EVE_Strategy_PositionEncoding"
+                    )  # type: ignore[attr-defined]
+                    ng_position.location = (-400, -300)
+                    ng_position.name = "PositionEncoding"
+
+                    # Create shader switchers for Color and Strength
+                    # We'll use Mix nodes in "Mix" mode to switch between strategies
+
+                    # Value node to control which strategy (0, 1, or 2)
+                    value_strategy = nodes.new("ShaderNodeValue")
+                    value_strategy.location = (-800, -500)
+                    value_strategy.name = "StrategySelector"
+                    value_strategy.label = "Strategy (0=Rainbow, 1=Pattern, 2=Position)"
+                    value_strategy.outputs[0].default_value = 0.0  # Default to CharacterRainbow
+
+                    # First mix: Choose between CharacterRainbow (0) and PatternCategories (1)
+                    mix_color_1 = nodes.new("ShaderNodeMix")
+                    mix_color_1.data_type = "RGBA"
+                    mix_color_1.location = (0, 200)
+                    mix_color_1.name = "MixColor1"
+                    links.new(ng_char_rainbow.outputs["Color"], mix_color_1.inputs[6])  # A
+                    links.new(ng_pattern.outputs["Color"], mix_color_1.inputs[7])  # B
+
+                    # Clamp strategy value to 0-1 for first mix
+                    math_clamp_1 = nodes.new("ShaderNodeMath")
+                    math_clamp_1.operation = "MAXIMUM"
+                    math_clamp_1.location = (-200, -400)
+                    math_clamp_1.inputs[1].default_value = 0.0
+                    links.new(value_strategy.outputs[0], math_clamp_1.inputs[0])
+
+                    math_min_1 = nodes.new("ShaderNodeMath")
+                    math_min_1.operation = "MINIMUM"
+                    math_min_1.location = (-100, -400)
+                    math_min_1.inputs[1].default_value = 1.0
+                    links.new(math_clamp_1.outputs[0], math_min_1.inputs[0])
+                    links.new(math_min_1.outputs[0], mix_color_1.inputs[0])  # Factor
+
+                    # Second mix: Choose between result of first mix and PositionEncoding (2)
+                    mix_color_2 = nodes.new("ShaderNodeMix")
+                    mix_color_2.data_type = "RGBA"
+                    mix_color_2.location = (200, 200)
+                    mix_color_2.name = "MixColor2"
+                    links.new(
+                        mix_color_1.outputs[2], mix_color_2.inputs[6]
+                    )  # A (result from first mix)
+                    links.new(ng_position.outputs["Color"], mix_color_2.inputs[7])  # B
+
+                    # Factor for second mix: clamp (strategy - 1) to 0-1
+                    math_sub = nodes.new("ShaderNodeMath")
+                    math_sub.operation = "SUBTRACT"
+                    math_sub.location = (-200, -500)
+                    math_sub.inputs[1].default_value = 1.0
+                    links.new(value_strategy.outputs[0], math_sub.inputs[0])
+
+                    math_clamp_2 = nodes.new("ShaderNodeMath")
+                    math_clamp_2.operation = "MAXIMUM"
+                    math_clamp_2.location = (-100, -500)
+                    math_clamp_2.inputs[1].default_value = 0.0
+                    links.new(math_sub.outputs[0], math_clamp_2.inputs[0])
+
+                    math_min_2 = nodes.new("ShaderNodeMath")
+                    math_min_2.operation = "MINIMUM"
+                    math_min_2.location = (0, -500)
+                    math_min_2.inputs[1].default_value = 1.0
+                    links.new(math_clamp_2.outputs[0], math_min_2.inputs[0])
+                    links.new(math_min_2.outputs[0], mix_color_2.inputs[0])  # Factor
+
+                    # Similar mix setup for Strength
+                    mix_strength_1 = nodes.new("ShaderNodeMix")
+                    mix_strength_1.data_type = "FLOAT"
+                    mix_strength_1.location = (0, -100)
+                    mix_strength_1.name = "MixStrength1"
+                    links.new(ng_char_rainbow.outputs["Strength"], mix_strength_1.inputs[2])  # A
+                    links.new(ng_pattern.outputs["Strength"], mix_strength_1.inputs[3])  # B
+                    links.new(
+                        math_min_1.outputs[0], mix_strength_1.inputs[0]
+                    )  # Same factor as color mix 1
+
+                    mix_strength_2 = nodes.new("ShaderNodeMix")
+                    mix_strength_2.data_type = "FLOAT"
+                    mix_strength_2.location = (200, -100)
+                    mix_strength_2.name = "MixStrength2"
+                    links.new(mix_strength_1.outputs[1], mix_strength_2.inputs[2])  # A
+                    links.new(ng_position.outputs["Strength"], mix_strength_2.inputs[3])  # B
+                    links.new(
+                        math_min_2.outputs[0], mix_strength_2.inputs[0]
+                    )  # Same factor as color mix 2
+
+                    # Emission shader
+                    emission = nodes.new("ShaderNodeEmission")
+                    emission.location = (500, 0)
+                    links.new(mix_color_2.outputs[2], emission.inputs["Color"])
+                    links.new(mix_strength_2.outputs[1], emission.inputs["Strength"])
+
+                    # Connect to output
+                    links.new(emission.outputs[0], out.inputs[0])
+
+                # Update strategy selector value
+                nt = mat.node_tree
+                selector = nt.nodes.get("StrategySelector")
+                if selector:
+                    strategy_map = {
+                        "CharacterRainbow": 0.0,
+                        "PatternCategories": 1.0,
+                        "PositionEncoding": 2.0,
+                    }
+                    selector.outputs[0].default_value = strategy_map.get(strategy_name, 0.0)
+
+                return mat
+            except Exception:  # noqa: BLE001
+                return None
+
         def _apply_attribute_material(self, objs):
             mat = self._ensure_attribute_material()
             if mat is None:
@@ -151,6 +317,36 @@ if bpy:
                             o.data.materials.append(mat)
                 except Exception:  # noqa: BLE001
                     continue
+
+        def _apply_node_group_material(self, objs, strategy_name: str):
+            """Apply node group material to objects with specified strategy active."""
+            mat = self._ensure_node_group_material(strategy_name)
+            if mat is None:
+                return
+            for o in objs:
+                try:
+                    if getattr(o, "data", None) and hasattr(o.data, "materials"):
+                        if o.data.materials:
+                            o.data.materials[0] = mat
+                        else:
+                            o.data.materials.append(mat)
+                except Exception:  # noqa: BLE001
+                    continue
+
+        def _map_strategy_to_node_group(self, strategy_id: str) -> str:
+            """Map old strategy ID to new node group strategy name.
+
+            Returns:
+                Strategy name for node group (CharacterRainbow, PatternCategories, or PositionEncoding)
+            """
+            # Map old strategy IDs to new node group names
+            mapping = {
+                "NameFirstCharHue": "CharacterRainbow",
+                "NamePatternCategory": "PatternCategories",
+                "ChildCountEmission": "CharacterRainbow",  # Similar to rainbow
+                # Default to CharacterRainbow for unknown strategies
+            }
+            return mapping.get(strategy_id, "CharacterRainbow")
 
         def _resolve_strategy(self, context):
             sid = self.strategy_id.strip()
@@ -194,10 +390,17 @@ if bpy:
                 self.report({"WARNING"}, "No system objects to shade")
                 return {"CANCELLED"}
 
-            # Apply attribute-driven material to all objects
-            self._apply_attribute_material(self._objects)
+            # Map old strategy ID to node group strategy name
+            node_group_strategy = self._map_strategy_to_node_group(
+                self._strategy.id if self._strategy else ""
+            )
 
-            self.report({"INFO"}, f"Applied property-driven material to {self._total} objects")
+            # Apply node-group-based material with switcher to all objects
+            self._apply_node_group_material(self._objects, node_group_strategy)
+
+            self.report(
+                {"INFO"}, f"Applied {node_group_strategy} strategy to {self._total} objects"
+            )
             return {"FINISHED"}
 
     class EVE_OT_cancel_shader(bpy.types.Operator):  # type: ignore

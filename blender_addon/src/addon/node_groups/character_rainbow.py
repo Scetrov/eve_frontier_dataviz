@@ -1,0 +1,111 @@
+"""Character Rainbow strategy node group.
+
+Color based on first character, brightness based on child count.
+"""
+
+from __future__ import annotations
+
+try:  # pragma: no cover
+    import bpy  # type: ignore
+except Exception:  # noqa: BLE001
+    bpy = None  # type: ignore
+
+
+def ensure_node_group():
+    """Create or update the Character Rainbow node group.
+
+    Inputs: None (reads properties via Attribute nodes)
+    Outputs:
+        - Color: HSV-based color from first character
+        - Strength: Emission strength from planet+moon count
+
+    Returns:
+        str: Name of the node group
+    """
+    if not bpy:
+        return ""
+
+    group_name = "EVE_Strategy_CharacterRainbow"
+
+    # Remove existing if present (for updates)
+    if group_name in bpy.data.node_groups:  # type: ignore[attr-defined]
+        bpy.data.node_groups.remove(bpy.data.node_groups[group_name])  # type: ignore[attr-defined]
+
+    # Create new node group
+    group = bpy.data.node_groups.new(group_name, "ShaderNodeTree")  # type: ignore[attr-defined]
+    nodes = group.nodes
+    links = group.links
+
+    # Create group outputs
+    output = nodes.new("NodeGroupOutput")
+    output.location = (600, 0)
+    group.interface.new_socket(name="Color", socket_type="NodeSocketColor", in_out="OUTPUT")
+    group.interface.new_socket(name="Strength", socket_type="NodeSocketFloat", in_out="OUTPUT")
+
+    # === COLOR PATH: First character → HSV ===
+
+    # Read first character index
+    attr_char0 = nodes.new("ShaderNodeAttribute")
+    attr_char0.attribute_name = "eve_name_char_index_0_ord"
+    attr_char0.attribute_type = "OBJECT"
+    attr_char0.location = (-800, 200)
+
+    # Clamp -1 to 0 (non-alphanumeric becomes 0)
+    math_max = nodes.new("ShaderNodeMath")
+    math_max.operation = "MAXIMUM"
+    math_max.inputs[1].default_value = 0.0
+    math_max.location = (-600, 200)
+    links.new(attr_char0.outputs["Fac"], math_max.inputs[0])
+
+    # Multiply by 0.9 to get hue range 0.0-0.9 (avoids wrapping red)
+    math_mult = nodes.new("ShaderNodeMath")
+    math_mult.operation = "MULTIPLY"
+    math_mult.inputs[1].default_value = 0.9
+    math_mult.location = (-400, 200)
+    links.new(math_max.outputs[0], math_mult.inputs[0])
+
+    # Combine HSV (full saturation and brightness)
+    hsv = nodes.new("ShaderNodeCombineHSV")
+    hsv.location = (-200, 200)
+    hsv.inputs["S"].default_value = 1.0  # Full saturation
+    hsv.inputs["V"].default_value = 1.0  # Full brightness
+    links.new(math_mult.outputs[0], hsv.inputs["H"])
+
+    # Connect color output
+    links.new(hsv.outputs["Color"], output.inputs["Color"])
+
+    # === STRENGTH PATH: Planet + Moon count → Map Range ===
+
+    # Read planet count
+    attr_planets = nodes.new("ShaderNodeAttribute")
+    attr_planets.attribute_name = "eve_planet_count"
+    attr_planets.attribute_type = "OBJECT"
+    attr_planets.location = (-800, -100)
+
+    # Read moon count
+    attr_moons = nodes.new("ShaderNodeAttribute")
+    attr_moons.attribute_name = "eve_moon_count"
+    attr_moons.attribute_type = "OBJECT"
+    attr_moons.location = (-800, -250)
+
+    # Add planet + moon counts
+    math_add = nodes.new("ShaderNodeMath")
+    math_add.operation = "ADD"
+    math_add.location = (-600, -150)
+    links.new(attr_planets.outputs["Fac"], math_add.inputs[0])
+    links.new(attr_moons.outputs["Fac"], math_add.inputs[1])
+
+    # Map 0-20 children → 0.5-3.0 emission strength
+    map_range = nodes.new("ShaderNodeMapRange")
+    map_range.location = (-400, -150)
+    map_range.inputs["From Min"].default_value = 0.0
+    map_range.inputs["From Max"].default_value = 20.0
+    map_range.inputs["To Min"].default_value = 0.5
+    map_range.inputs["To Max"].default_value = 3.0
+    map_range.clamp = True
+    links.new(math_add.outputs[0], map_range.inputs["Value"])
+
+    # Connect strength output
+    links.new(map_range.outputs["Result"], output.inputs["Strength"])
+
+    return group_name
