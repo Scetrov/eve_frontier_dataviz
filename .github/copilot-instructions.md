@@ -20,7 +20,7 @@ SQLite (data/static.db) -> data_loader (pure Python) -> in-memory systems list
 ### Key Conventions
 
 - Source layout: `blender_addon/src/addon` is the Python package root.
-- Collections currently created: `EVE_Systems` only (planets/moons represented as counts, not objects).
+- Collections currently created: `Frontier_Systems` (flat) or optional hierarchy `Frontier_Regions/<Region>/<Constellation>`; planets/moons represented as counts for now.
 - Future reserved names (do not misuse): `EVE_Planets`, `EVE_Moons`.
 - Per-system custom properties:
     - `planet_count` (int)

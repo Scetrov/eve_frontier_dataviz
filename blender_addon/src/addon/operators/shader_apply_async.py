@@ -46,7 +46,7 @@ if bpy:
 
         def _gather(self):
             systems = []
-            coll = bpy.data.collections.get("EVE_Systems")  # type: ignore[union-attr]
+            coll = bpy.data.collections.get("Frontier_Systems")  # type: ignore[union-attr]
             if coll:
                 systems.extend(coll.objects)
             self._objects = systems

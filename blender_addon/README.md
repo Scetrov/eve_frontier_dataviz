@@ -110,7 +110,7 @@ The database is assumed to be SQLite with tables resembling:
 
 - Units: 1 Blender unit == 1 arbitrary spatial unit (scaled from original coordinates if needed).
 - Systems placed at `(x, y, z)` possibly scaled (configurable factor, default 0.001).
-- Collections: `EVE_Systems`
+- Collections: `Frontier_Systems` (flat list) or optional hierarchy `Frontier_Regions/<Region>/<Constellation>` when enabled
 
 ## 🎨 Visualization Concepts
 

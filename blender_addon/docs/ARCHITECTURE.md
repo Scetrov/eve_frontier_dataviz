@@ -11,7 +11,7 @@
 
 ```text
 SQLite --> data_loader (pure Python) --> [System dataclasses (+ planets/moons in-memory)]
-  --> build_scene (systems only, via operators/build_scene_modal.py) --> Blender objects (custom props: planet_count, moon_count)
+  --> build_scene (systems only, via operators/build_scene_modal.py) --> Blender objects (custom props: planet_count, moon_count) in `Frontier_Systems` (or hierarchical `Frontier_Regions/<Region>/<Constellation>` if preference enabled)
   --> shader operator (attribute-driven) assigns single material + per-object color/strength attributes
   --> strategies influence derived color/strength (no per-object material duplication)
 ```
@@ -35,6 +35,7 @@ SQLite -> data_loader -> entities -> scene_builder.build() -> objects -> strateg
 - In-memory cache keyed by `(path, size, mtime_ns, limit_systems)`.
 - Avoid full scene rebuild for visualization-only changes (strategies operate in-place).
 - Attribute-driven shading uses one shared material (`EVE_AttrDriven`), reducing material count and memory.
+- Flat collection renamed to `Frontier_Systems` (legacy name `EVE_Systems` removed) to match project domain terminology.
 - Global emission intensity scalable via preference `Emission Strength Scale`.
 - Future: geometry nodes + instancing for large numbers of child bodies.
 

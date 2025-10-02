@@ -18,7 +18,11 @@ except Exception:  # noqa: BLE001
 
 from .. import data_state
 from ..preferences import get_prefs
-from ._shared import clear_generated, get_or_create_collection
+from ._shared import (
+    clear_generated,
+    get_or_create_collection,
+    get_or_create_subcollection,
+)
 
 
 def _ensure_mesh(kind: str, r: float):  # pragma: no cover
@@ -105,8 +109,9 @@ if bpy:
             self._hierarchy = bool(getattr(prefs, "build_region_hierarchy", False))
             if self.clear_previous:
                 clear_generated()
-            coll = get_or_create_collection("EVE_Systems")
-            if coll:
+            coll = get_or_create_collection("Frontier_Systems")
+            # Keep visible when hierarchy enabled so users can still find flat list
+            if coll and not self._hierarchy:
                 coll.hide_viewport = True
             self._mesh = _ensure_mesh("ICO", self._radius)
             wm = context.window_manager
@@ -124,7 +129,7 @@ if bpy:
                 self.report({"WARNING"}, "Build cancelled")
             else:
                 self.report({"INFO"}, f"Scene built with {wm.eve_build_created} systems")
-            coll = bpy.data.collections.get("EVE_Systems")
+            coll = bpy.data.collections.get("Frontier_Systems")
             if coll:
                 coll.hide_viewport = False
             # Optionally auto-apply default visualization
@@ -146,7 +151,7 @@ if bpy:
         def modal(self, context, event):  # noqa: D401
             if event.type == "TIMER":
                 batch_end = min(self._index + self.batch_size, self._total)
-                coll = bpy.data.collections.get("EVE_Systems") if bpy else None  # type: ignore[union-attr]
+                coll = bpy.data.collections.get("Frontier_Systems") if bpy else None  # type: ignore[union-attr]
                 created = 0
                 systems = self._systems or []
                 for i in range(self._index, batch_end):
@@ -168,8 +173,7 @@ if bpy:
                             getattr(sys, "constellation_name", None) or "UnknownConstellation"
                         )
 
-                        # sanitize basic characters
-                        def _san(s):
+                        def _san(s: str) -> str:
                             return "".join(c if c.isalnum() or c in ("_", "-") else "_" for c in s)[
                                 :64
                             ]
@@ -177,43 +181,35 @@ if bpy:
                         region_key = _san(region_name)
                         const_key = _san(const_name)
                         if self._region_cache is None:
+                            # cache structure: { region_key: { 'coll': <Collection>, 'const': { const_key: <Collection> } } }
                             self._region_cache = {}
                         root = get_or_create_collection("Frontier_Regions")
-                        # Region
-                        reg_coll = (
+                        cache_entry = (
                             self._region_cache.get(region_key) if self._region_cache else None
                         )
-                        if not reg_coll and root:
-                            reg_coll = get_or_create_collection(f"R_{region_key}")
-                            if reg_coll and reg_coll.name not in [c.name for c in root.children]:  # type: ignore[union-attr]
-                                root.children.link(reg_coll)
+                        if not cache_entry:
+                            reg_coll = (
+                                get_or_create_subcollection(root, region_key) if root else None
+                            )
                             if self._region_cache is not None:
-                                self._region_cache[region_key] = {"_coll": reg_coll, "const": {}}
-                        # Constellation
-                        const_map = (
-                            self._region_cache[region_key]["const"]
-                            if self._region_cache and region_key in self._region_cache
-                            else {}
-                        )
+                                self._region_cache[region_key] = {"coll": reg_coll, "const": {}}
+                            cache_entry = self._region_cache.get(region_key)
+                        reg_coll = cache_entry["coll"] if cache_entry else None  # type: ignore[index]
+                        const_map = cache_entry["const"] if cache_entry else {}  # type: ignore[index]
                         const_coll = const_map.get(const_key)
                         if not const_coll:
-                            const_coll = get_or_create_collection(f"C_{const_key}")
-                            # link under region
-                            if (
-                                reg_coll
-                                and const_coll
-                                and const_coll.name not in [c.name for c in reg_coll.children]
-                            ):  # type: ignore[union-attr]
-                                reg_coll.children.link(const_coll)
-                            if self._region_cache and region_key in self._region_cache:
-                                self._region_cache[region_key]["const"][const_key] = const_coll
-                    if coll:
-                        coll.objects.link(obj)
-                    if self._hierarchy and const_coll is not None:
-                        try:
-                            const_coll.objects.link(obj)
-                        except Exception:  # already linked or error
-                            pass
+                            const_coll = get_or_create_subcollection(reg_coll, const_key)
+                            if cache_entry:
+                                const_map[const_key] = const_coll
+                    if self._hierarchy:
+                        if const_coll is not None:
+                            try:
+                                const_coll.objects.link(obj)
+                            except Exception:  # already linked or error
+                                pass
+                    else:
+                        if coll:
+                            coll.objects.link(obj)
                     created += 1
                 self._index = batch_end
                 wm = context.window_manager

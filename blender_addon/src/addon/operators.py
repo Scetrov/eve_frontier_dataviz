@@ -9,7 +9,7 @@ from .data_loader import load_data
 from .preferences import get_prefs
 from .shader_registry import get_strategies, get_strategy
 
-_generated_collection_names = ["EVE_Systems", "EVE_Planets", "EVE_Moons"]
+_generated_collection_names = ["Frontier_Systems", "EVE_Planets", "EVE_Moons"]
 
 
 def _get_or_create_collection(name: str):  # pragma: no cover - Blender runtime usage
@@ -168,7 +168,7 @@ class EVE_OT_build_scene(Operator):
 
         if self.clear_previous:
             _clear_generated()
-        systems_coll = _get_or_create_collection("EVE_Systems")
+        systems_coll = _get_or_create_collection("Frontier_Systems")
 
         # Temporarily hide collection & disable undo for speed
         prev_undo = bpy.context.preferences.edit.use_global_undo
@@ -390,7 +390,7 @@ class EVE_OT_build_scene_modal(Operator):  # pragma: no cover - Blender runtime 
         # Clear previous if requested
         if self.clear_previous:
             _clear_generated()
-        self._coll = _get_or_create_collection("EVE_Systems")
+        self._coll = _get_or_create_collection("Frontier_Systems")
         self._coll.hide_viewport = True
 
         # Determine representation
@@ -606,7 +606,7 @@ class EVE_OT_apply_shader_modal(Operator):  # pragma: no cover - Blender runtime
 
     def _gather(self, context):
         objs = []
-        coll = bpy.data.collections.get("EVE_Systems")
+        coll = bpy.data.collections.get("Frontier_Systems")
         if coll:
             objs.extend(coll.objects)
         return objs
@@ -634,7 +634,7 @@ class EVE_OT_apply_shader_modal(Operator):  # pragma: no cover - Blender runtime
         self._index = 0
         self._total = len(objs)
         # Optimization: hide systems collection & disable undo during incremental application
-        self._systems_coll = bpy.data.collections.get("EVE_Systems")
+        self._systems_coll = bpy.data.collections.get("Frontier_Systems")
         if self._systems_coll is not None:
             self._prev_coll_hide = self._systems_coll.hide_viewport
             self._systems_coll.hide_viewport = True
