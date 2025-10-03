@@ -129,7 +129,7 @@ if bpy:  # Only define classes when Blender API is present
 
                 # Create text object
                 curve_data = bpy.data.curves.new(name=f"Label_{label_text}", type="FONT")  # type: ignore[union-attr]
-                curve_data.body = f"⚫ {label_text}"  # Black circle emoji + name
+                curve_data.body = f"{label_text}"  # name
                 curve_data.size = label_size
                 curve_data.align_x = "CENTER"
                 curve_data.align_y = "CENTER"
