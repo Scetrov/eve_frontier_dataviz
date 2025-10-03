@@ -111,7 +111,7 @@ class EVE_OT_build_jumps(bpy.types.Operator):  # type: ignore[misc,name-defined]
                 name=f"Jump_{jump.from_system_id}_{jump.to_system_id}", type="CURVE"
             )
             curve_data.dimensions = "3D"
-            curve_data.bevel_depth = 0.5  # Make lines visible
+            curve_data.bevel_depth = 0.005  # Thin lines (scaled down for 1e-18 coordinate system)
             curve_data.resolution_u = 1  # Low resolution for performance
 
             # Create a spline (line segment)
