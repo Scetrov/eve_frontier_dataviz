@@ -50,13 +50,20 @@ def ensure_node_group(context=None):
     group.interface.new_socket(name="Color", socket_type="NodeSocketColor", in_out="OUTPUT")
     group.interface.new_socket(name="Strength", socket_type="NodeSocketFloat", in_out="OUTPUT")
 
-    # === COLOR PATH: Selected character → HSV ===
+    # === COLOR PATH: Selected character → HSV or Grey ===
 
     # Read selected character index
     attr_char = nodes.new("ShaderNodeAttribute")
     attr_char.attribute_name = f"eve_name_char_index_{char_index}_ord"
     attr_char.attribute_type = "OBJECT"
     attr_char.location = (-800, 200)
+
+    # Check if character is valid (>= 0)
+    math_is_valid = nodes.new("ShaderNodeMath")
+    math_is_valid.operation = "GREATER_THAN"
+    math_is_valid.inputs[1].default_value = -0.5  # Threshold between -1 and 0
+    math_is_valid.location = (-600, 300)
+    links.new(attr_char.outputs["Fac"], math_is_valid.inputs[0])
 
     # Clamp -1 to 0 (non-alphanumeric becomes 0)
     math_max = nodes.new("ShaderNodeMath")
@@ -79,8 +86,21 @@ def ensure_node_group(context=None):
     hsv.inputs["V"].default_value = 1.0  # Full brightness
     links.new(math_mult.outputs[0], hsv.inputs["H"])
 
+    # Create neutral grey for invalid characters
+    grey = nodes.new("ShaderNodeRGB")
+    grey.outputs[0].default_value = (0.5, 0.5, 0.5, 1.0)  # Neutral grey
+    grey.location = (-200, 50)
+
+    # Mix between grey (invalid) and HSV color (valid)
+    mix_color = nodes.new("ShaderNodeMix")
+    mix_color.data_type = "RGBA"
+    mix_color.location = (0, 200)
+    links.new(math_is_valid.outputs[0], mix_color.inputs[0])  # Factor (0=grey, 1=HSV)
+    links.new(grey.outputs[0], mix_color.inputs[6])  # A (grey)
+    links.new(hsv.outputs["Color"], mix_color.inputs[7])  # B (HSV color)
+
     # Connect color output
-    links.new(hsv.outputs["Color"], output.inputs["Color"])
+    links.new(mix_color.outputs[2], output.inputs["Color"])
 
     # === STRENGTH PATH: Planet + Moon count → Map Range ===
 
