@@ -401,9 +401,38 @@ def register():  # pragma: no cover
         import traceback
 
         traceback.print_exc()
+
+    # Strategy-specific parameters
+    try:
+        bpy.types.Scene.eve_char_rainbow_index = bpy.props.IntProperty(  # type: ignore[attr-defined]
+            name="Character Index",
+            description="Which character to use for rainbow coloring (0=first, 1=second, etc.)",
+            default=0,
+            min=0,
+            max=9,
+            update=_on_strategy_param_change,
+        )
+        print("[EVEVisualizer][shader_apply_async] Registered eve_char_rainbow_index property")
+    except Exception as e:
+        print(f"[EVEVisualizer][shader_apply_async] ERROR registering strategy params: {e}")
         import traceback
 
         traceback.print_exc()
+
+
+def _on_strategy_param_change(self, context):  # pragma: no cover
+    """Rebuild node group when strategy parameters change."""
+    if not bpy or not hasattr(bpy, "data"):
+        return
+
+    strategy_name = context.scene.eve_active_strategy
+    print(f"[EVEVisualizer][param_change] Updating strategy: {strategy_name}")
+
+    # Recreate node groups with new parameters
+    ensure_strategy_node_groups(context)
+
+    # Material will automatically use the updated node group
+    # No need to rebuild material - just the node group internals
 
 
 def _on_strategy_change(self, context):  # pragma: no cover
@@ -415,7 +444,7 @@ def _on_strategy_change(self, context):  # pragma: no cover
     print(f"[EVEVisualizer][strategy_change] Strategy changed to: {strategy_name}")
 
     # Ensure node groups exist
-    ensure_strategy_node_groups()
+    ensure_strategy_node_groups(context)
 
     # Get or create the material
     mat_name = "EVE_NodeGroupStrategies"
@@ -569,9 +598,11 @@ def _on_strategy_change(self, context):  # pragma: no cover
 def unregister():  # pragma: no cover
     if not bpy:
         return
-    # Remove scene property
+    # Remove scene properties
     if hasattr(bpy.types.Scene, "eve_active_strategy"):
         del bpy.types.Scene.eve_active_strategy
+    if hasattr(bpy.types.Scene, "eve_char_rainbow_index"):
+        del bpy.types.Scene.eve_char_rainbow_index
 
     bpy.utils.unregister_class(EVE_OT_cancel_shader)
     bpy.utils.unregister_class(EVE_OT_apply_shader_modal)

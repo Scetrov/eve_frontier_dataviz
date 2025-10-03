@@ -40,10 +40,18 @@ This document describes the user-facing features of the EVE Frontier Data Visual
 
 **Visual Encoding**:
 
-- **Color**: First character determines hue (A=red, M=green, Y=purple)
+- **Color**: Selected character determines hue (A=red, M=green, Y=purple)
 - **Brightness**: Planet + moon count (0.5-3.0 range)
 
-**Use Case**: "Where are all the systems starting with 'Q'?" → Look for cyan/blue stars
+**Customization**:
+
+- **Character Index** (0-9): Choose which character to use for coloring
+  - 0 = First character (default)
+  - 1 = Second character
+  - 2 = Third character, etc.
+- **Use Case**: Change index to find patterns in different name positions
+
+**Example**: Index 0 → "**A**BC-123" uses 'A' for color, Index 1 → "A**B**C-123" uses 'B' for color
 
 #### Pattern Categories
 
@@ -61,22 +69,28 @@ This document describes the user-facing features of the EVE Frontier Data Visual
 
 #### Position Encoding
 
-**Purpose**: Complex multi-character pattern visualization
+**Purpose**: Complex multi-character pattern visualization with RGB encoding
 
 **Visual Encoding**:
 
-- **R channel**: 1st character
-- **G channel**: 2nd character
-- **B channel**: 3rd character
-- **Intensity**: 10x boost for black holes
+- **R channel**: 1st character ordinal (normalized 0-1)
+- **G channel**: 2nd character ordinal (normalized 0-1)
+- **B channel**: 3rd character ordinal (normalized 0-1)
+- **Intensity**: 10x boost for black hole systems
 
-**Use Case**: "Show me unique color per unique name prefix" → Maximum visual variety
+**Key Difference from Character Rainbow**:
+
+- Uses **three characters simultaneously** to create RGB combinations
+- Produces unique colors for unique 3-character prefixes
+- Character Rainbow uses **one character** for hue only
+
+**Use Case**: "Show me maximum visual variety across name prefixes" → Each ABC, ABD, ABE gets distinct color
 
 **Switching Strategies**:
 
 - Select from dropdown in **Visualization** section
-- Click `Apply Visualization` (or change manually in shader editor)
-- Viewport updates instantly on GPU
+- Adjust strategy-specific parameters (e.g., Character Index for Character Rainbow)
+- Viewport updates instantly on GPU when parameters change
 
 ## Navigation & Analysis Features
 

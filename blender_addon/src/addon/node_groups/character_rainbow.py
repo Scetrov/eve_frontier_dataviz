@@ -11,19 +11,27 @@ except Exception:  # noqa: BLE001
     bpy = None  # type: ignore
 
 
-def ensure_node_group():
+def ensure_node_group(context=None):
     """Create or update the Character Rainbow node group.
 
     Inputs: None (reads properties via Attribute nodes)
     Outputs:
-        - Color: HSV-based color from first character
+        - Color: HSV-based color from selected character index
         - Strength: Emission strength from planet+moon count
+
+    Args:
+        context: Optional Blender context to read character index parameter
 
     Returns:
         str: Name of the node group
     """
     if not bpy:
         return ""
+
+    # Get character index from scene property (default to 0)
+    char_index = 0
+    if context and hasattr(context, "scene"):
+        char_index = getattr(context.scene, "eve_char_rainbow_index", 0)
 
     group_name = "EVE_Strategy_CharacterRainbow"
 
@@ -42,20 +50,20 @@ def ensure_node_group():
     group.interface.new_socket(name="Color", socket_type="NodeSocketColor", in_out="OUTPUT")
     group.interface.new_socket(name="Strength", socket_type="NodeSocketFloat", in_out="OUTPUT")
 
-    # === COLOR PATH: First character → HSV ===
+    # === COLOR PATH: Selected character → HSV ===
 
-    # Read first character index
-    attr_char0 = nodes.new("ShaderNodeAttribute")
-    attr_char0.attribute_name = "eve_name_char_index_0_ord"
-    attr_char0.attribute_type = "OBJECT"
-    attr_char0.location = (-800, 200)
+    # Read selected character index
+    attr_char = nodes.new("ShaderNodeAttribute")
+    attr_char.attribute_name = f"eve_name_char_index_{char_index}_ord"
+    attr_char.attribute_type = "OBJECT"
+    attr_char.location = (-800, 200)
 
     # Clamp -1 to 0 (non-alphanumeric becomes 0)
     math_max = nodes.new("ShaderNodeMath")
     math_max.operation = "MAXIMUM"
     math_max.inputs[1].default_value = 0.0
     math_max.location = (-600, 200)
-    links.new(attr_char0.outputs["Fac"], math_max.inputs[0])
+    links.new(attr_char.outputs["Fac"], math_max.inputs[0])
 
     # Multiply by 0.9 to get hue range 0.0-0.9 (avoids wrapping red)
     math_mult = nodes.new("ShaderNodeMath")

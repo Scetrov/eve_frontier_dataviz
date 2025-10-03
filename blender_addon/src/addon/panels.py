@@ -75,6 +75,17 @@ class EVE_PT_main(Panel):
         # Node-based strategy selector - auto-applies on change
         if hasattr(context.scene, "eve_active_strategy"):
             box_vis.prop(context.scene, "eve_active_strategy", text="Strategy")
+
+            # Strategy-specific parameters
+            active_strategy = context.scene.eve_active_strategy
+
+            if active_strategy == "CharacterRainbow":
+                # Character index selector for Character Rainbow
+                if hasattr(context.scene, "eve_char_rainbow_index"):
+                    box_vis.prop(context.scene, "eve_char_rainbow_index", text="Character Index")
+            elif active_strategy == "PositionEncoding":
+                # Info label explaining Position Encoding
+                box_vis.label(text="RGB from chars 0-2, blackhole boost", icon="INFO")
         else:
             box_vis.label(text="Reload add-on to enable strategies", icon="INFO")
 

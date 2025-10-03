@@ -13,13 +13,16 @@ except Exception:  # noqa: BLE001
     bpy = None  # type: ignore
 
 
-def ensure_strategy_node_groups():
+def ensure_strategy_node_groups(context=None):
     """Ensure all strategy node groups exist in the blend file.
 
     Creates or updates the following node groups:
     - EVE_Strategy_CharacterRainbow
     - EVE_Strategy_PatternCategories
     - EVE_Strategy_PositionEncoding
+
+    Args:
+        context: Optional Blender context for accessing scene properties
 
     Returns:
         list[str]: Names of created/updated node groups
@@ -30,7 +33,7 @@ def ensure_strategy_node_groups():
     from . import character_rainbow, pattern_categories, position_encoding
 
     groups = []
-    groups.append(character_rainbow.ensure_node_group())
+    groups.append(character_rainbow.ensure_node_group(context))
     groups.append(pattern_categories.ensure_node_group())
     groups.append(position_encoding.ensure_node_group())
 
