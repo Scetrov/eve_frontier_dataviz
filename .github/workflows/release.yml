@@ -166,13 +166,14 @@ jobs:
           python-version: '3.12'
       
       - name: Build addon ZIP
-        working-directory: blender_addon
         run: |
-          python scripts/build_addon.py
+          python blender_addon/scripts/build_addon.py
           
-          # Rename the ZIP to include version
+          # The build script creates dist/eve_frontier_visualizer-{version}.zip
+          # Rename it to eve_visualizer_{tag}.zip for the release
           VERSION="${{ steps.tag_info.outputs.tag_name }}"
-          mv eve_visualizer.zip "eve_visualizer_${VERSION}.zip"
+          BUILT_ZIP=$(ls dist/eve_frontier_visualizer-*.zip)
+          mv "$BUILT_ZIP" "dist/eve_visualizer_${VERSION}.zip"
       
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -200,7 +201,7 @@ jobs:
             - [Architecture](https://github.com/${{ github.repository }}/blob/${{ steps.tag_info.outputs.tag_name }}/blender_addon/docs/ARCHITECTURE.md)
             - [Node-Based Strategies](https://github.com/${{ github.repository }}/blob/${{ steps.tag_info.outputs.tag_name }}/blender_addon/docs/NODE_BASED_STRATEGIES.md)
           files: |
-            blender_addon/eve_visualizer_${{ steps.tag_info.outputs.tag_name }}.zip
+            dist/eve_visualizer_${{ steps.tag_info.outputs.tag_name }}.zip
           draft: false
           prerelease: ${{ contains(steps.tag_info.outputs.tag_name, 'alpha') || contains(steps.tag_info.outputs.tag_name, 'beta') || contains(steps.tag_info.outputs.tag_name, 'rc') }}
           generate_release_notes: false  # We're generating our own
