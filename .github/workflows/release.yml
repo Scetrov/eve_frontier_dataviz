@@ -160,6 +160,28 @@ jobs:
           
           echo "EOF" >> $GITHUB_OUTPUT
       
+      - name: Format tag message with PGP signature
+        id: formatted_message
+        run: |
+          TAG_MESSAGE="${{ steps.tag_info.outputs.tag_message }}"
+          
+          echo "formatted_message<<EOF" >> $GITHUB_OUTPUT
+          
+          # Check if message contains PGP signature
+          if echo "$TAG_MESSAGE" | grep -q "BEGIN PGP SIGNATURE"; then
+            # Split message into parts: before signature, signature block, after signature
+            echo "$TAG_MESSAGE" | awk '
+              /-----BEGIN PGP SIGNATURE-----/ { in_sig=1; print ""; print "```"; }
+              { print }
+              /-----END PGP SIGNATURE-----/ { print "```"; print ""; in_sig=0; }
+            ' >> $GITHUB_OUTPUT
+          else
+            # No signature, output as-is
+            echo "$TAG_MESSAGE" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "EOF" >> $GITHUB_OUTPUT
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -180,7 +202,7 @@ jobs:
         with:
           name: Release ${{ steps.tag_info.outputs.tag_name }}
           body: |
-            ${{ steps.tag_info.outputs.tag_message }}
+            ${{ steps.formatted_message.outputs.formatted_message }}
             
             ${{ steps.changelog.outputs.changelog }}
             
