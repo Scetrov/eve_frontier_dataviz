@@ -32,6 +32,19 @@ If the tab or operators don’t show up, see Troubleshooting below.
 - Pre-calculate character indices and semantic properties once during scene build.
 - Allow batch re-render/export (stills or animation) via headless `blender --background`.
 
+## 🌟 Key Features
+
+- **24,000+ Star Systems**: Full EVE Frontier galaxy visualization with accurate 3D coordinates
+- **Three GPU-Driven Shader Strategies**: Character Rainbow, Pattern Categories, Position Encoding
+- **Instant Strategy Switching**: Change visualizations without rebuilding the scene
+- **Navigation Landmarks**: Reference point labels at black holes and constellation centers
+- **Jump Network Analysis**: Visualize stargate connections and find isolated triangle islands
+- **Graph Algorithms**: Detect topological patterns in the jump network
+- **Headless Rendering**: Batch export via command-line automation
+- **90%+ Test Coverage**: Pure Python data layer comprehensively tested
+
+See `docs/FEATURES.md` for comprehensive feature documentation.
+
 ## 🗂 Project Structure
 
 ```text
@@ -49,6 +62,7 @@ blender_addon/
     export_batch.py         # Headless batch render script
     dev_reload.py           # Reload helper (during active Blender session)
   docs/
+    FEATURES.md             # Comprehensive features guide (start here!)
     ARCHITECTURE.md         # Layered design overview
     NODE_BASED_STRATEGIES.md # Comprehensive node system guide
     SHADERS.md              # Strategy catalog

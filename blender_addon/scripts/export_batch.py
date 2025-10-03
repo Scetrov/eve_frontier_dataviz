@@ -1,6 +1,9 @@
 """Headless batch export example.
+
 Run with:
-blender -b some_scene.blend -P scripts/export_batch.py -- --modes NameFirstCharHue ChildCountEmission
+    blender -b some_scene.blend -P scripts/export_batch.py -- --modes CharacterRainbow PatternCategories
+
+This script applies node-based visualization strategies and renders stills.
 """
 
 import argparse
@@ -25,7 +28,7 @@ def apply_strategy(strategy_id: str):
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--modes", nargs="+", default=["NameFirstCharHue"])
+    parser.add_argument("--modes", nargs="+", default=["CharacterRainbow"])
     parser.add_argument("--output", default="renders")
     args = parser.parse_args(argv)
     out_dir = args.output
