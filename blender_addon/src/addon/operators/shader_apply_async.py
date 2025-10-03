@@ -439,6 +439,7 @@ def _on_strategy_param_change(self, context):  # pragma: no cover
 
     if mat and mat.use_nodes:
         nodes = mat.node_tree.nodes
+        links = mat.node_tree.links
 
         # Reconnect Character Rainbow node group
         ng_char_rainbow = nodes.get("CharacterRainbow")
@@ -465,6 +466,55 @@ def _on_strategy_param_change(self, context):  # pragma: no cover
             print("[EVEVisualizer][param_change] Reconnected PositionEncoding node group")
 
         print("[EVEVisualizer][param_change] Node group relinking complete")
+
+        # CRITICAL: Rebuild all connections between node groups and mix nodes
+        # Node group recreation breaks not just the references but also the socket connections
+        print("[EVEVisualizer][param_change] Rebuilding node connections...")
+
+        mix_color_1 = nodes.get("MixColor1")
+        mix_color_2 = nodes.get("MixColor2")
+        mix_strength_1 = nodes.get("MixStrength1")
+        mix_strength_2 = nodes.get("MixStrength2")
+
+        # Reconnect color paths
+        if ng_char_rainbow and ng_pattern and mix_color_1:
+            # Clear existing connections to these inputs
+            for input_socket in [mix_color_1.inputs[6], mix_color_1.inputs[7]]:
+                for link in list(input_socket.links):
+                    links.remove(link)
+            # Reconnect
+            links.new(ng_char_rainbow.outputs["Color"], mix_color_1.inputs[6])  # A
+            links.new(ng_pattern.outputs["Color"], mix_color_1.inputs[7])  # B
+            print("[EVEVisualizer][param_change] Reconnected MixColor1")
+
+        if mix_color_1 and ng_position and mix_color_2:
+            # Clear existing connections
+            for input_socket in [mix_color_2.inputs[6], mix_color_2.inputs[7]]:
+                for link in list(input_socket.links):
+                    links.remove(link)
+            # Reconnect
+            links.new(mix_color_1.outputs[2], mix_color_2.inputs[6])  # A
+            links.new(ng_position.outputs["Color"], mix_color_2.inputs[7])  # B
+            print("[EVEVisualizer][param_change] Reconnected MixColor2")
+
+        # Reconnect strength paths
+        if ng_char_rainbow and ng_pattern and mix_strength_1:
+            for input_socket in [mix_strength_1.inputs[2], mix_strength_1.inputs[3]]:
+                for link in list(input_socket.links):
+                    links.remove(link)
+            links.new(ng_char_rainbow.outputs["Strength"], mix_strength_1.inputs[2])  # A
+            links.new(ng_pattern.outputs["Strength"], mix_strength_1.inputs[3])  # B
+            print("[EVEVisualizer][param_change] Reconnected MixStrength1")
+
+        if mix_strength_1 and ng_position and mix_strength_2:
+            for input_socket in [mix_strength_2.inputs[2], mix_strength_2.inputs[3]]:
+                for link in list(input_socket.links):
+                    links.remove(link)
+            links.new(mix_strength_1.outputs[1], mix_strength_2.inputs[2])  # A
+            links.new(ng_position.outputs["Strength"], mix_strength_2.inputs[3])  # B
+            print("[EVEVisualizer][param_change] Reconnected MixStrength2")
+
+        print("[EVEVisualizer][param_change] Connection rebuild complete")
 
 
 def _on_strategy_change(self, context):  # pragma: no cover
