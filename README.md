@@ -144,7 +144,7 @@ You can run a headless build + shader application in future workflows. Example s
    Or batch export with strategies:
 
    ```bash
-   blender -b my_scene.blend -P blender_addon/scripts/export_batch.py -- --modes NameFirstCharHue ChildCountEmission
+   blender -b my_scene.blend -P blender_addon/scripts/export_batch.py -- --modes CharacterRainbow PatternCategories
    ```
 
 ### Uninstall / Clean
@@ -182,11 +182,11 @@ Example (PowerShell on Windows):
 1. Set DB path in Add-on Preferences if not default.
 2. Click "Load / Refresh Data" (currently stub until `scene_builder` implemented).
 3. Click "Build Scene" to generate placeholder / future real objects.
-4. Pick and apply a visualization strategy (e.g. `NameFirstCharHue`).
+4. Pick and apply a visualization strategy (e.g. `CharacterRainbow`).
 5. (Optional) Batch export renders:
 
    ```bash
-   blender -b your_scene.blend -P blender_addon/scripts/export_batch.py -- --modes NameFirstCharHue ChildCountEmission
+   blender -b your_scene.blend -P blender_addon/scripts/export_batch.py -- --modes CharacterRainbow PatternCategories
    ```
 
 ## 🧩 Adding a New Shader Strategy
