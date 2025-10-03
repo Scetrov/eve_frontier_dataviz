@@ -19,6 +19,11 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for changelog generation
       
+      - name: Refetch tags to preserve tag objects
+        run: |
+          # actions/checkout dereferences tags, we need to refetch them as objects
+          git fetch --force --tags
+      
       - name: Verify tag is signed
         env:
           GH_TOKEN: ${{ github.token }}
