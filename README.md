@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/Scetrov/eve_frontier_dataviz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Scetrov/eve_frontier_dataviz/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/Scetrov/eve_frontier_dataviz/branch/main/graph/badge.svg)](https://codecov.io/gh/Scetrov/eve_frontier_dataviz)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 
 This repository contains a Blender add-on and supporting Python tooling to visualize astronomical / game world data stored in `data/static.db` inside a 3D scene. It uses **GPU-driven, node-based shader strategies** to encode metrics (counts, categorical codes, characters of names) into colors and emission strength with instant switching capability.
 
