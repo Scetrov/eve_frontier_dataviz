@@ -62,9 +62,11 @@ jobs:
         continue-on-error: true
 
       - name: Run tests with coverage
+        working-directory: ./blender_addon
         run: pytest --cov-report=term-missing --cov-report=xml
 
       - name: Check coverage threshold
+        working-directory: ./blender_addon
         run: |
           # Extract coverage percentage from pytest output
           coverage_pct=$(python -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage.xml'); root = tree.getroot(); print(root.attrib['line-rate'])")
@@ -76,23 +78,25 @@ jobs:
           fi
           echo "Coverage check passed ✓"
 
+      - name: Verify coverage file exists
+        run: |
+          if [ -f "blender_addon/coverage.xml" ]; then
+            echo "Coverage file found ✓"
+            ls -lh blender_addon/coverage.xml
+          else
+            echo "::error::Coverage file not found!"
+            exit 1
+          fi
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          files: coverage.xml
-          fail_ci_if_error: false
-          verbose: true
-          disable_search: true
-          # Prevents Codecov from trying to fix file paths, reducing processing time
-          disable_file_fixes: true
-          # Use explicit flags to help with organization
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./blender_addon/coverage.xml
           flags: unittests
-          # Override with current timestamp to avoid age check issues
-          override_commit: ${{ github.sha }}
-          override_build: ${{ github.run_id }}
-          override_pr: ${{ github.event.pull_request.number }}
+          name: codecov-umbrella
+          fail_ci_if_error: true
+          verbose: true
 
       - name: Build add-on zip
         run: python blender_addon/scripts/build_addon.py
