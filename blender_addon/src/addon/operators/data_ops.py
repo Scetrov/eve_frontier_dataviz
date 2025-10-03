@@ -10,7 +10,7 @@ except Exception:  # noqa: BLE001
     bpy = None  # type: ignore
 
 from .. import data_state
-from ..data_loader import load_data
+from ..data_loader import load_data, load_jumps
 from ..preferences import get_prefs
 from ._shared import clear_generated
 
@@ -53,15 +53,20 @@ if bpy:  # Only define classes when Blender API is present
             limit_arg = limit_val if limit_val > 0 else None
             try:
                 systems = load_data(db_path, limit_systems=limit_arg)
+                # Load jumps for these systems
+                system_ids = [s.id for s in systems]
+                jumps = load_jumps(db_path, system_ids=system_ids)
+                data_state.set_loaded_jumps(jumps)
             except Exception as e:  # noqa: BLE001
                 self.report({"ERROR"}, f"Load failed: {e}")
                 return {"CANCELLED"}
             data_state.set_loaded_systems(systems)
             total_planets = sum(len(s.planets) for s in systems)
             total_moons = sum(len(p.moons) for s in systems for p in s.planets)
+            total_stations = sum(s.npc_station_count for s in systems)
             self.report(
                 {"INFO"},
-                f"Loaded {len(systems)} systems / {total_planets} planets / {total_moons} moons",
+                f"Loaded {len(systems)} systems / {total_planets} planets / {total_moons} moons / {total_stations} npc stations / {len(jumps)} jumps",
             )
             return {"FINISHED"}
 

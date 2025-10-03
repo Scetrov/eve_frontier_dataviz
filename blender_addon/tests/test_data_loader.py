@@ -204,3 +204,57 @@ def test_dataclass_immutability():
         if planet.moons:
             moon = planet.moons[0]
             assert hasattr(type(moon), "__slots__")
+
+
+def test_npc_station_count():
+    """Test that NPC station counts are loaded correctly."""
+    from addon.data_loader import load_data
+
+    path = build_temp_db()
+    systems = load_data(path)
+
+    # Alpha system should have 2 NPC stations
+    alpha = next(s for s in systems if s.name == "Alpha")
+    assert alpha.npc_station_count == 2
+
+    # Beta system should have 1 NPC station
+    beta = next(s for s in systems if s.name == "Beta")
+    assert beta.npc_station_count == 1
+
+
+def test_load_jumps():
+    """Test that jumps are loaded correctly."""
+    from addon.data_loader import load_jumps
+
+    path = build_temp_db()
+    jumps = load_jumps(path)
+
+    # Should have 2 jump entries (bidirectional)
+    assert len(jumps) == 2
+
+    # Check jump from Alpha (1) to Beta (2)
+    jump_1_2 = next(j for j in jumps if j.from_system_id == 1 and j.to_system_id == 2)
+    assert jump_1_2 is not None
+
+    # Check jump from Beta (2) to Alpha (1)
+    jump_2_1 = next(j for j in jumps if j.from_system_id == 2 and j.to_system_id == 1)
+    assert jump_2_1 is not None
+
+
+def test_load_jumps_filtered():
+    """Test that jumps can be filtered by system IDs."""
+    from addon.data_loader import load_jumps
+
+    path = build_temp_db()
+
+    # Load only jumps involving both system 1 and 2
+    jumps = load_jumps(path, system_ids=[1, 2])
+    assert len(jumps) == 2  # Both directions
+
+    # Load jumps for single system (no jumps since both ends must be in list)
+    jumps = load_jumps(path, system_ids=[1])
+    assert len(jumps) == 0  # No jumps between only system 1
+
+    # Load jumps for non-existent system
+    jumps = load_jumps(path, system_ids=[999])
+    assert len(jumps) == 0

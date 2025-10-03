@@ -184,6 +184,7 @@ if bpy:
                     obj["eve_name_char_bucket"] = calculate_name_char_bucket(system_name)
                     obj["eve_planet_count"] = planet_count
                     obj["eve_moon_count"] = moon_count
+                    obj["eve_npc_station_count"] = sys.npc_station_count
                     obj["eve_is_blackhole"] = 1 if is_blackhole_system(system_name) else 0
 
                     # Character index properties (first 10 chars, normalized ordinals)

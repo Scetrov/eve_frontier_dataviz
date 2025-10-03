@@ -15,8 +15,17 @@ __all__ = [
     "System",
     "Planet",
     "Moon",
+    "Jump",
     "load_data",
 ]
+
+
+@dataclass(slots=True)
+class Jump:
+    """Represents a connection between two solar systems."""
+
+    from_system_id: int
+    to_system_id: int
 
 
 @dataclass(slots=True)
@@ -47,6 +56,7 @@ class System:
     security: Optional[float] | None
     region_name: Optional[str] = None
     constellation_name: Optional[str] = None
+    npc_station_count: int = 0  # Count of NPC stations in this system
     planets: List[Planet] = field(default_factory=list)
 
 
@@ -74,6 +84,8 @@ _TABLE_SYNONYMS: Dict[str, Tuple[str, ...]] = {
     ),
     "planets": ("planets", "Planets"),
     "moons": ("moons", "Moons"),
+    "jumps": ("jumps", "Jumps"),
+    "npcstations": ("npcstations", "NpcStations", "npc_stations"),
 }
 
 
@@ -370,9 +382,35 @@ def load_data(
                 if parent:
                     parent.moons.append(m)
 
+        # Load NPC station counts per system (optional table)
+        if "npcstations" in tables:
+            try:
+                # Find the system_id column (could be solarSystemId, system_id, etc.)
+                cur.execute(f"PRAGMA table_info('{tables['npcstations']}')")
+                station_cols = [row[1] for row in cur.fetchall()]
+                station_col_resolve = _column_lookup(station_cols)
+                station_sys_id = station_col_resolve(
+                    ("solarSystemId", "system_id", "systemId", "SystemId")
+                )
+
+                if station_sys_id:
+                    cur.execute(
+                        f"SELECT {station_sys_id}, COUNT(*) FROM {tables['npcstations']} GROUP BY {station_sys_id}"
+                    )
+                    station_counts = cur.fetchall()
+                    for row in station_counts:
+                        sys_id = int(row[0])
+                        count = int(row[1])
+                        if sys_id in system_map:
+                            system_map[sys_id].npc_station_count = count
+            except Exception:
+                # Table might not exist or have different schema - skip silently
+                pass
+
     systems = list(system_map.values())
     # Optional debug mapping output
     if os.environ.get("EVE_LOADER_DEBUG"):
+        total_stations = sum(s.npc_station_count for s in systems)
         print(
             "[EVEVisualizer][debug] Loaded systems count=",
             len(systems),
@@ -380,6 +418,8 @@ def load_data(
             sum(len(s.planets) for s in systems),
             " moons=",
             sum(len(p.moons) for s in systems for p in s.planets),
+            " npc_stations=",
+            total_stations,
         )
     if enable_cache:
         _cache[cache_key] = systems
@@ -388,3 +428,71 @@ def load_data(
 
 def clear_cache():  # pragma: no cover - utility
     _cache.clear()
+
+
+def load_jumps(db_path: str | os.PathLike, system_ids: Optional[List[int]] = None) -> List[Jump]:
+    """Load jump connections from the database.
+
+    Parameters
+    ----------
+    db_path: str | Path
+        Path to the SQLite file.
+    system_ids: List[int] | None
+        If provided, only load jumps between these systems.
+
+    Returns
+    -------
+    List[Jump]
+        List of Jump objects connecting solar systems.
+    """
+    path = Path(db_path)
+    if not path.exists():  # pragma: no cover - defensive
+        raise FileNotFoundError(f"Database not found: {db_path}")
+
+    jumps: List[Jump] = []
+
+    with sqlite3.connect(path) as con:
+        con.row_factory = sqlite3.Row
+        cur = con.cursor()
+
+        # Resolve table names
+        tables = _resolve_table_names(cur)
+
+        if "jumps" not in tables:
+            # No jumps table - return empty list
+            return jumps
+
+        # Introspect jumps table
+        cur.execute(f"PRAGMA table_info('{tables['jumps']}')")
+        jump_cols = [row[1] for row in cur.fetchall()]
+        jump_resolve = _column_lookup(jump_cols)
+
+        # Common column name variations
+        c_from = jump_resolve(
+            ("fromsolarSystemId", "from_solar_system_id", "fromSystemId", "from_system_id")
+        )
+        c_to = jump_resolve(("toSolarSystemId", "to_solar_system_id", "toSystemId", "to_system_id"))
+
+        if not c_from or not c_to:
+            # Can't find the required columns
+            return jumps
+
+        # Build query
+        if system_ids:
+            # Only load jumps where both ends are in the system_ids list
+            placeholder = ",".join(["?"] * len(system_ids))
+            query = f"SELECT {c_from}, {c_to} FROM {tables['jumps']} WHERE {c_from} IN ({placeholder}) AND {c_to} IN ({placeholder})"
+            cur.execute(query, system_ids + system_ids)
+        else:
+            # Load all jumps
+            query = f"SELECT {c_from}, {c_to} FROM {tables['jumps']}"
+            cur.execute(query)
+
+        jump_rows = cur.fetchall()
+
+        for r in jump_rows:
+            from_id = int(r[c_from])
+            to_id = int(r[c_to])
+            jumps.append(Jump(from_system_id=from_id, to_system_id=to_id))
+
+    return jumps

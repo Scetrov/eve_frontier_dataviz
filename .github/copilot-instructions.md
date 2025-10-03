@@ -5,8 +5,9 @@ Authoritative rules for assisting on the EVE Frontier Blender data visualizer. F
 ### Current Core Flow
 
 ```text
-SQLite (data/static.db) -> data_loader (pure Python) -> in-memory systems list
- -> operators.build_scene (systems only) -> system objects (custom props: planet_count, moon_count)
+SQLite (data/static.db) -> data_loader (pure Python) -> in-memory systems + jumps
+ -> operators.build_scene (systems only) -> system objects (custom props: planet_count, moon_count, npc_station_count)
+ -> operators.build_jumps -> jump line objects (curves connecting systems)
  -> shader strategies apply / reuse materials
 ```
 
@@ -20,13 +21,17 @@ SQLite (data/static.db) -> data_loader (pure Python) -> in-memory systems list
 ### Key Conventions
 
 - Source layout: `blender_addon/src/addon` is the Python package root.
-- Collections currently created: `EVE_Systems` only (planets/moons represented as counts, not objects).
+- Collections created: `Frontier` (root), `EVE_Systems` (system objects), `EVE_Jumps` (jump line curves).
 - Future reserved names (do not misuse): `EVE_Planets`, `EVE_Moons`.
 - Per-system custom properties:
     - `planet_count` (int)
     - `moon_count` (int)
+    - `eve_npc_station_count` (int) - count of NPC stations
+    - `eve_name_pattern` (int) - pattern category
+    - `eve_name_char_index_N_ord` (float) - character ordinal values
+    - `eve_is_blackhole` (int) - 1 if blackhole system
 - Material naming: `EVE_` + StrategyID (+ deterministic suffix for variants, e.g. first char, child count).
-- Strategy registry: use `@register_strategy` decorator; control ordering with `order` attribute.
+- Jump lines: simple curves with emission shader, toggleable via collection visibility.
 - `objects_by_type` dict currently only includes key `"systems"`.
 - Data loader dataclasses use `slots=True`; extend by adding a single bulk SELECT, never per-row queries.
 

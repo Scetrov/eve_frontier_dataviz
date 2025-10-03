@@ -21,6 +21,7 @@ _SUBMODULES = [
     "._shared",
     ".data_ops",
     ".build_scene_modal",
+    ".build_jumps",
     ".shader_apply_async",
     ".viewport",
     ".volumetric",

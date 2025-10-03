@@ -78,10 +78,15 @@ class EVE_PT_main(Panel):
         else:
             box_vis.label(text="Reload add-on to enable strategies", icon="INFO")
 
-            # Volumetric atmosphere controls
+        # Volumetric atmosphere controls
         row_vol = box_vis.row(align=True)
         row_vol.operator("eve.add_volumetric", text="Add Atmosphere", icon="VOLUME_DATA")
         row_vol.operator("eve.remove_volumetric", text="", icon="X")
+
+        # Jump lines controls
+        row_jumps = box_vis.row(align=True)
+        row_jumps.operator("eve.build_jumps", text="Build Jumps", icon="MESH_MONKEY")
+        row_jumps.operator("eve.toggle_jumps", text="", icon="HIDE_OFF")
 
         # --- View Section ---
         box_view = layout.box()

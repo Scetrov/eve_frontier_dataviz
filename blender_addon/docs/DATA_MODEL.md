@@ -13,6 +13,9 @@ class System:
     y: float
     z: float
     security: float | None
+    region_name: str | None
+    constellation_name: str | None
+    npc_station_count: int  # Count of NPC stations in this system
     planets: list[Planet]
 
 @dataclass
@@ -30,20 +33,29 @@ class Moon:
     planet_id: int
     name: str
     orbit_index: int | None
+
+@dataclass
+class Jump:
+    from_system_id: int
+    to_system_id: int
 ```
 
 ## Table Assumptions
 
 | Table | Columns (core) | Notes |
 |-------|----------------|-------|
-| systems (or Systems) | id, name, x, y, z, security | coordinates likely large: apply scale factor |
+| systems (or SolarSystems) | id, name, x, y, z, security, regionId, constellationId | coordinates likely large: apply scale factor |
 | planets (or Planets) | id, system_id, name, orbit_index, planet_type | orbit_index may be null |
 | moons (or Moons) | id, planet_id, name, orbit_index | similar hierarchy principle |
+| jumps (or Jumps) | fromSolarSystemId, toSolarSystemId | system connectivity graph |
+| npcstations (or NpcStations) | solarSystemId | grouped by system for counts |
 
 ## Relationships
 
 - One `System` -> many `Planet`.
 - One `Planet` -> many `Moon`.
+- One `System` -> zero or more NPC stations (stored as count).
+- Systems connected via `Jump` entities (bidirectional graph).
 
 ## Coordinate Scaling
 
