@@ -91,6 +91,8 @@ class EVE_PT_main(Panel):
         # --- View Section ---
         box_view = layout.box()
         box_view.label(text="View / Camera", icon="VIEW_CAMERA")
+        row_view_cam = box_view.row(align=True)
+        row_view_cam.operator("eve.add_camera", text="Add Camera", icon="OUTLINER_OB_CAMERA")
         row_view1 = box_view.row(align=True)
         row_view1.operator("eve.viewport_frame_all", text="Frame All Stars", icon="VIEWZOOM")
         row_view2 = box_view.row(align=True)

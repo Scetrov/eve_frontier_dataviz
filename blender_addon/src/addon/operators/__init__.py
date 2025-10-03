@@ -25,6 +25,7 @@ _SUBMODULES = [
     ".shader_apply_async",
     ".viewport",
     ".volumetric",
+    ".camera",
 ]
 
 _loaded: List[object] = []
