@@ -176,6 +176,9 @@ if bpy:
                             with context.temp_override(area=area, region=region):
                                 bpy.ops.view3d.view_selected()
 
+                # Deselect all systems after framing
+                bpy.ops.object.select_all(action="DESELECT")
+
                 self.report({"INFO"}, f"Framed {len(systems)} systems in viewport")
             except Exception as e:  # noqa: BLE001
                 self.report({"ERROR"}, f"Failed to frame view: {e}")
