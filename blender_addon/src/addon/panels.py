@@ -56,8 +56,8 @@ class EVE_PT_main(Panel):
                             prefs, "build_percentage", text="Sample Proportion (0.0 to 1.0)"
                         )
                     # Coordinate scale now panel-only (removed from preferences UI)
-                    if hasattr(prefs, "scale_factor"):
-                        box_build.prop(prefs, "scale_factor", text="Scale")
+                    if hasattr(prefs, "scale_exponent"):
+                        box_build.prop(prefs, "scale_exponent", text="Scale (10^x)")
                     if hasattr(prefs, "system_point_radius"):
                         box_build.prop(prefs, "system_point_radius", text="Star Radius")
                     if hasattr(prefs, "system_representation"):

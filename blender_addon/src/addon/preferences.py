@@ -4,7 +4,13 @@ from pathlib import Path
 
 try:  # pragma: no cover - allows tests without Blender runtime
     import bpy  # type: ignore
-    from bpy.props import BoolProperty, EnumProperty, FloatProperty, StringProperty  # type: ignore
+    from bpy.props import (  # type: ignore
+        BoolProperty,
+        EnumProperty,
+        FloatProperty,
+        IntProperty,
+        StringProperty,
+    )
     from bpy.types import AddonPreferences, Operator  # type: ignore
 except Exception:  # noqa: BLE001
     bpy = None  # type: ignore
@@ -23,6 +29,9 @@ except Exception:  # noqa: BLE001
         return None
 
     def FloatProperty(**_kwargs):  # type: ignore
+        return None
+
+    def IntProperty(**_kwargs):  # type: ignore
         return None
 
     def StringProperty(**_kwargs):  # type: ignore
@@ -101,17 +110,23 @@ class EVEVisualizerPreferences(_BasePrefs):
         default=_ENV_DB_PATH or "",  # empty if no ENV override
         description="Path to static.db (set here, use Locate, or define env EVE_STATIC_DB)",
     )
-    scale_factor: FloatProperty(  # type: ignore[valid-type]
-        name="Coordinate Scale",
-        default=1e-18,
-        min=1e-20,
-        soft_min=1e-19,
-        soft_max=1e-15,
+    scale_exponent: IntProperty(  # type: ignore[valid-type]
+        name="Scale Exponent",
+        default=-18,
+        min=-25,
+        max=-10,
+        soft_min=-20,
+        soft_max=-15,
         description=(
-            "Multiply raw coordinates by this factor. 1e-18 maps ~1e19m spans to ~100 BU."
+            "Power of 10 for coordinate scaling. -18 means 10^-18, mapping ~1e19m spans to ~100 BU"
         ),
-        precision=6,
     )
+
+    @property
+    def scale_factor(self) -> float:
+        """Computed scale factor from exponent (10^scale_exponent)."""
+        return 10.0**self.scale_exponent
+
     enable_cache: BoolProperty(  # type: ignore[valid-type]
         name="Enable Data Cache",
         default=True,
@@ -271,19 +286,19 @@ try:  # pragma: no cover - runtime safety
             description="Path to static.db (set here, use Locate, or define env EVE_STATIC_DB)",
         )
         _missing.append("db_path")
-    if not hasattr(EVEVisualizerPreferences, "scale_factor"):
-        EVEVisualizerPreferences.scale_factor = FloatProperty(  # type: ignore[attr-defined]
-            name="Coordinate Scale",
-            default=1e-18,
-            min=1e-20,
-            soft_min=1e-19,
-            soft_max=1e-15,
+    if not hasattr(EVEVisualizerPreferences, "scale_exponent"):
+        EVEVisualizerPreferences.scale_exponent = IntProperty(  # type: ignore[attr-defined]
+            name="Scale Exponent",
+            default=-18,
+            min=-25,
+            max=-10,
+            soft_min=-20,
+            soft_max=-15,
             description=(
-                "Multiply raw coordinates by this factor. 1e-18 maps ~1e19m spans to ~100 BU."
+                "Power of 10 for coordinate scaling. -18 means 10^-18, mapping ~1e19m spans to ~100 BU"
             ),
-            precision=6,
         )
-        _missing.append("scale_factor")
+        _missing.append("scale_exponent")
     if not hasattr(EVEVisualizerPreferences, "enable_cache"):
         EVEVisualizerPreferences.enable_cache = BoolProperty(  # type: ignore[attr-defined]
             name="Enable Data Cache",
