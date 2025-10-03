@@ -146,17 +146,20 @@ def calculate_child_metrics(planets: list) -> tuple[int, int]:
     return planet_count, moon_count
 
 
-# Blackhole detection (future: could be a property too)
-_BLACKHOLE_NAMES = frozenset(["J055520", "J110909", "J164710", "J174618", "J175552"])
+# Blackhole detection - IDs are universal constants
+_BLACKHOLE_IDS = frozenset([30000001, 30000002, 30000003])
 
 
-def is_blackhole_system(name: str) -> bool:
-    """Check if system name is a known blackhole system.
+def is_blackhole_system(system_id: int) -> bool:
+    """Check if system ID is a known blackhole system.
+
+    Black holes are always IDs 30000001-30000003 (A 2560, M 974, U 3183).
+    These IDs are effectively universal constants in EVE Frontier.
 
     Args:
-        name: System name to check
+        system_id: Solar system ID to check
 
     Returns:
-        True if name matches a known blackhole system
+        True if ID matches a known blackhole system
     """
-    return name in _BLACKHOLE_NAMES
+    return system_id in _BLACKHOLE_IDS

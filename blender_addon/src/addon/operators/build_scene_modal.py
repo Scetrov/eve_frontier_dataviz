@@ -186,7 +186,7 @@ if bpy:
                     obj["eve_planet_count"] = planet_count
                     obj["eve_moon_count"] = moon_count
                     obj["eve_npc_station_count"] = sys.npc_station_count
-                    obj["eve_is_blackhole"] = 1 if is_blackhole_system(system_name) else 0
+                    obj["eve_is_blackhole"] = 1 if is_blackhole_system(sys.id) else 0
 
                     # Character index properties (first 10 chars, normalized ordinals)
                     # -1.0 = non-alphanumeric/missing, 0.0-1.0 = alphanumeric position

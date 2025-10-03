@@ -200,18 +200,13 @@ class TestBlackholeDetection:
     """Test blackhole system detection."""
 
     def test_known_blackholes(self):
-        assert is_blackhole_system("J055520") is True
-        assert is_blackhole_system("J110909") is True
-        assert is_blackhole_system("J164710") is True
-        assert is_blackhole_system("J174618") is True
-        assert is_blackhole_system("J175552") is True
+        # Black holes are always IDs 30000001-30000003 (A 2560, M 974, U 3183)
+        assert is_blackhole_system(30000001) is True
+        assert is_blackhole_system(30000002) is True
+        assert is_blackhole_system(30000003) is True
 
     def test_non_blackholes(self):
-        assert is_blackhole_system("J055521") is False  # similar but not exact
-        assert is_blackhole_system("Random") is False
-        assert is_blackhole_system("") is False
-
-    def test_case_sensitive(self):
-        # Blackhole names should be exact match (case-sensitive)
-        assert is_blackhole_system("j055520") is False
-        assert is_blackhole_system("J055520") is True
+        assert is_blackhole_system(30000004) is False  # similar but not exact
+        assert is_blackhole_system(30000000) is False
+        assert is_blackhole_system(32000001) is False  # AD system
+        assert is_blackhole_system(1) is False

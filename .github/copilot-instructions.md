@@ -33,7 +33,7 @@ SQLite (data/static.db) -> data_loader (pure Python) -> in-memory systems + jump
     - `eve_npc_station_count` (int) - count of NPC stations
     - `eve_name_pattern` (int) - pattern category
     - `eve_name_char_index_N_ord` (float) - character ordinal values
-    - `eve_is_blackhole` (int) - 1 if blackhole system
+    - `eve_is_blackhole` (int) - 1 if system ID is 30000001-30000003 (A 2560, M 974, U 3183)
 - Material naming: `EVE_` + StrategyID (+ deterministic suffix for variants, e.g. first char, child count).
 - Jump lines: simple curves with emission shader, toggleable via collection visibility.
 - `objects_by_type` dict currently only includes key `"systems"`.
@@ -178,6 +178,9 @@ CREATE TABLE Moons (
 - Foreign key columns use camelCase (e.g., `constellationId`, `regionId`)
 - Constellation names in the database are currently numeric IDs (e.g., "20000001")
 - Region names are descriptive strings (e.g., "000-0Y-0", "DG8-Y-D3")
+- Black hole systems: IDs 30000001-30000003 (A 2560, M 974, U 3183) are universal constants
+  - Identified by: spectral class 'O0', infinite mass (`star_mass = inf`), zero luminosity
+  - Detection uses system ID, not name, for reliability
 - Data loader performs LEFT JOINs to populate `region_name` and `constellation_name` on System dataclass
 - Additional tables: `Jumps`, `NpcStations` (not currently loaded by visualizer)
 
