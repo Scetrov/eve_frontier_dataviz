@@ -19,6 +19,23 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for changelog generation
       
+      - name: Verify tag is signed
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          
+          # Check if tag is signed with GPG
+          if ! git tag -v ${TAG_NAME} 2>&1 | grep -q "^gpg: Good signature"; then
+            echo "❌ ERROR: Tag ${TAG_NAME} is not signed with a valid GPG signature"
+            echo ""
+            echo "To create a signed tag, use:"
+            echo "  git tag -s ${TAG_NAME} -m 'Your release message'"
+            echo ""
+            echo "Releases must use signed tags for security and authenticity."
+            exit 1
+          fi
+          
+          echo "✅ Tag ${TAG_NAME} is properly signed"
+      
       - name: Get tag information
         id: tag_info
         run: |
