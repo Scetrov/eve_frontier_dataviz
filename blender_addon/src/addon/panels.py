@@ -95,6 +95,11 @@ class EVE_PT_main(Panel):
         )
         row_lights.operator("eve.remove_blackhole_lights", text="", icon="X")
 
+        # Reference points (navigation landmarks)
+        row_refs = box_vis.row(align=True)
+        row_refs.operator("eve.add_reference_points", text="Add Reference Points", icon="FONT_DATA")
+        row_refs.operator("eve.remove_reference_points", text="", icon="X")
+
         # --- View Section ---
         box_view = layout.box()
         box_view.label(text="View / Camera", icon="VIEW_CAMERA")

@@ -27,6 +27,7 @@ _SUBMODULES = [
     ".volumetric",
     ".camera",
     ".lighting",
+    ".reference_points",
 ]
 
 _loaded: List[object] = []
