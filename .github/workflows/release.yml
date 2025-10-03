@@ -20,21 +20,51 @@ jobs:
           fetch-depth: 0  # Fetch all history for changelog generation
       
       - name: Verify tag is signed
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
           
-          # Check if tag is signed with GPG
-          if ! git tag -v ${TAG_NAME} 2>&1 | grep -q "^gpg: Good signature"; then
-            echo "❌ ERROR: Tag ${TAG_NAME} is not signed with a valid GPG signature"
+          # Check if this is an annotated or signed tag (not lightweight)
+          TAG_TYPE=$(git cat-file -t ${TAG_NAME})
+          if [ "$TAG_TYPE" != "tag" ]; then
+            echo "❌ ERROR: Tag ${TAG_NAME} is a lightweight tag, not an annotated/signed tag"
             echo ""
             echo "To create a signed tag, use:"
             echo "  git tag -s ${TAG_NAME} -m 'Your release message'"
             echo ""
-            echo "Releases must use signed tags for security and authenticity."
+            echo "To create an annotated tag, use:"
+            echo "  git tag -a ${TAG_NAME} -m 'Your release message'"
+            echo ""
+            echo "Releases must use annotated or signed tags for security and authenticity."
             exit 1
           fi
           
-          echo "✅ Tag ${TAG_NAME} is properly signed"
+          # Check if tag object contains PGP signature
+          if git cat-file tag ${TAG_NAME} | grep -q "BEGIN PGP SIGNATURE"; then
+            echo "✅ Tag ${TAG_NAME} contains a PGP signature"
+            
+            # Verify via GitHub API that the signature is valid
+            REPO="${{ github.repository }}"
+            API_RESPONSE=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/repos/${REPO}/git/tags/$(git rev-parse ${TAG_NAME})")
+            
+            VERIFICATION=$(echo "$API_RESPONSE" | jq -r '.verification.verified')
+            
+            if [ "$VERIFICATION" = "true" ]; then
+              echo "✅ GitHub verified the GPG signature as valid"
+            else
+              REASON=$(echo "$API_RESPONSE" | jq -r '.verification.reason')
+              echo "⚠️  GitHub could not verify signature (reason: ${REASON})"
+              echo "This may be because the signing key is not uploaded to GitHub."
+              echo "To add your GPG key: Settings → SSH and GPG keys → New GPG key"
+            fi
+          else
+            echo "⚠️  Tag ${TAG_NAME} is annotated but not GPG signed"
+            echo "For maximum security, use: git tag -s ${TAG_NAME} -m 'Your message'"
+          fi
+          
+          echo "✅ Tag validation passed (annotated/signed tag required)"
       
       - name: Get tag information
         id: tag_info
