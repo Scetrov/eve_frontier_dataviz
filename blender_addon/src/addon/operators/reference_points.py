@@ -46,9 +46,9 @@ if bpy:  # Only define classes when Blender API is present
 
         label_size: bpy.props.FloatProperty(  # type: ignore[valid-type]
             name="Label Size",
-            default=5000.0,
-            min=100.0,
-            max=50000.0,
+            default=50.0,
+            min=1.0,
+            max=500.0,
             description="Size of text labels (in Blender units)",
         )
 

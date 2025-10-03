@@ -103,14 +103,15 @@ class EVEVisualizerPreferences(_BasePrefs):
     )
     scale_factor: FloatProperty(  # type: ignore[valid-type]
         name="Coordinate Scale",
-        default=1e-16,
-        min=1e-18,
-        soft_min=1e-18,
-        soft_max=1e-10,
+        default=0.01,
+        min=0.0001,
+        soft_min=0.001,
+        soft_max=1.0,
         description=(
-            "Multiply raw coordinates by this factor. 1e-13 maps ~1e16m spans to ~1000 BU."
+            "Multiply coordinates by this factor (after 1e-16 base scaling). "
+            "0.01 maps ~1e19m spans to ~100 BU."
         ),
-        precision=6,
+        precision=4,
     )
     enable_cache: BoolProperty(  # type: ignore[valid-type]
         name="Enable Data Cache",
@@ -126,9 +127,9 @@ class EVEVisualizerPreferences(_BasePrefs):
     )
     system_point_radius: FloatProperty(  # type: ignore[valid-type]
         name="System Point Radius",
-        default=2.0,
-        min=0.01,
-        soft_max=25.0,
+        default=0.02,
+        min=0.001,
+        soft_max=0.5,
         description="Visual radius (in Blender Units after scaling) for system spheres",
         precision=3,
     )
@@ -274,12 +275,15 @@ try:  # pragma: no cover - runtime safety
     if not hasattr(EVEVisualizerPreferences, "scale_factor"):
         EVEVisualizerPreferences.scale_factor = FloatProperty(  # type: ignore[attr-defined]
             name="Coordinate Scale",
-            default=1e-13,
-            min=1e-16,
-            soft_min=1e-16,
-            soft_max=1e-1,
-            description="Multiply raw coordinates by this factor. 1e-13 maps ~1e16m spans to ~1000 BU.",
-            precision=6,
+            default=0.01,
+            min=0.0001,
+            soft_min=0.001,
+            soft_max=1.0,
+            description=(
+                "Multiply coordinates by this factor (after 1e-16 base scaling). "
+                "0.01 maps ~1e19m spans to ~100 BU."
+            ),
+            precision=4,
         )
         _missing.append("scale_factor")
     if not hasattr(EVEVisualizerPreferences, "enable_cache"):
@@ -301,9 +305,9 @@ try:  # pragma: no cover - runtime safety
     if not hasattr(EVEVisualizerPreferences, "system_point_radius"):
         EVEVisualizerPreferences.system_point_radius = FloatProperty(  # type: ignore[attr-defined]
             name="System Point Radius",
-            default=2.0,
-            min=0.01,
-            soft_max=25.0,
+            default=0.02,
+            min=0.001,
+            soft_max=0.5,
             description="Visual radius (in Blender Units after scaling) for system spheres",
             precision=3,
         )

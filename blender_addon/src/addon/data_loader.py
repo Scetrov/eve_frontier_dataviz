@@ -273,9 +273,9 @@ def load_data(
             system_map[rid] = System(
                 id=rid,
                 name=str(r[c_name] if c_name in r.keys() else r[1]),
-                x=float(r[c_x] if c_x in r.keys() else r[2]),
-                y=float(r[c_y] if c_y in r.keys() else r[3]),
-                z=float(r[c_z] if c_z in r.keys() else r[4]),
+                x=float(r[c_x] if c_x in r.keys() else r[2]) * 1e-16,  # Apply base scaling
+                y=float(r[c_y] if c_y in r.keys() else r[3]) * 1e-16,  # Apply base scaling
+                z=float(r[c_z] if c_z in r.keys() else r[4]) * 1e-16,  # Apply base scaling
                 security=security_val,
                 region_name=region_name,
                 constellation_name=constellation_name,

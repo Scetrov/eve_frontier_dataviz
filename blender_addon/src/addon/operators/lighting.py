@@ -27,9 +27,9 @@ if bpy:  # Only define classes when Blender API is present
 
         light_radius: bpy.props.FloatProperty(  # type: ignore[valid-type]
             name="Light Radius",
-            default=50000.0,
-            min=100.0,
-            soft_max=500000.0,
+            default=500.0,
+            min=10.0,
+            soft_max=5000.0,
             description="Radius of influence for the lights",
         )
 

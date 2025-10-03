@@ -62,10 +62,11 @@ if bpy:  # Only define classes when Blender API is present
             cam_data = bpy.data.cameras.new(name="EVE_StarMap_Camera")  # type: ignore[attr-defined]
 
             # Set clipping distances
-            # Start: 1 km (1000 Blender units, which are scaled meters)
-            # End: 100,000 km (100,000,000 Blender units)
-            cam_data.clip_start = 1000.0
-            cam_data.clip_end = 100000000.0  # 100,000 km
+            # With 0.01 scale: stars span ~77 units radius from center
+            # Start: 0.1 units (very close)
+            # End: 150 units (enough to see all stars with margin)
+            cam_data.clip_start = 0.1
+            cam_data.clip_end = 150.0
 
             # Set to orthographic or perspective based on current view
             if space.region_3d.is_perspective:
