@@ -26,6 +26,7 @@ _SUBMODULES = [
     ".viewport",
     ".volumetric",
     ".camera",
+    ".lighting",
 ]
 
 _loaded: List[object] = []

@@ -88,6 +88,13 @@ class EVE_PT_main(Panel):
         row_jumps.operator("eve.build_jumps", text="Build Jumps", icon="MESH_MONKEY")
         row_jumps.operator("eve.toggle_jumps", text="", icon="HIDE_OFF")
 
+        # Black hole lights
+        row_lights = box_vis.row(align=True)
+        row_lights.operator(
+            "eve.add_blackhole_lights", text="Add Black Hole Lights", icon="LIGHT_POINT"
+        )
+        row_lights.operator("eve.remove_blackhole_lights", text="", icon="X")
+
         # --- View Section ---
         box_view = layout.box()
         box_view.label(text="View / Camera", icon="VIEW_CAMERA")
