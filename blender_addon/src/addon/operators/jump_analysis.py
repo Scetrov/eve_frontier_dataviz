@@ -184,3 +184,17 @@ if bpy:  # Only define classes when Blender API is present
 
             self.report({"INFO"}, f"Showing all {shown_count} jump lines")
             return {"FINISHED"}
+
+
+def register():  # pragma: no cover - Blender runtime usage
+    """Register jump analysis operators."""
+    if bpy:
+        bpy.utils.register_class(EVE_OT_highlight_triangle_islands)
+        bpy.utils.register_class(EVE_OT_show_all_jumps)
+
+
+def unregister():  # pragma: no cover - Blender runtime usage
+    """Unregister jump analysis operators."""
+    if bpy:
+        bpy.utils.unregister_class(EVE_OT_show_all_jumps)
+        bpy.utils.unregister_class(EVE_OT_highlight_triangle_islands)
