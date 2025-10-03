@@ -431,8 +431,40 @@ def _on_strategy_param_change(self, context):  # pragma: no cover
     # Recreate node groups with new parameters
     ensure_strategy_node_groups(context)
 
-    # Material will automatically use the updated node group
-    # No need to rebuild material - just the node group internals
+    # CRITICAL: Relink node groups in material after recreation
+    # When node groups are deleted and recreated, existing material references break
+    # showing "Missing Data-Block" errors. We must reconnect them.
+    mat_name = "EVE_NodeGroupStrategies"
+    mat = bpy.data.materials.get(mat_name)  # type: ignore[attr-defined]
+
+    if mat and mat.use_nodes:
+        nodes = mat.node_tree.nodes
+
+        # Reconnect Character Rainbow node group
+        ng_char_rainbow = nodes.get("CharacterRainbow")
+        if ng_char_rainbow:
+            ng_char_rainbow.node_tree = bpy.data.node_groups.get(  # type: ignore[attr-defined]
+                "EVE_Strategy_CharacterRainbow"
+            )
+            print("[EVEVisualizer][param_change] Reconnected CharacterRainbow node group")
+
+        # Reconnect Pattern Categories node group
+        ng_pattern = nodes.get("PatternCategories")
+        if ng_pattern:
+            ng_pattern.node_tree = bpy.data.node_groups.get(  # type: ignore[attr-defined]
+                "EVE_Strategy_PatternCategories"
+            )
+            print("[EVEVisualizer][param_change] Reconnected PatternCategories node group")
+
+        # Reconnect Position Encoding node group
+        ng_position = nodes.get("PositionEncoding")
+        if ng_position:
+            ng_position.node_tree = bpy.data.node_groups.get(  # type: ignore[attr-defined]
+                "EVE_Strategy_PositionEncoding"
+            )
+            print("[EVEVisualizer][param_change] Reconnected PositionEncoding node group")
+
+        print("[EVEVisualizer][param_change] Node group relinking complete")
 
 
 def _on_strategy_change(self, context):  # pragma: no cover

@@ -361,6 +361,41 @@ scene.keyframe_insert(data_path='["eve_strategy_blend"]', frame=120)
 
 ## Troubleshooting
 
+### "Missing Data-Block" Errors After Parameter Changes
+
+**Symptom**: Node groups show red "Missing Data-Block" error after changing strategy parameters (e.g., Character Index)
+
+**Cause**: When node groups are deleted and recreated with new parameters, existing material node group references become invalid
+
+**Technical Explanation**:
+
+- Blender stores node group references by pointer
+- When a node group is deleted, the pointer becomes invalid
+- Even though a new node group with the same name is created, the old pointer doesn't automatically update
+
+**Solution** (Automatic):
+
+- The add-on automatically relinks node groups in `_on_strategy_param_change()`
+- If you see this error, it means the relinking failed or was bypassed
+
+**Manual Fix** (if needed):
+
+1. Open Shader Editor
+2. Find the node group nodes showing "Missing Data-Block"
+3. Click the node group selector (browse icon)
+4. Re-select the correct node group:
+   - `EVE_Strategy_CharacterRainbow`
+   - `EVE_Strategy_PatternCategories`
+   - `EVE_Strategy_PositionEncoding`
+
+**Prevention**:
+
+- This is handled automatically by the add-on
+- If you manually edit materials in Shader Editor, be aware that parameter changes will recreate node groups
+- Always use the UI controls in the Visualization panel
+
+**Note**: This issue has occurred before and will occur again when node groups must be recreated. The automatic relinking in `_on_strategy_param_change()` prevents it for normal usage, but manual shader edits may still encounter it.
+
 ### Attribute Node Shows "Attribute Not Found"
 
 **Cause**: Property name mismatch or property not on object
