@@ -1,0 +1,154 @@
+name: Code Quality Deep Scan
+
+on:
+  # Run weekly on Mondays at 9 AM UTC
+  schedule:
+    - cron: '0 9 * * 1'
+  # Allow manual trigger
+  workflow_dispatch:
+  # Run on PRs that touch certain paths
+  pull_request:
+    paths:
+      - 'blender_addon/src/addon/**/*.py'
+      - 'blender_addon/docs/**/*.md'
+
+jobs:
+  deep-quality-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e blender_addon[dev]
+          pip install radon vulture
+
+      - name: Check code complexity (Cyclomatic)
+        run: |
+          echo "Analyzing cyclomatic complexity..."
+          radon cc blender_addon/src/addon -a -s || true
+          echo ""
+          echo "Functions with complexity > 10:"
+          radon cc blender_addon/src/addon -n C -s || true
+
+      - name: Check maintainability index
+        run: |
+          echo "Analyzing maintainability index..."
+          radon mi blender_addon/src/addon -s || true
+
+      - name: Detect dead code
+        run: |
+          echo "Scanning for potentially dead code..."
+          vulture blender_addon/src/addon --min-confidence 80 || true
+        continue-on-error: true
+
+      - name: Check documentation coverage
+        run: |
+          echo "Checking if features are documented..."
+          
+          # Check for operators without documentation
+          echo "Operators in codebase:"
+          grep -r "class EVE_OT_" blender_addon/src/addon/operators/ --include="*.py" -h | sed 's/.*class \(EVE_OT_[^(]*\).*/\1/' | sort | uniq
+          
+          echo ""
+          echo "Operators mentioned in FEATURES.md:"
+          grep -o "EVE_OT_[a-z_]*" blender_addon/docs/FEATURES.md | sort | uniq || echo "None explicitly mentioned"
+          
+          # This is informational - we don't fail on this
+          echo ""
+          echo "⚠️ Review: Ensure all operators are documented in FEATURES.md or SHADERS.md"
+
+      - name: Check for hardcoded paths
+        run: |
+          echo "Scanning for hardcoded absolute paths..."
+          if grep -r "/home/\|/Users/\|C:\\\\" blender_addon/src/addon --include="*.py" | grep -v "test\|example\|comment"; then
+            echo "::warning::Found potential hardcoded paths. Use Path objects or preferences."
+          else
+            echo "No hardcoded paths found ✓"
+          fi
+        continue-on-error: true
+
+      - name: Check for print statements (should use logging)
+        run: |
+          echo "Checking for print() statements in operators..."
+          if grep -r "print(" blender_addon/src/addon/operators --include="*.py" | grep -v "# OK\|# debug"; then
+            echo "::warning::Found print() statements. Consider using self.report() or logging."
+          else
+            echo "No problematic print() statements found ✓"
+          fi
+        continue-on-error: true
+
+      - name: Validate imports are sorted (isort check)
+        run: |
+          echo "Checking import ordering..."
+          ruff check --select I blender_addon/src/addon || echo "::warning::Import ordering issues found"
+
+      - name: Check for large files
+        run: |
+          echo "Checking for unexpectedly large Python files..."
+          find blender_addon/src/addon -name "*.py" -size +500k -exec ls -lh {} \; | while read line; do
+            echo "::warning::Large file found: $line"
+          done || echo "No large files found ✓"
+
+      - name: Security scan (Bandit)
+        run: |
+          pip install bandit
+          echo "Running security scan..."
+          bandit -r blender_addon/src/addon -f json -o bandit-report.json || true
+          bandit -r blender_addon/src/addon || true
+        continue-on-error: true
+
+      - name: Check test coverage by module
+        run: |
+          echo "Detailed coverage by module:"
+          pytest --cov=addon --cov-report=term-missing
+          
+          echo ""
+          echo "Modules with <80% coverage:"
+          pytest --cov=addon --cov-report=term | grep -E "^\S+\s+\S+\s+\S+\s+[0-7][0-9]%" || echo "All modules above 80% ✓"
+
+      - name: Generate quality report
+        run: |
+          cat > code-quality-report.md << 'EOF'
+          # Code Quality Report
+          
+          Generated: $(date -u +"%Y-%m-%d %H:%M UTC")
+          Commit: ${{ github.sha }}
+          
+          ## Summary
+          
+          This automated scan checks:
+          - Code complexity (cyclomatic complexity)
+          - Dead code detection
+          - Documentation coverage
+          - Security issues
+          - Code smells (hardcoded paths, print statements)
+          - Import ordering
+          - Test coverage by module
+          
+          See workflow logs for detailed results.
+          
+          ## Actions
+          
+          Review warnings and address any issues before the next release.
+          EOF
+          cat code-quality-report.md
+
+      - name: Upload quality report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: code-quality-report
+          path: |
+            code-quality-report.md
+            bandit-report.json
+          retention-days: 30

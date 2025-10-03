@@ -28,6 +28,11 @@ jobs:
         run: |
           python blender_addon/scripts/markdown_lint.py
 
+      - name: Check for unused imports and variables
+        run: |
+          echo "Checking for unused imports (F401) and variables (F841)..."
+          ruff check --select F401,F841 blender_addon/src/
+
       - name: Ruff Lint
         run: |
           set -e
@@ -36,8 +41,40 @@ jobs:
             exit 1
           fi
 
+      - name: Verify documentation exists for features
+        run: |
+          echo "Checking documentation coverage..."
+          # Verify key documentation files exist
+          test -f blender_addon/docs/FEATURES.md || { echo "::error::FEATURES.md missing"; exit 1; }
+          test -f blender_addon/docs/ARCHITECTURE.md || { echo "::error::ARCHITECTURE.md missing"; exit 1; }
+          test -f blender_addon/docs/SHADERS.md || { echo "::error::SHADERS.md missing"; exit 1; }
+          test -f blender_addon/docs/DATA_MODEL.md || { echo "::error::DATA_MODEL.md missing"; exit 1; }
+          echo "All required documentation files present ✓"
+
+      - name: Check for TODOs and FIXMEs
+        run: |
+          echo "Scanning for TODO/FIXME comments..."
+          if grep -r "TODO\|FIXME" blender_addon/src/ --include="*.py" | grep -v "# OK:" | grep -v "__pycache__"; then
+            echo "::warning::Found TODO/FIXME comments in code. Review before release."
+          else
+            echo "No untracked TODO/FIXME comments found ✓"
+          fi
+        continue-on-error: true
+
       - name: Run tests with coverage
         run: pytest --cov-report=term-missing --cov-report=xml
+
+      - name: Check coverage threshold
+        run: |
+          # Extract coverage percentage from pytest output
+          coverage_pct=$(python -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage.xml'); root = tree.getroot(); print(root.attrib['line-rate'])")
+          coverage_int=$(python -c "print(int(float($coverage_pct) * 100))")
+          echo "Coverage: ${coverage_int}%"
+          if [ "$coverage_int" -lt 90 ]; then
+            echo "::error::Coverage ${coverage_int}% is below 90% threshold"
+            exit 1
+          fi
+          echo "Coverage check passed ✓"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

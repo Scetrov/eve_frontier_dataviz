@@ -1,0 +1,177 @@
+name: Documentation Quality
+
+on:
+  pull_request:
+    paths:
+      - 'blender_addon/docs/**'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+  push:
+    branches: [main]
+    paths:
+      - 'blender_addon/docs/**'
+      - 'README.md'
+  workflow_dispatch:
+
+jobs:
+  doc-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check documentation links
+        run: |
+          echo "Checking for broken internal links..."
+          
+          # Check if referenced files exist
+          for doc in blender_addon/docs/*.md README.md; do
+            echo "Checking $doc..."
+            
+            # Extract markdown links [text](path)
+            grep -o '\[.*\]([^)]*\.md)' "$doc" | sed 's/.*(\([^)]*\)).*/\1/' | while read link; do
+              # Resolve relative paths
+              docdir=$(dirname "$doc")
+              fullpath="$docdir/$link"
+              
+              if [ ! -f "$fullpath" ]; then
+                echo "::error::Broken link in $doc: $link (resolved to $fullpath)"
+                exit 1
+              fi
+            done
+          done
+          echo "All internal documentation links valid ✓"
+
+      - name: Check for outdated examples
+        run: |
+          echo "Checking for references to old strategy names..."
+          
+          # These old strategy names should not appear in current docs
+          OLD_STRATEGIES="NameFirstCharHue|ChildCountEmission|BlackholeBoost"
+          
+          if grep -r -E "$OLD_STRATEGIES" blender_addon/docs/ README.md --include="*.md"; then
+            echo "::error::Found references to outdated strategy names. Update to: CharacterRainbow, PatternCategories, PositionEncoding"
+            exit 1
+          fi
+          echo "No outdated strategy names found ✓"
+
+      - name: Verify documentation structure
+        run: |
+          echo "Checking documentation structure..."
+          
+          # Required documentation files
+          REQUIRED_DOCS=(
+            "blender_addon/docs/FEATURES.md"
+            "blender_addon/docs/ARCHITECTURE.md"
+            "blender_addon/docs/SHADERS.md"
+            "blender_addon/docs/DATA_MODEL.md"
+            "blender_addon/docs/SHADER_PROPERTIES.md"
+            "blender_addon/docs/NODE_BASED_STRATEGIES.md"
+            "README.md"
+            "CONTRIBUTING.md"
+          )
+          
+          missing=0
+          for doc in "${REQUIRED_DOCS[@]}"; do
+            if [ ! -f "$doc" ]; then
+              echo "::error::Required documentation missing: $doc"
+              missing=1
+            fi
+          done
+          
+          if [ $missing -eq 1 ]; then
+            exit 1
+          fi
+          echo "All required documentation files present ✓"
+
+      - name: Check documentation completeness
+        run: |
+          echo "Checking FEATURES.md mentions all operators..."
+          
+          # Extract operator names from code
+          operators=$(grep -r "class EVE_OT_" blender_addon/src/addon/operators/ --include="*.py" -h | \
+                     sed 's/.*class EVE_OT_\([a-z_]*\).*/\1/' | sort | uniq)
+          
+          missing_docs=0
+          for op in $operators; do
+            # Check if operator is mentioned in any documentation
+            if ! grep -q "$op" blender_addon/docs/*.md README.md 2>/dev/null; then
+              echo "::warning::Operator '$op' not found in documentation"
+              missing_docs=1
+            fi
+          done
+          
+          if [ $missing_docs -eq 0 ]; then
+            echo "All operators documented ✓"
+          fi
+
+      - name: Check for TODO/FIXME in docs
+        run: |
+          echo "Checking for incomplete documentation markers..."
+          if grep -r "TODO\|FIXME\|XXX\|TBD" blender_addon/docs/ README.md --include="*.md"; then
+            echo "::warning::Found TODO/FIXME markers in documentation"
+          else
+            echo "No documentation TODO markers found ✓"
+          fi
+        continue-on-error: true
+
+      - name: Validate markdown formatting
+        run: |
+          pip install -e blender_addon[dev]
+          python blender_addon/scripts/markdown_lint.py
+
+      - name: Check for consistent terminology
+        run: |
+          echo "Checking terminology consistency..."
+          
+          # Check for inconsistent capitalization or terms
+          inconsistent=0
+          
+          # Should always be "node-based" not "node based"
+          if grep -r "node based" blender_addon/docs/ README.md --include="*.md" | grep -v "node-based"; then
+            echo "::warning::Use 'node-based' (with hyphen) consistently"
+            inconsistent=1
+          fi
+          
+          # Should always be "GPU-driven" not "GPU driven"  
+          if grep -r "GPU driven" blender_addon/docs/ README.md --include="*.md" | grep -v "GPU-driven"; then
+            echo "::warning::Use 'GPU-driven' (with hyphen) consistently"
+            inconsistent=1
+          fi
+          
+          if [ $inconsistent -eq 0 ]; then
+            echo "Terminology consistent ✓"
+          fi
+        continue-on-error: true
+
+      - name: Generate documentation report
+        run: |
+          cat > doc-quality-report.md << 'EOF'
+          # Documentation Quality Report
+          
+          Generated: $(date -u +"%Y-%m-%d %H:%M UTC")
+          
+          ## Checks Performed
+          
+          - ✓ Internal link validation
+          - ✓ Outdated example detection  
+          - ✓ Documentation structure verification
+          - ✓ Operator documentation coverage
+          - ✓ Markdown formatting
+          - ✓ Terminology consistency
+          
+          See workflow logs for any warnings or errors.
+          EOF
+
+      - name: Upload documentation report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: documentation-quality-report
+          path: doc-quality-report.md
+          retention-days: 30
