@@ -46,10 +46,10 @@ if bpy:  # Only define classes when Blender API is present
 
         label_size: bpy.props.FloatProperty(  # type: ignore[valid-type]
             name="Label Size",
-            default=50.0,
-            min=1.0,
-            max=500.0,
-            description="Size of text labels (in Blender units)",
+            default=1.0,
+            min=0.1,
+            max=10.0,
+            description="Size of text labels (in Blender units, scaled for 1e-18 coordinate system)",
         )
 
         def execute(self, context):  # noqa: D401
@@ -145,10 +145,10 @@ if bpy:  # Only define classes when Blender API is present
                 constraint = text_obj.constraints.new(type="TRACK_TO")
                 if context.scene.camera:
                     constraint.target = context.scene.camera
-                    constraint.track_axis = "TRACK_Z"
+                    constraint.track_axis = "TRACK_NEGATIVE_Z"
                     constraint.up_axis = "UP_Y"
 
-                # Set material to bright emission (visible from far away)
+                # Set material to burnt orange emission (visible from far away)
                 mat = bpy.data.materials.get("EVE_RefLabel_BlackHole")  # type: ignore[union-attr]
                 if not mat:
                     mat = bpy.data.materials.new("EVE_RefLabel_BlackHole")  # type: ignore[union-attr]
@@ -156,7 +156,7 @@ if bpy:  # Only define classes when Blender API is present
                     nodes = mat.node_tree.nodes
                     nodes.clear()
                     emission = nodes.new("ShaderNodeEmission")
-                    emission.inputs[0].default_value = (1.0, 0.2, 0.2, 1.0)  # Bright red
+                    emission.inputs[0].default_value = (1.0, 0.4, 0.1, 1.0)  # Burnt orange
                     emission.inputs[1].default_value = 5.0  # Strength
                     output = nodes.new("ShaderNodeOutputMaterial")
                     mat.node_tree.links.new(emission.outputs[0], output.inputs[0])
@@ -248,10 +248,10 @@ if bpy:  # Only define classes when Blender API is present
                 constraint = text_obj.constraints.new(type="TRACK_TO")
                 if context.scene.camera:
                     constraint.target = context.scene.camera
-                    constraint.track_axis = "TRACK_Z"
+                    constraint.track_axis = "TRACK_NEGATIVE_Z"
                     constraint.up_axis = "UP_Y"
 
-                # Set material to cyan emission
+                # Set material to burnt orange emission (matching black hole labels)
                 mat = bpy.data.materials.get("EVE_RefLabel_Constellation")  # type: ignore[union-attr]
                 if not mat:
                     mat = bpy.data.materials.new("EVE_RefLabel_Constellation")  # type: ignore[union-attr]
@@ -259,8 +259,8 @@ if bpy:  # Only define classes when Blender API is present
                     nodes = mat.node_tree.nodes
                     nodes.clear()
                     emission = nodes.new("ShaderNodeEmission")
-                    emission.inputs[0].default_value = (0.2, 0.8, 1.0, 1.0)  # Cyan
-                    emission.inputs[1].default_value = 2.0  # Strength
+                    emission.inputs[0].default_value = (1.0, 0.4, 0.1, 1.0)  # Burnt orange
+                    emission.inputs[1].default_value = 2.0  # Strength (dimmer than black holes)
                     output = nodes.new("ShaderNodeOutputMaterial")
                     mat.node_tree.links.new(emission.outputs[0], output.inputs[0])
 
