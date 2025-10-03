@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write  # Required for attestations
+  attestations: write  # Required for attestations
 
 jobs:
   create-release:
@@ -197,6 +199,11 @@ jobs:
           BUILT_ZIP=$(ls dist/eve_frontier_visualizer-*.zip)
           mv "$BUILT_ZIP" "dist/eve_visualizer_${VERSION}.zip"
       
+      - name: Generate attestation for ZIP artifact
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: dist/eve_visualizer_${{ steps.tag_info.outputs.tag_name }}.zip
+      
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -217,7 +224,19 @@ jobs:
             3. Select the downloaded ZIP file
             4. Enable "EVE Frontier: Starmap Visualizer"
             
-            ## 📖 Documentation
+            ## � Verification
+            
+            This release is signed and attested for supply chain security:
+            
+            - **Git tag**: GPG-signed (see signature above)
+            - **ZIP artifact**: GitHub-attested build provenance
+            
+            Verify the ZIP file authenticity:
+            ```bash
+            gh attestation verify eve_visualizer_${{ steps.tag_info.outputs.tag_name }}.zip --owner ${{ github.repository_owner }}
+            ```
+            
+            ## �📖 Documentation
             
             - [Features](https://github.com/${{ github.repository }}/blob/${{ steps.tag_info.outputs.tag_name }}/blender_addon/docs/FEATURES.md)
             - [Architecture](https://github.com/${{ github.repository }}/blob/${{ steps.tag_info.outputs.tag_name }}/blender_addon/docs/ARCHITECTURE.md)
