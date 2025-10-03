@@ -48,7 +48,7 @@ If the tab or operators don’t show up, see Troubleshooting below.
 - **Headless Rendering**: Batch export via command-line automation
 - **90%+ Test Coverage**: Pure Python data layer comprehensively tested
 
-See `docs/FEATURES.md` for comprehensive feature documentation.
+See [`blender_addon/docs/FEATURES.md`](blender_addon/docs/FEATURES.md) for comprehensive feature documentation.
 
 ## 🗂 Project Structure
 
