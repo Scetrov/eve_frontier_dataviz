@@ -396,6 +396,46 @@ scene.keyframe_insert(data_path='["eve_strategy_blend"]', frame=120)
 
 **Note**: This issue has occurred before and will occur again when node groups must be recreated. The automatic relinking in `_on_strategy_param_change()` prevents it for normal usage, but manual shader edits may still encounter it.
 
+### Nodes Become Unlinked After Strategy Changes
+
+**Symptom**: Node connections are broken after switching strategies or changing parameters. Mix nodes lose their links to node group outputs.
+
+**Cause**: When node groups are recreated (due to parameter changes), Blender's internal pointer system can invalidate not only the node group references themselves, but also the connections between nodes.
+
+**Technical Explanation**:
+
+- Node group recreation can break socket connections
+- Even after relinking node groups (fixing "Missing Data-Block"), the links between nodes may be gone
+- This affects the Mix nodes that switch between different strategy outputs
+
+**Solution** (Automatic):
+
+- The add-on automatically rebuilds connections in `_on_strategy_change()` when broken references are detected
+- After relinking node groups, it reconstructs the entire connection graph:
+  - CharacterRainbow Color → MixColor1 Input A
+  - PatternCategories Color → MixColor1 Input B
+  - MixColor1 Result → MixColor2 Input A
+  - PositionEncoding Color → MixColor2 Input B
+  - Similar path for Strength outputs
+  - MixColor2/MixStrength2 results → Emission shader
+
+**Manual Fix** (if needed):
+
+1. Open Shader Editor
+2. Manually reconnect each node group's outputs:
+   - Drag Color output to corresponding Mix node input
+   - Drag Strength output to corresponding Mix node input
+3. Verify Emission shader receives final mixed outputs
+4. Check viewport to confirm visualization works
+
+**Prevention**:
+
+- This is handled automatically when using UI controls
+- The `_on_strategy_change()` callback detects broken references and rebuilds all connections
+- Avoid manually editing the `EVE_NodeGroupStrategies` material structure
+
+**Note**: This issue has occurred before and will occur again when node groups are recreated. The automatic detection and reconnection in `_on_strategy_change()` prevents it for normal usage, but deeply customized materials may require manual intervention.
+
 ### Attribute Node Shows "Attribute Not Found"
 
 **Cause**: Property name mismatch or property not on object
