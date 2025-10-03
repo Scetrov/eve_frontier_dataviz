@@ -180,6 +180,7 @@ if bpy:
                     obj["moon_count"] = moon_count
 
                     # Semantic properties for instant shader switching
+                    obj["eve_system_id"] = sys.id  # System ID for jump line lookups
                     obj["eve_name_pattern"] = calculate_name_pattern_category(system_name)
                     obj["eve_name_char_bucket"] = calculate_name_char_bucket(system_name)
                     obj["eve_planet_count"] = planet_count

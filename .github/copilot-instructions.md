@@ -26,6 +26,7 @@ SQLite (data/static.db) -> data_loader (pure Python) -> in-memory systems + jump
 - Per-system custom properties:
     - `planet_count` (int)
     - `moon_count` (int)
+    - `eve_system_id` (int) - system database ID for jump lookups
     - `eve_npc_station_count` (int) - count of NPC stations
     - `eve_name_pattern` (int) - pattern category
     - `eve_name_char_index_N_ord` (float) - character ordinal values

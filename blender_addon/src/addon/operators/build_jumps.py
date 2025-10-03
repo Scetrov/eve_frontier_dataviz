@@ -44,9 +44,9 @@ class EVE_OT_build_jumps(bpy.types.Operator):  # type: ignore[misc,name-defined]
 
         def _collect_systems(collection):
             for obj in collection.objects:
-                # Check if object has system_id custom property
-                if "system_id" in obj:
-                    system_objects[obj["system_id"]] = obj
+                # Check if object has eve_system_id custom property
+                if "eve_system_id" in obj:
+                    system_objects[obj["eve_system_id"]] = obj
             for child in collection.children:
                 _collect_systems(child)
 
