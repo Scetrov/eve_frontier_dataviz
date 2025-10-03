@@ -301,3 +301,17 @@ if bpy:  # Only define classes when Blender API is present
                 self.report({"WARNING"}, "No reference points found")
 
             return {"FINISHED"}
+
+
+def register():  # pragma: no cover - Blender runtime usage
+    """Register reference point operators."""
+    if bpy:
+        bpy.utils.register_class(EVE_OT_add_reference_points)
+        bpy.utils.register_class(EVE_OT_remove_reference_points)
+
+
+def unregister():  # pragma: no cover - Blender runtime usage
+    """Unregister reference point operators."""
+    if bpy:
+        bpy.utils.unregister_class(EVE_OT_remove_reference_points)
+        bpy.utils.unregister_class(EVE_OT_add_reference_points)
