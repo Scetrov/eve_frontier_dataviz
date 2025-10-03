@@ -103,15 +103,14 @@ class EVEVisualizerPreferences(_BasePrefs):
     )
     scale_factor: FloatProperty(  # type: ignore[valid-type]
         name="Coordinate Scale",
-        default=0.01,
-        min=0.0001,
-        soft_min=0.001,
-        soft_max=1.0,
+        default=1e-18,
+        min=1e-20,
+        soft_min=1e-19,
+        soft_max=1e-15,
         description=(
-            "Multiply coordinates by this factor (after 1e-16 base scaling). "
-            "0.01 maps ~1e19m spans to ~100 BU."
+            "Multiply raw coordinates by this factor. 1e-18 maps ~1e19m spans to ~100 BU."
         ),
-        precision=4,
+        precision=6,
     )
     enable_cache: BoolProperty(  # type: ignore[valid-type]
         name="Enable Data Cache",
@@ -275,15 +274,14 @@ try:  # pragma: no cover - runtime safety
     if not hasattr(EVEVisualizerPreferences, "scale_factor"):
         EVEVisualizerPreferences.scale_factor = FloatProperty(  # type: ignore[attr-defined]
             name="Coordinate Scale",
-            default=0.01,
-            min=0.0001,
-            soft_min=0.001,
-            soft_max=1.0,
+            default=1e-18,
+            min=1e-20,
+            soft_min=1e-19,
+            soft_max=1e-15,
             description=(
-                "Multiply coordinates by this factor (after 1e-16 base scaling). "
-                "0.01 maps ~1e19m spans to ~100 BU."
+                "Multiply raw coordinates by this factor. 1e-18 maps ~1e19m spans to ~100 BU."
             ),
-            precision=4,
+            precision=6,
         )
         _missing.append("scale_factor")
     if not hasattr(EVEVisualizerPreferences, "enable_cache"):

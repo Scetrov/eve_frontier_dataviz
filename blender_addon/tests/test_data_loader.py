@@ -67,10 +67,10 @@ def test_system_properties():
     alpha = systems[0]
     assert alpha.id == 1
     assert alpha.name == "Alpha"
-    # Coordinates are now scaled by 1e-16 in the loader
-    assert alpha.x == 1000.0 * 1e-16
-    assert alpha.y == 2000.0 * 1e-16
-    assert alpha.z == 3000.0 * 1e-16
+    # Coordinates are stored as raw values from DB (scaling applied later)
+    assert alpha.x == 1000.0
+    assert alpha.y == 2000.0
+    assert alpha.z == 3000.0
     assert alpha.security == 0.7
 
 
