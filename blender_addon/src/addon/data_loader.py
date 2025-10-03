@@ -139,7 +139,7 @@ def _column_lookup(columns: List[str]):
 
     def resolve(candidates: Tuple[str, ...]):  # type: ignore[override]
         for cand in candidates:
-            real = lower_map.get(cand)
+            real = lower_map.get(cand.lower())
             if real:
                 return real
         return None
