@@ -1,0 +1,146 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for changelog generation
+      
+      - name: Get tag information
+        id: tag_info
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+          
+          # Get the previous tag for changelog
+          PREV_TAG=$(git describe --tags --abbrev=0 ${TAG_NAME}^ 2>/dev/null || echo "")
+          echo "previous_tag=${PREV_TAG}" >> $GITHUB_OUTPUT
+          
+          # Get tag message (for annotated/signed tags)
+          TAG_MESSAGE=$(git tag -l --format='%(contents)' ${TAG_NAME})
+          echo "tag_message<<EOF" >> $GITHUB_OUTPUT
+          echo "${TAG_MESSAGE}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Generate changelog
+        id: changelog
+        run: |
+          TAG_NAME="${{ steps.tag_info.outputs.tag_name }}"
+          PREV_TAG="${{ steps.tag_info.outputs.previous_tag }}"
+          
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "## 📋 Changes" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          
+          if [ -z "$PREV_TAG" ]; then
+            echo "Initial release" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "### All Commits" >> $GITHUB_OUTPUT
+            git log --pretty=format:"- %s (%h) - @%an" --reverse >> $GITHUB_OUTPUT
+          else
+            echo "Changes since ${PREV_TAG}:" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            
+            # Group commits by type (conventional commits)
+            echo "### ✨ Features" >> $GITHUB_OUTPUT
+            git log ${PREV_TAG}..${TAG_NAME} --pretty=format:"%s (%h) - @%an" --grep="^feat" >> $GITHUB_OUTPUT || echo "_No new features_" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            
+            echo "### 🐛 Bug Fixes" >> $GITHUB_OUTPUT
+            git log ${PREV_TAG}..${TAG_NAME} --pretty=format:"- %s (%h) - @%an" --grep="^fix" >> $GITHUB_OUTPUT || echo "_No bug fixes_" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            
+            echo "### 📚 Documentation" >> $GITHUB_OUTPUT
+            git log ${PREV_TAG}..${TAG_NAME} --pretty=format:"- %s (%h) - @%an" --grep="^docs" >> $GITHUB_OUTPUT || echo "_No documentation changes_" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            
+            echo "### 🔧 Maintenance" >> $GITHUB_OUTPUT
+            git log ${PREV_TAG}..${TAG_NAME} --pretty=format:"- %s (%h) - @%an" --grep="^chore\|^refactor\|^test\|^ci" >> $GITHUB_OUTPUT || echo "_No maintenance changes_" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            
+            echo "### 📦 All Changes" >> $GITHUB_OUTPUT
+            git log ${PREV_TAG}..${TAG_NAME} --pretty=format:"- %s (%h) - @%an" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Get contributors
+        id: contributors
+        run: |
+          TAG_NAME="${{ steps.tag_info.outputs.tag_name }}"
+          PREV_TAG="${{ steps.tag_info.outputs.previous_tag }}"
+          
+          echo "contributors<<EOF" >> $GITHUB_OUTPUT
+          echo "## 👥 Contributors" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          
+          if [ -z "$PREV_TAG" ]; then
+            git log --pretty=format:"%an" | sort -u | while read name; do
+              echo "- @${name}" >> $GITHUB_OUTPUT
+            done
+          else
+            git log ${PREV_TAG}..${TAG_NAME} --pretty=format:"%an" | sort -u | while read name; do
+              echo "- @${name}" >> $GITHUB_OUTPUT
+            done
+          fi
+          
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Build addon ZIP
+        working-directory: blender_addon
+        run: |
+          python scripts/build_addon.py
+          
+          # Rename the ZIP to include version
+          VERSION="${{ steps.tag_info.outputs.tag_name }}"
+          mv eve_visualizer.zip "eve_visualizer_${VERSION}.zip"
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ steps.tag_info.outputs.tag_name }}
+          body: |
+            ${{ steps.tag_info.outputs.tag_message }}
+            
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ${{ steps.contributors.outputs.contributors }}
+            
+            ---
+            
+            ## 📥 Installation
+            
+            1. Download `eve_visualizer_${{ steps.tag_info.outputs.tag_name }}.zip`
+            2. In Blender: Edit → Preferences → Add-ons → Install
+            3. Select the downloaded ZIP file
+            4. Enable "EVE Frontier: Starmap Visualizer"
+            
+            ## 📖 Documentation
+            
+            - [Features](https://github.com/${{ github.repository }}/blob/${{ steps.tag_info.outputs.tag_name }}/blender_addon/docs/FEATURES.md)
+            - [Architecture](https://github.com/${{ github.repository }}/blob/${{ steps.tag_info.outputs.tag_name }}/blender_addon/docs/ARCHITECTURE.md)
+            - [Node-Based Strategies](https://github.com/${{ github.repository }}/blob/${{ steps.tag_info.outputs.tag_name }}/blender_addon/docs/NODE_BASED_STRATEGIES.md)
+          files: |
+            blender_addon/eve_visualizer_${{ steps.tag_info.outputs.tag_name }}.zip
+          draft: false
+          prerelease: ${{ contains(steps.tag_info.outputs.tag_name, 'alpha') || contains(steps.tag_info.outputs.tag_name, 'beta') || contains(steps.tag_info.outputs.tag_name, 'rc') }}
+          generate_release_notes: false  # We're generating our own
