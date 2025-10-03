@@ -78,11 +78,21 @@ jobs:
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml
           fail_ci_if_error: false
           verbose: true
+          disable_search: true
+          # Prevents Codecov from trying to fix file paths, reducing processing time
+          disable_file_fixes: true
+          # Use explicit flags to help with organization
+          flags: unittests
+          # Override with current timestamp to avoid age check issues
+          override_commit: ${{ github.sha }}
+          override_build: ${{ github.run_id }}
+          override_pr: ${{ github.event.pull_request.number }}
 
       - name: Build add-on zip
         run: python blender_addon/scripts/build_addon.py
