@@ -28,6 +28,7 @@ _SUBMODULES = [
     ".camera",
     ".lighting",
     ".reference_points",
+    ".jump_analysis",
 ]
 
 _loaded: List[object] = []

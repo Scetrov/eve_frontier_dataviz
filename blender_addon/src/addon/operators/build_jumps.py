@@ -130,6 +130,10 @@ class EVE_OT_build_jumps(bpy.types.Operator):  # type: ignore[misc,name-defined]
                 f"Jump_{jump.from_system_id}_{jump.to_system_id}", curve_data
             )
 
+            # Store system IDs as custom properties for filtering/analysis
+            curve_obj["from_system_id"] = jump.from_system_id
+            curve_obj["to_system_id"] = jump.to_system_id
+
             # Assign material
             curve_obj.data.materials.append(mat)
 

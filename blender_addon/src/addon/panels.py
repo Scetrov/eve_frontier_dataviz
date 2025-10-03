@@ -88,6 +88,13 @@ class EVE_PT_main(Panel):
         row_jumps.operator("eve.build_jumps", text="Build Jumps", icon="MESH_MONKEY")
         row_jumps.operator("eve.toggle_jumps", text="", icon="HIDE_OFF")
 
+        # Jump analysis controls
+        row_jump_analysis = box_vis.row(align=True)
+        row_jump_analysis.operator(
+            "eve.highlight_triangle_islands", text="Triangle Islands", icon="MESH_DATA"
+        )
+        row_jump_analysis.operator("eve.show_all_jumps", text="", icon="RESTRICT_VIEW_OFF")
+
         # Black hole lights
         row_lights = box_vis.row(align=True)
         row_lights.operator(
