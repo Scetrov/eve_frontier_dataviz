@@ -26,42 +26,50 @@ jobs:
           TAG_NAME=${GITHUB_REF#refs/tags/}
           
           # Check if this is an annotated or signed tag (not lightweight)
-          TAG_TYPE=$(git cat-file -t ${TAG_NAME})
-          if [ "$TAG_TYPE" != "tag" ]; then
-            echo "❌ ERROR: Tag ${TAG_NAME} is a lightweight tag, not an annotated/signed tag"
-            echo ""
-            echo "To create a signed tag, use:"
-            echo "  git tag -s ${TAG_NAME} -m 'Your release message'"
-            echo ""
-            echo "To create an annotated tag, use:"
-            echo "  git tag -a ${TAG_NAME} -m 'Your release message'"
-            echo ""
-            echo "Releases must use annotated or signed tags for security and authenticity."
-            exit 1
-          fi
-          
-          # Check if tag object contains PGP signature
-          if git cat-file tag ${TAG_NAME} | grep -q "BEGIN PGP SIGNATURE"; then
-            echo "✅ Tag ${TAG_NAME} contains a PGP signature"
+          # We need to check the tag reference itself, not the commit it points to
+          if git rev-parse -q --verify "refs/tags/${TAG_NAME}" > /dev/null; then
+            TAG_OBJECT=$(git rev-parse "refs/tags/${TAG_NAME}")
+            TAG_TYPE=$(git cat-file -t "$TAG_OBJECT")
             
-            # Verify via GitHub API that the signature is valid
-            REPO="${{ github.repository }}"
-            API_RESPONSE=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
-              "https://api.github.com/repos/${REPO}/git/tags/$(git rev-parse ${TAG_NAME})")
+            if [ "$TAG_TYPE" != "tag" ]; then
+              echo "❌ ERROR: Tag ${TAG_NAME} is a lightweight tag, not an annotated/signed tag"
+              echo ""
+              echo "To create a signed tag, use:"
+              echo "  git tag -s ${TAG_NAME} -m 'Your release message'"
+              echo ""
+              echo "To create an annotated tag, use:"
+              echo "  git tag -a ${TAG_NAME} -m 'Your release message'"
+              echo ""
+              echo "Releases must use annotated or signed tags for security and authenticity."
+              exit 1
+            fi
             
-            VERIFICATION=$(echo "$API_RESPONSE" | jq -r '.verification.verified')
-            
-            if [ "$VERIFICATION" = "true" ]; then
-              echo "✅ GitHub verified the GPG signature as valid"
+            # Check if tag object contains PGP signature
+            if git cat-file tag "$TAG_OBJECT" | grep -q "BEGIN PGP SIGNATURE"; then
+              echo "✅ Tag ${TAG_NAME} contains a PGP signature"
+              
+              # Verify via GitHub API that the signature is valid
+              REPO="${{ github.repository }}"
+              API_RESPONSE=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+                "https://api.github.com/repos/${REPO}/git/tags/${TAG_OBJECT}")
+              
+              VERIFICATION=$(echo "$API_RESPONSE" | jq -r '.verification.verified')
+              
+              if [ "$VERIFICATION" = "true" ]; then
+                echo "✅ GitHub verified the GPG signature as valid"
+              else
+                REASON=$(echo "$API_RESPONSE" | jq -r '.verification.reason')
+                echo "⚠️  GitHub could not verify signature (reason: ${REASON})"
+                echo "This may be because the signing key is not uploaded to GitHub."
+                echo "To add your GPG key: Settings → SSH and GPG keys → New GPG key"
+              fi
             else
-              REASON=$(echo "$API_RESPONSE" | jq -r '.verification.reason')
-              echo "⚠️  GitHub could not verify signature (reason: ${REASON})"
-              echo "This may be because the signing key is not uploaded to GitHub."
-              echo "To add your GPG key: Settings → SSH and GPG keys → New GPG key"
+              echo "⚠️  Tag ${TAG_NAME} is annotated but not GPG signed"
+              echo "For maximum security, use: git tag -s ${TAG_NAME} -m 'Your message'"
             fi
           else
-            echo "⚠️  Tag ${TAG_NAME} is annotated but not GPG signed"
-            echo "For maximum security, use: git tag -s ${TAG_NAME} -m 'Your message'"
+            echo "❌ ERROR: Could not find tag ${TAG_NAME}"
+            exit 1
           fi
           
           echo "✅ Tag validation passed (annotated/signed tag required)"
