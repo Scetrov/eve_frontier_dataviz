@@ -477,18 +477,26 @@ def load_jumps(db_path: str | os.PathLike, system_ids: Optional[List[int]] = Non
             # Can't find the required columns
             return jumps
 
-        # Build query
+        # Build query with batching to avoid "too many SQL variables" error
+        jump_rows = []
         if system_ids:
-            # Only load jumps where both ends are in the system_ids list
-            placeholder = ",".join(["?"] * len(system_ids))
-            query = f"SELECT {c_from}, {c_to} FROM {tables['jumps']} WHERE {c_from} IN ({placeholder}) AND {c_to} IN ({placeholder})"
-            cur.execute(query, system_ids + system_ids)
+            # Batch to avoid exceeding SQLite's variable limit (999)
+            # Since we use system_ids twice (for from and to), we need to keep total under 999
+            # Safe batch size is 450 (450 * 2 = 900 < 999)
+            batch_size = 450
+            sys_tuple = tuple(system_ids)
+
+            for i in range(0, len(sys_tuple), batch_size):
+                chunk = sys_tuple[i : i + batch_size]
+                placeholder = ",".join(["?"] * len(chunk))
+                query = f"SELECT {c_from}, {c_to} FROM {tables['jumps']} WHERE {c_from} IN ({placeholder}) AND {c_to} IN ({placeholder})"
+                cur.execute(query, chunk + chunk)
+                jump_rows.extend(cur.fetchall())
         else:
             # Load all jumps
             query = f"SELECT {c_from}, {c_to} FROM {tables['jumps']}"
             cur.execute(query)
-
-        jump_rows = cur.fetchall()
+            jump_rows = cur.fetchall()
 
         for r in jump_rows:
             from_id = int(r[c_from])
