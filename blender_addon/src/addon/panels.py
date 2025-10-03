@@ -120,7 +120,7 @@ class EVE_PT_main(Panel):
         op_clip = row_view3.operator(
             "eve.viewport_set_clip", text="Set Clipping for Stars", icon="VIEW_PERSPECTIVE"
         )
-        op_clip.clip_end = 150.0
+        op_clip.clip_end = 300.0
         row_view4 = box_view.row(align=True)
         row_view4.operator("eve.viewport_hide_overlays", text="Toggle Grid/Axis", icon="GRID")
 
