@@ -3,7 +3,7 @@
 Authoritative rules for assisting on the EVE Frontier Blender data visualizer. Favor minimal, targeted edits; keep public behavior stable; provably accurate, incremental, testable changes, committed frequently. Each change should include updates to relevant documentation and tests where applicable. Commit and push each change before the next prompt.
 
 > [!IMPORTANT]
-> Under no circumstances should you suggest a command that disables or circumvents pre-commit hooks, GPG signing or other security controls put in place to maintain code integrity.
+> Under no circumstances should you suggest a command that disables or circumvents pre-commit hooks, GPG signing or other security controls put in place to maintain code integrity. If a GPG Signing request fails, notify the user and don't take any further action.
 
 ### Current Core Flow
 
