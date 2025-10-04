@@ -105,6 +105,16 @@ PY
             echo "coverage.xml not present to normalize"
           fi
 
+      - name: Debug Codecov token presence
+        working-directory: ./blender_addon
+        run: |
+          echo "Checking CODECOV_TOKEN presence (will not print the value)..."
+          if [ -n "${{ secrets.CODECOV_TOKEN }}" ]; then
+            echo "CODECOV_TOKEN: present"
+          else
+            echo "CODECOV_TOKEN: missing"
+          fi
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
@@ -112,7 +122,8 @@ PY
           files: ./blender_addon/coverage.xml
           flags: unittests
           name: codecov-umbrella
-          fail_ci_if_error: true
+          # Make the upload non-fatal so we can debug failures without blocking CI
+          fail_ci_if_error: false
           verbose: true
 
       - name: Build add-on zip
