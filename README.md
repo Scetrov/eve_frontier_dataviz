@@ -21,7 +21,7 @@ This repository contains a Blender add-on and supporting Python tooling to visua
 1. Still in Preferences, expand the add-on panel and set the path to your `static.db` (or use the Locate button; see Database File section below).
 1. Close Preferences. In the 3D Viewport press `N` to open the Sidebar → find the `EVE Frontier` tab.
 1. Click `Load / Refresh Data`, then `Build Scene`.
-1. Select a visualization strategy from the dropdown (Character Rainbow, Pattern Categories, or Position Encoding).
+1. Select a visualization strategy from the dropdown (Character Rainbow, Pattern Categories, Position Encoding, or Proper Noun Highlight).
 1. Click `Apply Visualization` to create the node-based material and see instant GPU-driven colors.
 
 If the tab or operators don’t show up, see Troubleshooting below.
@@ -40,7 +40,7 @@ If the tab or operators don’t show up, see Troubleshooting below.
 ## 🌟 Key Features
 
 - **24,000+ Star Systems**: Full EVE Frontier galaxy visualization with accurate 3D coordinates
-- **Three GPU-Driven Shader Strategies**: Character Rainbow, Pattern Categories, Position Encoding
+-- **Four GPU-Driven Shader Strategies**: Character Rainbow, Pattern Categories, Position Encoding, Proper Noun Highlight
 - **Instant Strategy Switching**: Change visualizations without rebuilding the scene
 - **Navigation Landmarks**: Reference point labels at black holes and constellation centers
 - **Jump Network Analysis**: Visualize stargate connections and find isolated triangle islands
@@ -130,7 +130,7 @@ Note: structural changes (renaming modules or adding new files imported at regis
 1. Open the `EVE Frontier` sidebar tab.
 1. Press `Load / Refresh Data` (loads systems into in-memory cache).
 1. Press `Build Scene` (creates or refreshes system objects / custom props).
-1. Press `Apply` to run the first registered shader strategy. (More strategies listed in SHADERS.md.)
+1. Press `Apply` to run the first registered shader strategy. Use the strategy dropdown to switch between Character Rainbow, Pattern Categories, Position Encoding, and Proper Noun Highlight. (More strategies listed in SHADERS.md.)
 1. Select objects to inspect custom properties: `planet_count`, `moon_count`.
 
 ### Headless / Automation
@@ -182,11 +182,11 @@ Example (PowerShell on Windows):
 1. Set DB path in Add-on Preferences if not default.
 2. Click "Load / Refresh Data" (currently stub until `scene_builder` implemented).
 3. Click "Build Scene" to generate placeholder / future real objects.
-4. Pick and apply a visualization strategy (e.g. `CharacterRainbow`).
+4. Pick and apply a visualization strategy (e.g. `CharacterRainbow`, `ProperNounHighlight`).
 5. (Optional) Batch export renders:
 
    ```bash
-   blender -b your_scene.blend -P blender_addon/scripts/export_batch.py -- --modes CharacterRainbow PatternCategories
+   blender -b your_scene.blend -P blender_addon/scripts/export_batch.py -- --modes CharacterRainbow PatternCategories ProperNounHighlight
    ```
 
 ## 🧩 Adding a New Shader Strategy
