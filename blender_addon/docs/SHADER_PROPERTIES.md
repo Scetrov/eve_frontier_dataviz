@@ -24,6 +24,7 @@ All properties are stored on system objects during scene construction (see `oper
 | `eve_planet_count` | `int` | 0+ | Number of planets (same as legacy) |
 | `eve_moon_count` | `int` | 0+ | Number of moons (same as legacy) |
 | `eve_is_blackhole` | `int` | 0 or 1 | 1 if blackhole system, 0 otherwise |
+| `eve_is_proper_noun` | `int` | 0 or 1 | 1 if system name is a proper noun (Uppercase first letter + letters/spaces), 0 otherwise |
 
 ## Name Pattern Categories (`eve_name_pattern`)
 
@@ -68,7 +69,7 @@ The first character of the system name is mapped to one of **9 alphabetic bucket
 | 7 | **V-X** | `Victor`, `Whiskey`, `Xray` | Purple |
 | 8 | **Y-Z, 0-9** | `Yankee`, `Zulu`, `5-Test` | Magenta |
 
-### Node Setup Example
+### Node Setup Example — Character Buckets
 
 ```text
 [Attribute "eve_name_char_bucket"] → [Map Range -1..8 → 0..1] → [ColorRamp] → [Emission Color]
@@ -88,7 +89,7 @@ Binary flag for known blackhole systems (currently 5 systems):
 
 - `J055520`, `J110909`, `J164710`, `J174618`, `J175552`
 
-### Node Setup Example
+### Node Setup Example — Blackhole
 
 ```text
 [Attribute "eve_is_blackhole"] → [Mix Shader Factor] 
@@ -127,6 +128,10 @@ User changes dropdown → Scene property updates → GPU instantly re-evaluates 
    ```
 
 3. **UI**: Simple dropdown in panel → updates scene property → instant visual update
+
+### Automatic repair / legacy material upgrade
+
+When the strategy dropdown changes the add-on will attempt to relink any broken `ShaderNodeGroup` references. If an older material lacks the new strategy branches (for example, the Proper Noun mix stage), the add-on will recreate the `EVE_NodeGroupStrategies` material and reapply it to all system objects so the newly added strategy is available immediately.
 
 ### Benefits
 

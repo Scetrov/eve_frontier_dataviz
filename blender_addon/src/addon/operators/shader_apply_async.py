@@ -27,6 +27,11 @@ if bpy:
                 "Position Encoding",
                 "RGB from first 3 characters, blackhole boost",
             ),
+            (
+                "ProperNounHighlight",
+                "Proper Noun Highlight",
+                "Highlight systems whose names are proper nouns",
+            ),
         ]
 
     class EVE_OT_apply_shader_modal(bpy.types.Operator):  # type: ignore
@@ -198,6 +203,13 @@ if bpy:
                     ng_position.location = (-400, -300)
                     ng_position.name = "PositionEncoding"
 
+                    ng_proper = nodes.new("ShaderNodeGroup")
+                    ng_proper.node_tree = bpy.data.node_groups.get(
+                        "EVE_Strategy_ProperNounHighlight"
+                    )  # type: ignore[attr-defined]
+                    ng_proper.location = (-400, -600)
+                    ng_proper.name = "ProperNounHighlight"
+
                     # Create shader switchers for Color and Strength
                     # We'll use Mix nodes in "Mix" mode to switch between strategies
 
@@ -205,7 +217,9 @@ if bpy:
                     value_strategy = nodes.new("ShaderNodeValue")
                     value_strategy.location = (-800, -500)
                     value_strategy.name = "StrategySelector"
-                    value_strategy.label = "Strategy (0=Rainbow, 1=Pattern, 2=Position)"
+                    value_strategy.label = (
+                        "Strategy (0=Rainbow, 1=Pattern, 2=Position, 3=ProperNoun)"
+                    )
                     value_strategy.outputs[0].default_value = 0.0  # Default to CharacterRainbow
 
                     # First mix: Choose between CharacterRainbow (0) and PatternCategories (1)
@@ -260,6 +274,25 @@ if bpy:
                     links.new(math_clamp_2.outputs[0], math_min_2.inputs[0])
                     links.new(math_min_2.outputs[0], mix_color_2.inputs[0])  # Factor
 
+                    # Factor for third mix: clamp (strategy - 2) to 0-1
+                    math_sub_3 = nodes.new("ShaderNodeMath")
+                    math_sub_3.operation = "SUBTRACT"
+                    math_sub_3.location = (-200, -600)
+                    math_sub_3.inputs[1].default_value = 2.0
+                    links.new(value_strategy.outputs[0], math_sub_3.inputs[0])
+
+                    math_clamp_3 = nodes.new("ShaderNodeMath")
+                    math_clamp_3.operation = "MAXIMUM"
+                    math_clamp_3.location = (-100, -600)
+                    math_clamp_3.inputs[1].default_value = 0.0
+                    links.new(math_sub_3.outputs[0], math_clamp_3.inputs[0])
+
+                    math_min_3 = nodes.new("ShaderNodeMath")
+                    math_min_3.operation = "MINIMUM"
+                    math_min_3.location = (0, -600)
+                    math_min_3.inputs[1].default_value = 1.0
+                    links.new(math_clamp_3.outputs[0], math_min_3.inputs[0])
+
                     # Similar mix setup for Strength
                     mix_strength_1 = nodes.new("ShaderNodeMix")
                     mix_strength_1.data_type = "FLOAT"
@@ -281,25 +314,88 @@ if bpy:
                         math_min_2.outputs[0], mix_strength_2.inputs[0]
                     )  # Same factor as color mix 2
 
+                    # Third mix stage: allow ProperNounHighlight to override all others when selected
+                    mix_color_3 = nodes.new("ShaderNodeMix")
+                    mix_color_3.data_type = "RGBA"
+                    mix_color_3.location = (400, 200)
+                    mix_color_3.name = "MixColor3"
+                    links.new(mix_color_2.outputs[2], mix_color_3.inputs[6])  # A = previous result
+                    # only link proper noun color if the node group is present
+                    if bpy.data.node_groups.get("EVE_Strategy_ProperNounHighlight"):
+                        links.new(
+                            ng_proper.outputs["Color"], mix_color_3.inputs[7]
+                        )  # B = proper noun
+
+                    mix_strength_3 = nodes.new("ShaderNodeMix")
+                    mix_strength_3.data_type = "FLOAT"
+                    mix_strength_3.location = (400, -100)
+                    mix_strength_3.name = "MixStrength3"
+                    links.new(mix_strength_2.outputs[1], mix_strength_3.inputs[2])  # A
+                    # only link proper noun strength if the node group is present
+                    if bpy.data.node_groups.get("EVE_Strategy_ProperNounHighlight"):
+                        links.new(ng_proper.outputs["Strength"], mix_strength_3.inputs[3])  # B
+
+                    # Connect third mix factor (math_min_3) to the third mix nodes
+                    try:
+                        links.new(math_min_3.outputs[0], mix_color_3.inputs[0])
+                    except Exception:
+                        pass
+                    try:
+                        links.new(math_min_3.outputs[0], mix_strength_3.inputs[0])
+                    except Exception:
+                        pass
+
                     # Emission shader
                     emission = nodes.new("ShaderNodeEmission")
-                    emission.location = (500, 0)
-                    links.new(mix_color_2.outputs[2], emission.inputs["Color"])
-                    links.new(mix_strength_2.outputs[1], emission.inputs["Strength"])
+                    emission.location = (600, 0)
+                    links.new(mix_color_3.outputs[2], emission.inputs["Color"])
+                    links.new(mix_strength_3.outputs[1], emission.inputs["Strength"])
 
                     # Connect to output
                     links.new(emission.outputs[0], out.inputs[0])
 
-                # Update strategy selector value
-                nt = mat.node_tree
-                selector = nt.nodes.get("StrategySelector")
-                if selector:
-                    strategy_map = {
-                        "CharacterRainbow": 0.0,
-                        "PatternCategories": 1.0,
-                        "PositionEncoding": 2.0,
-                    }
-                    selector.outputs[0].default_value = strategy_map.get(strategy_name, 0.0)
+                # Repair/attach node group references for existing materials
+                try:
+                    if hasattr(bpy, "data") and mat and getattr(mat, "node_tree", None):
+                        nt = mat.node_tree
+                        for node in nt.nodes:
+                            # Only update ShaderNodeGroup nodes we know about
+                            try:
+                                if getattr(node, "type", None) != "GROUP":
+                                    continue
+                                if node.name == "CharacterRainbow":
+                                    node.node_tree = bpy.data.node_groups.get(
+                                        "EVE_Strategy_CharacterRainbow"
+                                    )  # type: ignore[attr-defined]
+                                elif node.name == "PatternCategories":
+                                    node.node_tree = bpy.data.node_groups.get(
+                                        "EVE_Strategy_PatternCategories"
+                                    )  # type: ignore[attr-defined]
+                                elif node.name == "PositionEncoding":
+                                    node.node_tree = bpy.data.node_groups.get(
+                                        "EVE_Strategy_PositionEncoding"
+                                    )  # type: ignore[attr-defined]
+                                elif node.name == "ProperNounHighlight":
+                                    node.node_tree = bpy.data.node_groups.get(
+                                        "EVE_Strategy_ProperNounHighlight"
+                                    )  # type: ignore[attr-defined]
+                            except Exception:
+                                # best-effort: skip broken nodes
+                                continue
+
+                        # Update strategy selector value (if present)
+                        selector = nt.nodes.get("StrategySelector")
+                        if selector:
+                            strategy_map = {
+                                "CharacterRainbow": 0.0,
+                                "PatternCategories": 1.0,
+                                "PositionEncoding": 2.0,
+                                "ProperNounHighlight": 3.0,
+                            }
+                            selector.outputs[0].default_value = strategy_map.get(strategy_name, 0.0)
+                except Exception:
+                    # Non-fatal: if anything goes wrong here, leave existing material as-is
+                    pass
 
                 return mat
             except Exception:  # noqa: BLE001
@@ -364,6 +460,106 @@ if bpy:
                 self.report({"INFO"}, "No visualization in progress")
             return {"FINISHED"}
 
+    class EVE_OT_repair_strategy_materials(bpy.types.Operator):  # type: ignore
+        """Repair ShaderNodeGroup references in existing materials.
+
+        This operator looks for ShaderNodeGroup nodes named after known strategies
+        and re-attaches their `node_tree` to the corresponding `EVE_Strategy_*`
+        node groups when available. It also updates the StrategySelector value
+        node label to include the ProperNoun mapping (0..3).
+        """
+
+        bl_idname = "eve.repair_strategy_materials"
+        bl_label = "Repair Strategy NodeGroups"
+
+        def execute(self, context):  # noqa: D401
+            repaired = 0
+            try:
+                if not hasattr(bpy, "data"):
+                    self.report({"WARNING"}, "bpy not available")
+                    return {"CANCELLED"}
+
+                for mat in bpy.data.materials:  # type: ignore[attr-defined]
+                    nt = getattr(mat, "node_tree", None)
+                    if not nt:
+                        continue
+                    for node in nt.nodes:
+                        try:
+                            if getattr(node, "type", None) != "GROUP":
+                                continue
+                            # Map friendly node names to strategy node group names
+                            if node.name == "CharacterRainbow":
+                                node.node_tree = bpy.data.node_groups.get(
+                                    "EVE_Strategy_CharacterRainbow"
+                                )
+                            elif node.name == "PatternCategories":
+                                node.node_tree = bpy.data.node_groups.get(
+                                    "EVE_Strategy_PatternCategories"
+                                )
+                            elif node.name == "PositionEncoding":
+                                node.node_tree = bpy.data.node_groups.get(
+                                    "EVE_Strategy_PositionEncoding"
+                                )
+                            elif node.name == "ProperNounHighlight":
+                                node.node_tree = bpy.data.node_groups.get(
+                                    "EVE_Strategy_ProperNounHighlight"
+                                )
+                            # Count repaired nodes
+                            if node.node_tree:
+                                repaired += 1
+                        except Exception:
+                            continue
+
+                    # Update StrategySelector node label/value if present
+                    selector = nt.nodes.get("StrategySelector")
+                    if selector:
+                        selector.label = "Strategy (0=Rainbow, 1=Pattern, 2=Position, 3=ProperNoun)"
+
+                self.report({"INFO"}, f"Repaired {repaired} strategy node references")
+                return {"FINISHED"}
+            except Exception as e:  # noqa: BLE001
+                self.report({"ERROR"}, f"Error repairing materials: {e}")
+                return {"CANCELLED"}
+
+
+def _repair_strategy_materials_silent():
+    """Best-effort repair of ShaderNodeGroup references in all materials.
+
+    Returns the number of successfully attached node groups.
+    """
+    repaired = 0
+    try:
+        if not hasattr(bpy, "data"):
+            return repaired
+        for mat in bpy.data.materials:  # type: ignore[attr-defined]
+            nt = getattr(mat, "node_tree", None)
+            if not nt:
+                continue
+            for node in nt.nodes:
+                try:
+                    if getattr(node, "type", None) != "GROUP":
+                        continue
+                    if node.name == "CharacterRainbow":
+                        node.node_tree = bpy.data.node_groups.get("EVE_Strategy_CharacterRainbow")
+                    elif node.name == "PatternCategories":
+                        node.node_tree = bpy.data.node_groups.get("EVE_Strategy_PatternCategories")
+                    elif node.name == "PositionEncoding":
+                        node.node_tree = bpy.data.node_groups.get("EVE_Strategy_PositionEncoding")
+                    elif node.name == "ProperNounHighlight":
+                        node.node_tree = bpy.data.node_groups.get(
+                            "EVE_Strategy_ProperNounHighlight"
+                        )
+                    if node.node_tree:
+                        repaired += 1
+                except Exception:
+                    continue
+            selector = nt.nodes.get("StrategySelector")
+            if selector:
+                selector.label = "Strategy (0=Rainbow, 1=Pattern, 2=Position, 3=ProperNoun)"
+    except Exception:
+        return repaired
+    return repaired
+
 
 def register():  # pragma: no cover
     if not bpy:
@@ -385,6 +581,14 @@ def register():  # pragma: no cover
     except Exception as e:
         print(f"[EVEVisualizer][shader_apply_async] ERROR registering EVE_OT_cancel_shader: {e}")
 
+    try:
+        bpy.utils.register_class(EVE_OT_repair_strategy_materials)
+        print("[EVEVisualizer][shader_apply_async] Registered EVE_OT_repair_strategy_materials")
+    except Exception as e:
+        print(
+            f"[EVEVisualizer][shader_apply_async] ERROR registering EVE_OT_repair_strategy_materials: {e}"
+        )
+
     # Scene property for node-based strategy selection
     # Always set it - Blender will not duplicate if it already exists
     try:
@@ -398,6 +602,12 @@ def register():  # pragma: no cover
         print("[EVEVisualizer][shader_apply_async] Registered eve_active_strategy property")
     except Exception as e:
         print(f"[EVEVisualizer][shader_apply_async] ERROR registering eve_active_strategy: {e}")
+    # Attempt a best-effort repair of node group references in existing materials
+    try:
+        repaired_count = _repair_strategy_materials_silent()
+        print(f"[EVEVisualizer] Repaired {repaired_count} node group references in materials")
+    except Exception:
+        pass
         import traceback
 
         traceback.print_exc()
@@ -580,6 +790,46 @@ def _on_strategy_change(self, context):  # pragma: no cover
     else:
         print("[EVEVisualizer][strategy_change] Material already exists, updating selector...")
 
+    # If the material exists but is missing newer nodes (MixColor3/MixStrength3/ProperNounHighlight),
+    # recreate it so the proper noun strategy is available.
+    if mat and mat.node_tree:
+        nodes = mat.node_tree.nodes
+        missing_critical = False
+        for name in ("MixColor3", "MixStrength3", "ProperNounHighlight"):
+            if not nodes.get(name):
+                missing_critical = True
+                break
+        if missing_critical:
+            print(
+                "[EVEVisualizer][strategy_change] Detected legacy material without ProperNoun nodes — recreating material"
+            )
+            # recreate material and reapply to systems
+            op = EVE_OT_apply_shader_modal()
+            new_mat = op._ensure_node_group_material(strategy_name)
+            if new_mat:
+                mat = new_mat
+                # Re-apply to all system objects
+                systems = []
+                frontier = bpy.data.collections.get("Frontier")  # type: ignore[union-attr]
+                if frontier:
+
+                    def _collect_recursive(collection):
+                        systems.extend(collection.objects)
+                        for child in collection.children:
+                            _collect_recursive(child)
+
+                    _collect_recursive(frontier)
+
+                for obj in systems:
+                    try:
+                        if getattr(obj, "data", None) and hasattr(obj.data, "materials"):
+                            if obj.data.materials:
+                                obj.data.materials[0] = mat
+                            else:
+                                obj.data.materials.append(mat)
+                    except Exception:  # noqa: BLE001
+                        pass
+
     # Update the StrategySelector value AND fix broken node group references
     if mat and mat.node_tree:
         nodes = mat.node_tree.nodes
@@ -590,6 +840,7 @@ def _on_strategy_change(self, context):  # pragma: no cover
             "CharacterRainbow": "EVE_Strategy_CharacterRainbow",
             "PatternCategories": "EVE_Strategy_PatternCategories",
             "PositionEncoding": "EVE_Strategy_PositionEncoding",
+            "ProperNounHighlight": "EVE_Strategy_ProperNounHighlight",
         }
 
         needs_reconnect = False
@@ -618,10 +869,13 @@ def _on_strategy_change(self, context):  # pragma: no cover
             ng_char_rainbow = nodes.get("CharacterRainbow")
             ng_pattern = nodes.get("PatternCategories")
             ng_position = nodes.get("PositionEncoding")
+            ng_proper = nodes.get("ProperNounHighlight")
             mix_color_1 = nodes.get("MixColor1")
             mix_color_2 = nodes.get("MixColor2")
+            mix_color_3 = nodes.get("MixColor3")
             mix_strength_1 = nodes.get("MixStrength1")
             mix_strength_2 = nodes.get("MixStrength2")
+            mix_strength_3 = nodes.get("MixStrength3")
 
             # Reconnect color paths
             if ng_char_rainbow and ng_pattern and mix_color_1:
@@ -644,6 +898,18 @@ def _on_strategy_change(self, context):  # pragma: no cover
                 links.new(ng_position.outputs["Color"], mix_color_2.inputs[7])  # B
                 print("[EVEVisualizer][strategy_change] Reconnected MixColor2")
 
+            if mix_color_2 and mix_color_3:
+                # Clear existing connections for MixColor3 inputs
+                for input_socket in [mix_color_3.inputs[6], mix_color_3.inputs[7]]:
+                    for link in list(input_socket.links):
+                        links.remove(link)
+                # Reconnect previous result into MixColor3 A
+                links.new(mix_color_2.outputs[2], mix_color_3.inputs[6])
+                # If proper noun group present, connect it as B
+                if ng_proper and ng_proper.outputs.get("Color"):
+                    links.new(ng_proper.outputs["Color"], mix_color_3.inputs[7])
+                print("[EVEVisualizer][strategy_change] Reconnected MixColor3")
+
             # Reconnect strength paths
             if ng_char_rainbow and ng_pattern and mix_strength_1:
                 for input_socket in [mix_strength_1.inputs[0], mix_strength_1.inputs[1]]:
@@ -661,12 +927,22 @@ def _on_strategy_change(self, context):  # pragma: no cover
                 links.new(ng_position.outputs["Strength"], mix_strength_2.inputs[1])  # B
                 print("[EVEVisualizer][strategy_change] Reconnected MixStrength2")
 
+            if mix_strength_2 and mix_strength_3:
+                for input_socket in [mix_strength_3.inputs[2], mix_strength_3.inputs[3]]:
+                    for link in list(input_socket.links):
+                        links.remove(link)
+                links.new(mix_strength_2.outputs[1], mix_strength_3.inputs[2])  # A
+                if ng_proper and ng_proper.outputs.get("Strength"):
+                    links.new(ng_proper.outputs["Strength"], mix_strength_3.inputs[3])  # B
+                print("[EVEVisualizer][strategy_change] Reconnected MixStrength3")
+
         selector = mat.node_tree.nodes.get("StrategySelector")
         if selector:
             strategy_map = {
                 "CharacterRainbow": 0.0,
                 "PatternCategories": 1.0,
                 "PositionEncoding": 2.0,
+                "ProperNounHighlight": 3.0,
             }
             new_value = strategy_map.get(strategy_name, 0.0)
             selector.outputs[0].default_value = new_value

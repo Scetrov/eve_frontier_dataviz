@@ -29,6 +29,7 @@ from .property_calculators import (
     calculate_name_char_bucket,
     calculate_name_pattern_category,
     is_blackhole_system,
+    is_proper_noun,
 )
 
 
@@ -193,6 +194,9 @@ if bpy:
                     char_indices = calculate_char_indices(system_name, max_chars=10)
                     for char_idx, ord_val in enumerate(char_indices):
                         obj[f"eve_name_char_index_{char_idx}_ord"] = ord_val
+
+                    # Proper noun flag (first char uppercase letter, rest letters/spaces)
+                    obj["eve_is_proper_noun"] = 1 if is_proper_noun(system_name) else 0
 
                     # Optional hierarchy collections
                     const_coll = None

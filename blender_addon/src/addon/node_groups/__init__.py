@@ -30,12 +30,18 @@ def ensure_strategy_node_groups(context=None):
     if not bpy:
         return []
 
-    from . import character_rainbow, pattern_categories, position_encoding
+    from . import (
+        character_rainbow,
+        pattern_categories,
+        position_encoding,
+        proper_noun_highlight,
+    )
 
     groups = []
     groups.append(character_rainbow.ensure_node_group(context))
     groups.append(pattern_categories.ensure_node_group())
     groups.append(position_encoding.ensure_node_group())
+    groups.append(proper_noun_highlight.ensure_node_group())
 
     return groups
 

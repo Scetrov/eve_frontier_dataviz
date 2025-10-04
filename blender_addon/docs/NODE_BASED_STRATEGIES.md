@@ -162,23 +162,42 @@ Each strategy should be implemented as a **Shader Node Group** with this structu
   → [Math: Multiply by 10.0]
   → [Math: Add 1.0] (base strength)
   → [Output: Strength]
+
+### Example Strategy 4: Proper Noun Highlight
+
+**Concept**: Highlight systems whose names are proper nouns (first letter uppercase, remaining characters letters or spaces). This strategy reads `eve_is_proper_noun` (0 or 1) and mixes a bright highlight color when true.
+
+``text
+[Attribute "eve_is_proper_noun"]
+  → [Mix: Neutral Gray ↔ Highlight Color]
+  → [Output: Color]
+
+[Attribute "eve_is_proper_noun"]
+  → [Math: Multiply by 2.0]
+  → [Math: Add 0.5]
+  → [Output: Strength]
+``
 ```
 
 ## Material Strategy Switching
 
 ### Current Implementation (Phase 2)
 
-The add-on creates a single material `EVE_NodeGroupStrategies` with all three strategy node groups:
+The add-on creates a single material `EVE_NodeGroupStrategies` with all strategy node groups (CharacterRainbow, PatternCategories, PositionEncoding, and ProperNounHighlight):
 
+**Structure:**
 **Structure:**
 
 - **Character Rainbow** node group (outputs Color + Strength)
 - **Pattern Categories** node group (outputs Color + Strength)
 - **Position Encoding** node group (outputs Color + Strength)
-- **StrategySelector** value node (0.0, 1.0, or 2.0)
+- **Proper Noun Highlight** node group (outputs Color + Strength)
+- **StrategySelector** value node (0.0, 1.0, 2.0 or 3.0)
 - **Mix nodes** to switch between strategies based on selector value
 - **Emission shader** receives final Color and Strength
 - **Material Output**
+
+**Switching mechanism:**
 
 **Switching mechanism:**
 
@@ -186,6 +205,7 @@ The add-on creates a single material `EVE_NodeGroupStrategies` with all three st
 - Two cascading Mix (FLOAT) nodes for strength
 - First mix: CharacterRainbow (0) vs PatternCategories (1)
 - Second mix: Result vs PositionEncoding (2)
+- Third mix: Result vs ProperNounHighlight (3)
 - Factor values computed from StrategySelector
 
 **To change strategy manually:**
@@ -193,7 +213,7 @@ The add-on creates a single material `EVE_NodeGroupStrategies` with all three st
 1. Open Shading workspace
 2. Select material `EVE_NodeGroupStrategies`
 3. Find `StrategySelector` value node
-4. Set value: 0.0 (Rainbow), 1.0 (Pattern), or 2.0 (Position)
+4. Set value: 0.0 (Rainbow), 1.0 (Pattern), 2.0 (Position) or 3.0 (ProperNoun)
 
 **Benefits:**
 
@@ -211,16 +231,14 @@ The add-on creates a single material `EVE_NodeGroupStrategies` with all three st
 1. Open EVE Frontier panel in 3D Viewport sidebar
 2. Build scene (if not already built)
 3. Click "Apply (Async)" to create material with all strategies
-4. Use "Strategy" dropdown to switch between:
-   - Character Rainbow
-   - Pattern Categories
-   - Position Encoding
+4. Use "Strategy" dropdown to switch between Character Rainbow, Pattern Categories, Position Encoding, and Proper Noun Highlight.
 5. Viewport updates instantly when dropdown changes
 
 **Technical Implementation:**
 
 - Scene property: `bpy.context.scene.eve_active_strategy` (EnumProperty)
 - Update callback: `_on_strategy_change()` modifies StrategySelector value node
+- Update callback: `_on_strategy_change()` modifies StrategySelector value node and performs automatic relinking/rebuild of material nodes when broken references or legacy materials are detected
 - Panel: `panels.py` displays dropdown with `scene.eve_active_strategy`
 - Persistence: Strategy choice saved with .blend file
 
@@ -363,7 +381,7 @@ scene.keyframe_insert(data_path='["eve_strategy_blend"]', frame=120)
 
 ### "Missing Data-Block" Errors After Parameter Changes
 
-**Symptom**: Node groups show red "Missing Data-Block" error after changing strategy parameters (e.g., Character Index)
+**Symptom**: Node groups show red "Missing Data-Block" error after changing strategy parameters (e.g., Character Index) or after adding new strategies
 
 **Cause**: When node groups are deleted and recreated with new parameters, existing material node group references become invalid
 
@@ -377,6 +395,19 @@ scene.keyframe_insert(data_path='["eve_strategy_blend"]', frame=120)
 
 - The add-on automatically relinks node groups in `_on_strategy_param_change()`
 - If you see this error, it means the relinking failed or was bypassed
+
+Automatic repair and material recreation:
+
+- When the strategy dropdown changes, `_on_strategy_change()` will attempt to relink any broken node group references (including `EVE_Strategy_ProperNounHighlight`).
+- If the existing material is missing the newer mix stages or node groups (legacy material), the add-on will recreate the `EVE_NodeGroupStrategies` material and reapply it to all system objects so the new strategy is available.
+- For an explicit manual repair, the add-on provides an operator `eve.repair_strategy_materials` which re-attaches node group data-blocks by name and updates the StrategySelector node label.
+
+To run the explicit repair operator from Blender's Python console:
+
+```python
+import bpy
+bpy.ops.eve.repair_strategy_materials()
+```
 
 **Manual Fix** (if needed):
 

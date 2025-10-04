@@ -163,3 +163,28 @@ def is_blackhole_system(system_id: int) -> bool:
         True if ID matches a known blackhole system
     """
     return system_id in _BLACKHOLE_IDS
+
+
+def is_proper_noun(name: str) -> bool:
+    """Detect if a name is a proper noun according to rules:
+
+    - First character is an uppercase letter (Unicode-aware)
+    - Remaining characters (if any) are letters or spaces (allows lowercase
+      letters from extended alphabets such as Nordic, Cyrillic, Greek)
+    - Short or long names both allowed
+
+    Returns True for names like 'Nod', 'Hreinsunareldur', False for 'ABC-123'
+    """
+    if not name:
+        return False
+    # Use unicode-aware checks via str methods
+    first = name[0]
+    if not first.isalpha() or not first.isupper():
+        return False
+    # Remaining characters may be letters or spaces
+    for ch in name[1:]:
+        if ch == " ":
+            continue
+        if not ch.isalpha():
+            return False
+    return True
