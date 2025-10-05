@@ -87,33 +87,6 @@ jobs:
             echo "::error::Coverage file not found!"
             exit 1
           fi
-      - name: Normalize coverage timestamp
-        working-directory: ./blender_addon
-        run: |
-          # Ensure the coverage.xml timestamp and mtime are fresh so Codecov age checks don't reject uploads
-          if [ -f coverage.xml ]; then
-            echo "Patching coverage.xml timestamp to now"
-            python - <<'PY'
-import xml.etree.ElementTree as ET, time
-tree = ET.parse('coverage.xml')
-root = tree.getroot()
-root.set('timestamp', str(int(time.time() * 1000)))
-tree.write('coverage.xml', encoding='utf-8', xml_declaration=True)
-PY
-            touch coverage.xml
-          else
-            echo "coverage.xml not present to normalize"
-          fi
-
-      - name: Debug Codecov token presence
-        working-directory: ./blender_addon
-        run: |
-          echo "Checking CODECOV_TOKEN presence (will not print the value)..."
-          if [ -n "${{ secrets.CODECOV_TOKEN }}" ]; then
-            echo "CODECOV_TOKEN: present"
-          else
-            echo "CODECOV_TOKEN: missing"
-          fi
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
