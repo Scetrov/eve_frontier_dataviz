@@ -47,11 +47,7 @@ if bpy:
             hdri_path = None
             hdri_found = False
             try:
-                hdri_path = (
-                    Path(__file__).resolve().parents[3]
-                    / "hdris"
-                    / "space_hdri_deepblue_darker_v2_4k_float32.tiff"
-                )
+                hdri_path = Path(__file__).resolve().parents[3] / "hdris" / "HDR_multi_nebulae.hdr"
                 if hdri_path.exists():
                     hdri_found = True
             except Exception:
