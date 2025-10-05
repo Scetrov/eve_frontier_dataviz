@@ -210,9 +210,9 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
             math_mix.inputs[0].default_value = self.noise_strength  # Factor
             math_mix.inputs[1].default_value = self.density  # Uniform density
 
-            # Connect noise chain
+            # Connect noise chain (use Alpha output from ColorRamp for float value)
             links.new(noise_tex.outputs["Fac"], color_ramp.inputs["Fac"])
-            links.new(color_ramp.outputs["Color"], math_multiply.inputs[1])
+            links.new(color_ramp.outputs["Alpha"], math_multiply.inputs[1])
             links.new(math_multiply.outputs["Value"], math_mix.inputs[2])  # Noisy density
             links.new(math_mix.outputs["Value"], volume.inputs["Density"])
 
@@ -227,7 +227,9 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
             noise_tex = next((n for n in nodes if n.type == "TEX_NOISE"), None)
             color_ramp = next((n for n in nodes if n.type == "VALTORGB"), None)
             math_nodes = [n for n in nodes if n.type == "MATH"]
+            output = next((n for n in nodes if n.type == "OUTPUT_MATERIAL"), None)
 
+            # Update properties
             if volume:
                 volume.inputs["Anisotropy"].default_value = self.anisotropy
                 volume.inputs["Color"].default_value = (
@@ -242,13 +244,29 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
                 noise_tex.inputs["Detail"].default_value = self.noise_detail
 
             # Find the multiply and mix nodes
+            math_multiply = None
+            math_mix = None
             if len(math_nodes) >= 2:
                 for node in math_nodes:
                     if node.operation == "MULTIPLY":
                         node.inputs[0].default_value = self.density
+                        math_multiply = node
                     elif node.operation == "MIX":
                         node.inputs[0].default_value = self.noise_strength
                         node.inputs[1].default_value = self.density
+                        math_mix = node
+
+            # Recreate connections in case they were broken
+            if all([noise_tex, color_ramp, math_multiply, math_mix, volume, output]):
+                # Clear existing links
+                links.clear()
+
+                # Reconnect noise chain (use Alpha output from ColorRamp for float value)
+                links.new(noise_tex.outputs["Fac"], color_ramp.inputs["Fac"])
+                links.new(color_ramp.outputs["Alpha"], math_multiply.inputs[1])
+                links.new(math_multiply.outputs["Value"], math_mix.inputs[2])
+                links.new(math_mix.outputs["Value"], volume.inputs["Density"])
+                links.new(volume.outputs["Volume"], output.inputs["Volume"])
 
         # Assign material to cube
         if cube.data.materials:
