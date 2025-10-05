@@ -33,9 +33,7 @@ if bpy:
     class EVE_OT_viewport_set_hdri(bpy.types.Operator):  # type: ignore
         bl_idname = "eve.viewport_set_hdri"
         bl_label = "Apply Space HDRI"
-        bl_description = (
-            "Load space HDRI environment texture for realistic lighting and reflections"
-        )
+        bl_description = "Load space HDRI environment texture or use procedural space background if HDRI not found"
         bl_options = {"REGISTER", "UNDO"}
 
         strength: bpy.props.FloatProperty(  # type: ignore[valid-type]
@@ -46,19 +44,76 @@ if bpy:
             from pathlib import Path
 
             # Resolve HDRI path relative to addon root (three parents from this file)
+            hdri_path = None
+            hdri_found = False
             try:
                 hdri_path = (
                     Path(__file__).resolve().parents[3]
                     / "hdris"
                     / "space_hdri_deepblue_darker_v2_4k_float32.tiff"
                 )
+                if hdri_path.exists():
+                    hdri_found = True
             except Exception:
-                self.report({"ERROR"}, "Failed to resolve HDRI path")
-                return {"CANCELLED"}
-            if not hdri_path.exists():
-                self.report({"ERROR"}, f"HDRI not found: {hdri_path.name}")
-                return {"CANCELLED"}
+                pass
 
+            # If HDRI not found, use procedural space background instead
+            if not hdri_found:
+                self.report(
+                    {"INFO"},
+                    "HDRI file not found - using procedural space background instead",
+                )
+                # Create procedural space-like gradient
+                world = bpy.context.scene.world  # type: ignore[union-attr]
+                if not world:
+                    world = bpy.data.worlds.new("EVE_World")  # type: ignore[union-attr]
+                    bpy.context.scene.world = world  # type: ignore[union-attr]
+                world.use_nodes = True
+                nt = world.node_tree
+                nodes = nt.nodes
+                links = nt.links
+
+                # Clear existing nodes
+                nodes.clear()
+
+                # Create output node
+                out = nodes.new("ShaderNodeOutputWorld")
+                out.location = (300, 0)
+
+                # Create background shader
+                bg = nodes.new("ShaderNodeBackground")
+                bg.location = (100, 0)
+                bg.inputs[1].default_value = self.strength
+
+                # Create Sky Texture for procedural space
+                sky = nodes.new("ShaderNodeTexSky")
+                sky.location = (-100, 0)
+                sky.sky_type = "NISHITA"
+                sky.sun_elevation = 0.0  # Horizon
+                sky.sun_rotation = 0.0
+                sky.altitude = 0  # Sea level for deep space look
+                sky.air_density = 0.0  # No atmosphere
+                sky.dust_density = 0.0  # No dust
+                sky.ozone_density = 0.0  # No ozone
+
+                # Create ColorRamp to make it darker and more space-like
+                color_ramp = nodes.new("ShaderNodeValToRGB")
+                color_ramp.location = (-300, 0)
+                # Make it very dark
+                color_ramp.color_ramp.elements[0].position = 0.0
+                color_ramp.color_ramp.elements[0].color = (0.0, 0.0, 0.0, 1.0)
+                color_ramp.color_ramp.elements[1].position = 1.0
+                color_ramp.color_ramp.elements[1].color = (0.01, 0.01, 0.02, 1.0)
+
+                # Connect nodes
+                links.new(sky.outputs["Color"], color_ramp.inputs["Fac"])
+                links.new(color_ramp.outputs["Color"], bg.inputs["Color"])
+                links.new(bg.outputs["Background"], out.inputs["Surface"])
+
+                self.report({"INFO"}, "Applied procedural space background")
+                return {"FINISHED"}
+
+            # HDRI found - use it
             world = bpy.context.scene.world  # type: ignore[union-attr]
             if not world:
                 world = bpy.data.worlds.new("EVE_World")  # type: ignore[union-attr]

@@ -131,7 +131,7 @@ class EVE_PT_main(Panel):
         )
         row_view_hdri = box_view.row(align=True)
         op_hdri = row_view_hdri.operator(
-            "eve.viewport_set_hdri", text="Apply Space HDRI", icon="IMAGE_DATA"
+            "eve.viewport_set_hdri", text="Apply Space Background", icon="IMAGE_DATA"
         )
         op_hdri.strength = 1.0
         row_view3 = box_view.row(align=True)
