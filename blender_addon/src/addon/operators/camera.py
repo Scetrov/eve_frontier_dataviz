@@ -88,51 +88,67 @@ if bpy:  # Only define classes when Blender API is present
             # Get the view matrix inverse to position camera
             cam_obj.matrix_world = view_matrix.inverted()
 
+            # If no systems exist, position camera at a good default viewing position
+            if not frontier or not any(frontier.all_objects):
+                # Default position: looking at origin from distance
+                # With scale 1e-18, galaxy diameter ~190 units centered at origin
+                # Position camera 150 units back on Z, looking at origin
+                cam_obj.location = Vector((0.0, -150.0, 50.0))
+                cam_obj.rotation_euler = (1.2, 0.0, 0.0)  # Tilt down slightly to look at origin
+                self.report(
+                    {"INFO"},
+                    "Camera added at default position. Build scene to frame all stars.",
+                )
+            else:
+                # Calculate bounding box of all system objects
+                min_coord = Vector((float("inf"), float("inf"), float("inf")))
+                max_coord = Vector((float("-inf"), float("-inf"), float("-inf")))
+
+                def get_bounds(coll):
+                    nonlocal min_coord, max_coord
+                    for obj in coll.objects:
+                        if obj.type == "MESH" or obj.type == "EMPTY":
+                            loc = obj.location
+                            min_coord.x = min(min_coord.x, loc.x)
+                            min_coord.y = min(min_coord.y, loc.y)
+                            min_coord.z = min(min_coord.z, loc.z)
+                            max_coord.x = max(max_coord.x, loc.x)
+                            max_coord.y = max(max_coord.y, loc.y)
+                            max_coord.z = max(max_coord.z, loc.z)
+                    for child in coll.children:
+                        get_bounds(child)
+
+                get_bounds(frontier)
+
+                # Calculate center and size
+                center = (min_coord + max_coord) / 2
+                size = max_coord - min_coord
+                max_dim = max(size.x, size.y, size.z)
+
+                # Position camera to view entire scene
+                # Distance based on max dimension and FOV (50mm lens ~40° FOV)
+                if cam_data.type == "PERSP":
+                    distance = max_dim * 1.5  # 1.5x for comfortable margin
+                else:
+                    distance = max_dim * 1.2
+                    cam_data.ortho_scale = max_dim * 1.2
+
+                # Position camera behind and above center
+                cam_obj.location = center + Vector((0.0, -distance, distance * 0.3))
+                # Point camera at center
+                direction = center - cam_obj.location
+                cam_obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
+
+                self.report(
+                    {"INFO"},
+                    f"Camera added and framed to {len(list(frontier.all_objects))} systems",
+                )
+
             # Make this the active camera
             context.scene.camera = cam_obj
 
             # Set viewport to camera view
             space.region_3d.view_perspective = "CAMERA"
-
-            # Frame all objects if Frontier collection exists
-            if frontier:
-                # Store current selection
-                original_selection = context.selected_objects.copy()
-                original_active = context.view_layer.objects.active
-
-                # Deselect all
-                bpy.ops.object.select_all(action="DESELECT")  # type: ignore[attr-defined]
-
-                # Select all objects in Frontier collection (recursively)
-                def select_collection_objects(coll):
-                    for obj in coll.objects:
-                        obj.select_set(True)
-                    for child in coll.children:
-                        select_collection_objects(child)
-
-                select_collection_objects(frontier)
-
-                # Set camera as active
-                context.view_layer.objects.active = cam_obj
-
-                # Frame selected (all stars)
-                # We need to do this through the viewport
-                for window in context.window_manager.windows:
-                    for a in window.screen.areas:
-                        if a.type == "VIEW_3D":
-                            with context.temp_override(window=window, area=a):
-                                # First ensure camera is selected
-                                bpy.ops.view3d.camera_to_view_selected()  # type: ignore[attr-defined]
-                                break
-                    break
-
-                # Restore selection
-                bpy.ops.object.select_all(action="DESELECT")  # type: ignore[attr-defined]
-                for obj in original_selection:
-                    obj.select_set(True)
-                context.view_layer.objects.active = original_active
-
-            self.report({"INFO"}, "Camera added with clip range 1km - 100,000km")
             return {"FINISHED"}
 
 
