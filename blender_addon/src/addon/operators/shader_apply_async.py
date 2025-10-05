@@ -869,6 +869,7 @@ def _on_strategy_change(self, context):  # pragma: no cover
 
         # Fix broken node group references (Missing Data nodes)
         node_group_map = {
+            "UniformOrange": "EVE_Strategy_UniformOrange",
             "CharacterRainbow": "EVE_Strategy_CharacterRainbow",
             "PatternCategories": "EVE_Strategy_PatternCategories",
             "PositionEncoding": "EVE_Strategy_PositionEncoding",
@@ -898,6 +899,7 @@ def _on_strategy_change(self, context):  # pragma: no cover
             print("[EVEVisualizer][strategy_change] Rebuilding node connections...")
 
             # Get all the nodes we need
+            ng_uniform = nodes.get("UniformOrange")
             ng_char_rainbow = nodes.get("CharacterRainbow")
             ng_pattern = nodes.get("PatternCategories")
             ng_position = nodes.get("PositionEncoding")
@@ -905,68 +907,96 @@ def _on_strategy_change(self, context):  # pragma: no cover
             mix_color_1 = nodes.get("MixColor1")
             mix_color_2 = nodes.get("MixColor2")
             mix_color_3 = nodes.get("MixColor3")
+            mix_color_4 = nodes.get("MixColor4")
             mix_strength_1 = nodes.get("MixStrength1")
             mix_strength_2 = nodes.get("MixStrength2")
             mix_strength_3 = nodes.get("MixStrength3")
+            mix_strength_4 = nodes.get("MixStrength4")
 
-            # Reconnect color paths
-            if ng_char_rainbow and ng_pattern and mix_color_1:
+            # Reconnect color paths (5-strategy chain)
+            # Mix1: UniformOrange vs CharacterRainbow
+            if ng_uniform and ng_char_rainbow and mix_color_1:
                 # Clear existing connections to these inputs
                 for input_socket in [mix_color_1.inputs[6], mix_color_1.inputs[7]]:
                     for link in input_socket.links:
                         links.remove(link)
                 # Reconnect
-                links.new(ng_char_rainbow.outputs["Color"], mix_color_1.inputs[6])  # A
-                links.new(ng_pattern.outputs["Color"], mix_color_1.inputs[7])  # B
+                links.new(ng_uniform.outputs["Color"], mix_color_1.inputs[6])  # A
+                links.new(ng_char_rainbow.outputs["Color"], mix_color_1.inputs[7])  # B
                 print("[EVEVisualizer][strategy_change] Reconnected MixColor1")
 
-            if mix_color_1 and ng_position and mix_color_2:
+            # Mix2: Result vs PatternCategories
+            if mix_color_1 and ng_pattern and mix_color_2:
                 # Clear existing connections
                 for input_socket in [mix_color_2.inputs[6], mix_color_2.inputs[7]]:
                     for link in input_socket.links:
                         links.remove(link)
                 # Reconnect
                 links.new(mix_color_1.outputs[2], mix_color_2.inputs[6])  # A
-                links.new(ng_position.outputs["Color"], mix_color_2.inputs[7])  # B
+                links.new(ng_pattern.outputs["Color"], mix_color_2.inputs[7])  # B
                 print("[EVEVisualizer][strategy_change] Reconnected MixColor2")
 
-            if mix_color_2 and mix_color_3:
-                # Clear existing connections for MixColor3 inputs
+            # Mix3: Result vs PositionEncoding
+            if mix_color_2 and ng_position and mix_color_3:
+                # Clear existing connections
                 for input_socket in [mix_color_3.inputs[6], mix_color_3.inputs[7]]:
                     for link in list(input_socket.links):
                         links.remove(link)
-                # Reconnect previous result into MixColor3 A
-                links.new(mix_color_2.outputs[2], mix_color_3.inputs[6])
-                # If proper noun group present, connect it as B
-                if ng_proper and ng_proper.outputs.get("Color"):
-                    links.new(ng_proper.outputs["Color"], mix_color_3.inputs[7])
+                # Reconnect
+                links.new(mix_color_2.outputs[2], mix_color_3.inputs[6])  # A
+                links.new(ng_position.outputs["Color"], mix_color_3.inputs[7])  # B
                 print("[EVEVisualizer][strategy_change] Reconnected MixColor3")
 
-            # Reconnect strength paths
-            if ng_char_rainbow and ng_pattern and mix_strength_1:
-                for input_socket in [mix_strength_1.inputs[0], mix_strength_1.inputs[1]]:
-                    for link in input_socket.links:
-                        links.remove(link)
-                links.new(ng_char_rainbow.outputs["Strength"], mix_strength_1.inputs[0])  # A
-                links.new(ng_pattern.outputs["Strength"], mix_strength_1.inputs[1])  # B
-                print("[EVEVisualizer][strategy_change] Reconnected MixStrength1")
-
-            if mix_strength_1 and ng_position and mix_strength_2:
-                for input_socket in [mix_strength_2.inputs[0], mix_strength_2.inputs[1]]:
-                    for link in input_socket.links:
-                        links.remove(link)
-                links.new(mix_strength_1.outputs[0], mix_strength_2.inputs[0])  # A
-                links.new(ng_position.outputs["Strength"], mix_strength_2.inputs[1])  # B
-                print("[EVEVisualizer][strategy_change] Reconnected MixStrength2")
-
-            if mix_strength_2 and mix_strength_3:
-                for input_socket in [mix_strength_3.inputs[2], mix_strength_3.inputs[3]]:
+            # Mix4: Result vs ProperNounHighlight
+            if mix_color_3 and mix_color_4:
+                # Clear existing connections for MixColor4 inputs
+                for input_socket in [mix_color_4.inputs[6], mix_color_4.inputs[7]]:
                     for link in list(input_socket.links):
                         links.remove(link)
+                # Reconnect previous result into MixColor4 A
+                links.new(mix_color_3.outputs[2], mix_color_4.inputs[6])
+                # If proper noun group present, connect it as B
+                if ng_proper and ng_proper.outputs.get("Color"):
+                    links.new(ng_proper.outputs["Color"], mix_color_4.inputs[7])
+                print("[EVEVisualizer][strategy_change] Reconnected MixColor4")
+
+            # Reconnect strength paths (5-strategy chain)
+            # Strength Mix1: UniformOrange vs CharacterRainbow
+            if ng_uniform and ng_char_rainbow and mix_strength_1:
+                for input_socket in [mix_strength_1.inputs[2], mix_strength_1.inputs[3]]:
+                    for link in input_socket.links:
+                        links.remove(link)
+                links.new(ng_uniform.outputs["Strength"], mix_strength_1.inputs[2])  # A
+                links.new(ng_char_rainbow.outputs["Strength"], mix_strength_1.inputs[3])  # B
+                print("[EVEVisualizer][strategy_change] Reconnected MixStrength1")
+
+            # Strength Mix2: Result vs PatternCategories
+            if mix_strength_1 and ng_pattern and mix_strength_2:
+                for input_socket in [mix_strength_2.inputs[2], mix_strength_2.inputs[3]]:
+                    for link in input_socket.links:
+                        links.remove(link)
+                links.new(mix_strength_1.outputs[1], mix_strength_2.inputs[2])  # A
+                links.new(ng_pattern.outputs["Strength"], mix_strength_2.inputs[3])  # B
+                print("[EVEVisualizer][strategy_change] Reconnected MixStrength2")
+
+            # Strength Mix3: Result vs PositionEncoding
+            if mix_strength_2 and ng_position and mix_strength_3:
+                for input_socket in [mix_strength_3.inputs[2], mix_strength_3.inputs[3]]:
+                    for link in input_socket.links:
+                        links.remove(link)
                 links.new(mix_strength_2.outputs[1], mix_strength_3.inputs[2])  # A
-                if ng_proper and ng_proper.outputs.get("Strength"):
-                    links.new(ng_proper.outputs["Strength"], mix_strength_3.inputs[3])  # B
+                links.new(ng_position.outputs["Strength"], mix_strength_3.inputs[3])  # B
                 print("[EVEVisualizer][strategy_change] Reconnected MixStrength3")
+
+            # Strength Mix4: Result vs ProperNounHighlight
+            if mix_strength_3 and mix_strength_4:
+                for input_socket in [mix_strength_4.inputs[2], mix_strength_4.inputs[3]]:
+                    for link in list(input_socket.links):
+                        links.remove(link)
+                links.new(mix_strength_3.outputs[1], mix_strength_4.inputs[2])  # A
+                if ng_proper and ng_proper.outputs.get("Strength"):
+                    links.new(ng_proper.outputs["Strength"], mix_strength_4.inputs[3])  # B
+                print("[EVEVisualizer][strategy_change] Reconnected MixStrength4")
 
         selector = mat.node_tree.nodes.get("StrategySelector")
         if selector:
