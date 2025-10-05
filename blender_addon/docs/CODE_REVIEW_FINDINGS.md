@@ -24,12 +24,12 @@
 **Location**: `blender_addon/scripts/export_batch.py:3`
 
 ```python
-# Current (incorrect):
+# Outdated (before v0.2.0):
 """Run with:
-blender -b some_scene.blend -P scripts/export_batch.py -- --modes NameFirstCharHue ChildCountEmission
+blender -b some_scene.blend -P scripts/export_batch.py -- --modes <old-strategies>
 """
 
-# Should be:
+# Updated (v0.2.0+):
 """Run with:
 blender -b some_scene.blend -P scripts/export_batch.py -- --modes CharacterRainbow PatternCategories PositionEncoding
 """
@@ -181,13 +181,13 @@ Add to main README.md "Features" section:
 
 ```python
 """Headless batch export example.
-Run with:
-blender -b some_scene.blend -P scripts/export_batch.py -- --modes NameFirstCharHue ChildCountEmission
+Run with (updated v0.2.0+):
+blender -b some_scene.blend -P scripts/export_batch.py -- --modes CharacterRainbow PatternCategories
 """
 ```
 
-**Problem**: References old strategy IDs that no longer exist
-**Fix**: Update to current node-based strategy IDs
+**Problem**: References old strategy IDs that no longer exist (pre-v0.2.0)
+**Fix**: Update to current node-based strategy IDs (CharacterRainbow, PatternCategories, PositionEncoding, ProperNounHighlight, UniformOrange)
 
 ### Issue 2: Missing FEATURES.md
 
