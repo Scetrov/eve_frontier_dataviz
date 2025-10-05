@@ -28,7 +28,7 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
     density: bpy.props.FloatProperty(  # type: ignore[valid-type]
         name="Density",
         description="Volume density (lower = more subtle)",
-        default=0.05,
+        default=0.00001,
         min=0.0,
         max=1.0,
     )
