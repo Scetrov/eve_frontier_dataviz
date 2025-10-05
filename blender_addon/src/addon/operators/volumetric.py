@@ -49,6 +49,30 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
         size=3,
     )
 
+    noise_scale: bpy.props.FloatProperty(  # type: ignore[valid-type]
+        name="Noise Scale",
+        description="Scale of 3D noise texture (larger = bigger noise features)",
+        default=5.0,
+        min=0.1,
+        max=100.0,
+    )
+
+    noise_detail: bpy.props.FloatProperty(  # type: ignore[valid-type]
+        name="Noise Detail",
+        description="Amount of fine detail in noise (0-16)",
+        default=2.0,
+        min=0.0,
+        max=16.0,
+    )
+
+    noise_strength: bpy.props.FloatProperty(  # type: ignore[valid-type]
+        name="Noise Strength",
+        description="How much noise affects density (0=uniform, 1=fully broken up)",
+        default=0.5,
+        min=0.0,
+        max=1.0,
+    )
+
     def execute(self, context):  # noqa: D401
         """Create volumetric cube."""
         if not bpy or not hasattr(bpy, "data"):
@@ -143,14 +167,13 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
 
             # Create output node
             output = nodes.new("ShaderNodeOutputMaterial")
-            output.location = (400, 0)
+            output.location = (600, 0)
 
             # Create principled volume node
             volume = nodes.new("ShaderNodeVolumePrincipled")
-            volume.location = (0, 0)
+            volume.location = (300, 0)
 
-            # Set properties
-            volume.inputs["Density"].default_value = self.density
+            # Set basic properties
             volume.inputs["Anisotropy"].default_value = self.anisotropy
             volume.inputs["Color"].default_value = (
                 self.color[0],
@@ -159,14 +182,53 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
                 1.0,
             )
 
+            # Create 3D noise texture for density variation
+            noise_tex = nodes.new("ShaderNodeTexNoise")
+            noise_tex.location = (-300, 0)
+            noise_tex.inputs["Scale"].default_value = self.noise_scale
+            noise_tex.inputs["Detail"].default_value = self.noise_detail
+            noise_tex.inputs["Roughness"].default_value = 0.5
+
+            # Create ColorRamp to control noise contrast
+            color_ramp = nodes.new("ShaderNodeValToRGB")
+            color_ramp.location = (-100, 0)
+            color_ramp.color_ramp.interpolation = "LINEAR"
+            # Adjust stops for more broken-up appearance
+            color_ramp.color_ramp.elements[0].position = 0.3
+            color_ramp.color_ramp.elements[1].position = 0.7
+
+            # Create Math node to multiply base density by noise
+            math_multiply = nodes.new("ShaderNodeMath")
+            math_multiply.operation = "MULTIPLY"
+            math_multiply.location = (100, 0)
+            math_multiply.inputs[0].default_value = self.density
+
+            # Create Math node to mix between uniform and noisy density
+            math_mix = nodes.new("ShaderNodeMath")
+            math_mix.operation = "MIX"
+            math_mix.location = (100, -150)
+            math_mix.inputs[0].default_value = self.noise_strength  # Factor
+            math_mix.inputs[1].default_value = self.density  # Uniform density
+
+            # Connect noise chain
+            links.new(noise_tex.outputs["Fac"], color_ramp.inputs["Fac"])
+            links.new(color_ramp.outputs["Color"], math_multiply.inputs[1])
+            links.new(math_multiply.outputs["Value"], math_mix.inputs[2])  # Noisy density
+            links.new(math_mix.outputs["Value"], volume.inputs["Density"])
+
             # Connect to output
             links.new(volume.outputs["Volume"], output.inputs["Volume"])
         else:
             # Update existing material properties
             nodes = mat.node_tree.nodes
+            links = mat.node_tree.links
+
             volume = next((n for n in nodes if n.type == "VOLUME_PRINCIPLED"), None)
+            noise_tex = next((n for n in nodes if n.type == "TEX_NOISE"), None)
+            color_ramp = next((n for n in nodes if n.type == "VALTORGB"), None)
+            math_nodes = [n for n in nodes if n.type == "MATH"]
+
             if volume:
-                volume.inputs["Density"].default_value = self.density
                 volume.inputs["Anisotropy"].default_value = self.anisotropy
                 volume.inputs["Color"].default_value = (
                     self.color[0],
@@ -174,6 +236,19 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
                     self.color[2],
                     1.0,
                 )
+
+            if noise_tex:
+                noise_tex.inputs["Scale"].default_value = self.noise_scale
+                noise_tex.inputs["Detail"].default_value = self.noise_detail
+
+            # Find the multiply and mix nodes
+            if len(math_nodes) >= 2:
+                for node in math_nodes:
+                    if node.operation == "MULTIPLY":
+                        node.inputs[0].default_value = self.density
+                    elif node.operation == "MIX":
+                        node.inputs[0].default_value = self.noise_strength
+                        node.inputs[1].default_value = self.density
 
         # Assign material to cube
         if cube.data.materials:
