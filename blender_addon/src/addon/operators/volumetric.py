@@ -18,7 +18,7 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
     padding: bpy.props.FloatProperty(  # type: ignore[valid-type]
         name="Padding",
         description="Extra space around bounding box (in meters)",
-        default=50000.0,
+        default=50.0,
         min=0.0,
         max=1000000.0,
     )
@@ -26,7 +26,7 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
     density: bpy.props.FloatProperty(  # type: ignore[valid-type]
         name="Density",
         description="Volume density (lower = more subtle)",
-        default=0.00001,
+        default=0.001,
         min=0.0,
         max=1.0,
     )
@@ -34,7 +34,7 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
     anisotropy: bpy.props.FloatProperty(  # type: ignore[valid-type]
         name="Anisotropy",
         description="Scattering direction (-1=backward, 0=isotropic, 1=forward)",
-        default=0.0,
+        default=0.85,
         min=-1.0,
         max=1.0,
     )
@@ -43,7 +43,7 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
         name="Color",
         description="Volume scattering color",
         subtype="COLOR",
-        default=(0.5, 0.7, 1.0),
+        default=(1.0, 0.065, 0.0),
         min=0.0,
         max=1.0,
         size=3,
