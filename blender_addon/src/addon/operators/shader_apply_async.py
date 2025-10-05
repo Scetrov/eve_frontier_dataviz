@@ -37,9 +37,8 @@ if bpy:
     class EVE_OT_apply_shader_modal(bpy.types.Operator):  # type: ignore
         bl_idname = "eve.apply_shader_modal"
         bl_label = "Apply Visualization (Instant)"
-        bl_description = (
-            "Apply property-driven material (reads custom properties via Attribute nodes)"
-        )
+        bl_description = "Apply GPU-driven node-based material to all system objects. Reads pre-calculated custom properties via Attribute nodes for instant visualization."
+        bl_options = {"REGISTER"}
 
         _objects = None
         _total = 0
@@ -449,7 +448,8 @@ if bpy:
     class EVE_OT_cancel_shader(bpy.types.Operator):  # type: ignore
         bl_idname = "eve.cancel_shader"
         bl_label = "Cancel Visualization"
-        bl_description = "Cancel the asynchronous visualization application"
+        bl_description = "Cancel the asynchronous visualization application (if running)"
+        bl_options = {"INTERNAL"}
 
         def execute(self, context):  # noqa: D401
             wm = context.window_manager
@@ -471,6 +471,8 @@ if bpy:
 
         bl_idname = "eve.repair_strategy_materials"
         bl_label = "Repair Strategy NodeGroups"
+        bl_description = "Reconnect ShaderNodeGroup references to strategy node groups after blend file reload or node group updates"
+        bl_options = {"REGISTER"}
 
         def execute(self, context):  # noqa: D401
             repaired = 0

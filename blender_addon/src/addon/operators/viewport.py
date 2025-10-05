@@ -13,7 +13,8 @@ if bpy:
     class EVE_OT_viewport_set_space(bpy.types.Operator):  # type: ignore
         bl_idname = "eve.viewport_set_space"
         bl_label = "Set Space Black"
-        bl_description = "Set world background to black"
+        bl_description = "Set world background color to pure black for space visualization"
+        bl_options = {"REGISTER", "UNDO"}
 
         def execute(self, context):  # noqa: D401
             try:
@@ -32,7 +33,10 @@ if bpy:
     class EVE_OT_viewport_set_hdri(bpy.types.Operator):  # type: ignore
         bl_idname = "eve.viewport_set_hdri"
         bl_label = "Apply Space HDRI"
-        bl_description = "Load space HDRI for environment lighting"
+        bl_description = (
+            "Load space HDRI environment texture for realistic lighting and reflections"
+        )
+        bl_options = {"REGISTER", "UNDO"}
 
         strength: bpy.props.FloatProperty(  # type: ignore[valid-type]
             name="Strength", default=1.0, min=0.0, soft_max=10.0
@@ -104,7 +108,8 @@ if bpy:
     class EVE_OT_viewport_set_clip(bpy.types.Operator):  # type: ignore
         bl_idname = "eve.viewport_set_clip"
         bl_label = "Set Clip End 100km"
-        bl_description = "Set 3D view clip end distance"
+        bl_description = "Adjust 3D viewport clip end distance to render distant star systems (default 300 BU for ~190 BU galaxy diameter)"
+        bl_options = {"REGISTER"}
 
         clip_end: bpy.props.FloatProperty(  # type: ignore[valid-type]
             name="Clip End", default=100000.0, min=1000.0, soft_max=1000000.0
@@ -123,7 +128,8 @@ if bpy:
     class EVE_OT_viewport_hide_overlays(bpy.types.Operator):  # type: ignore
         bl_idname = "eve.viewport_hide_overlays"
         bl_label = "Hide Grid & Axis"
-        bl_description = "Toggle floor grid and axis in all 3D viewports"
+        bl_description = "Toggle floor grid and coordinate axes visibility in all 3D viewports for cleaner visualization"
+        bl_options = {"REGISTER"}
 
         def execute(self, context):  # noqa: D401
             toggled = 0
@@ -142,7 +148,8 @@ if bpy:
     class EVE_OT_viewport_frame_all(bpy.types.Operator):  # type: ignore
         bl_idname = "eve.viewport_frame_all"
         bl_label = "Frame All Stars"
-        bl_description = "Zoom viewport to fit all star systems in view"
+        bl_description = "Zoom and center viewport camera to fit all star system objects in view"
+        bl_options = {"REGISTER"}
 
         def execute(self, context):  # noqa: D401
             # Find all system objects in the Frontier collection

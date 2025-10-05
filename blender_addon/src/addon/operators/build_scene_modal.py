@@ -57,7 +57,8 @@ if bpy:
     class EVE_OT_build_scene_modal(bpy.types.Operator):  # type: ignore
         bl_idname = "eve.build_scene_modal"
         bl_label = "Build Scene (Async)"
-        bl_description = "Instantiate systems asynchronously"
+        bl_description = "Instantiate star system objects asynchronously with progress reporting. Supports sampling and filtering options."
+        bl_options = {"REGISTER"}
 
         batch_size: bpy.props.IntProperty(  # type: ignore[valid-type]
             name="Batch Size", default=2500, min=100, max=100000
@@ -258,7 +259,8 @@ if bpy:
     class EVE_OT_cancel_build(bpy.types.Operator):  # type: ignore
         bl_idname = "eve.cancel_build"
         bl_label = "Cancel Build"
-        bl_description = "Cancel the asynchronous build"
+        bl_description = "Cancel the asynchronous scene build operation (may finish current batch before stopping)"
+        bl_options = {"INTERNAL"}
 
         def execute(self, context):  # noqa: D401
             wm = context.window_manager

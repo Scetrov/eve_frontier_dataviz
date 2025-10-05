@@ -19,7 +19,8 @@ if bpy:  # Only define classes when Blender API is present
     class EVE_OT_clear_scene(bpy.types.Operator):  # type: ignore
         bl_idname = "eve.clear_scene"
         bl_label = "Clear Scene"
-        bl_description = "Remove all generated collections and objects"
+        bl_description = "Remove all EVE-generated collections (Frontier, EVE_Jumps, EVE_ReferencePoints) and their objects from the scene"
+        bl_options = {"REGISTER", "UNDO"}
 
         def execute(self, context):  # noqa: D401
             removed_objs, removed_colls = clear_generated()
@@ -34,7 +35,8 @@ if bpy:  # Only define classes when Blender API is present
     class EVE_OT_load_data(bpy.types.Operator):  # type: ignore
         bl_idname = "eve.load_data"
         bl_label = "Load / Refresh Data"
-        bl_description = "Load data from configured SQLite DB"
+        bl_description = "Load systems, planets, moons, and jump data from configured SQLite database. Refreshes in-memory cache."
+        bl_options = {"REGISTER"}
 
         limit_systems: bpy.props.IntProperty(  # type: ignore[valid-type]
             name="Limit Systems",

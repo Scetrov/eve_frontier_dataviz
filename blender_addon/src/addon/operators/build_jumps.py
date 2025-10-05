@@ -151,7 +151,8 @@ class EVE_OT_toggle_jumps(bpy.types.Operator):  # type: ignore[misc,name-defined
 
     bl_idname = "eve.toggle_jumps"
     bl_label = "Toggle Jump Visibility"
-    bl_description = "Show/hide jump connection lines"
+    bl_description = "Show or hide jump connection line collection (EVE_Jumps) in viewport"
+    bl_options = {"REGISTER"}
 
     def execute(self, context):  # noqa: D401
         """Toggle EVE_Jumps collection visibility."""
