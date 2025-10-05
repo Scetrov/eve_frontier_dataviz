@@ -161,7 +161,7 @@ This document describes the automated checks and workflows in the GitHub Actions
 **Checks Performed**:
 
 1. **Internal Link Validation**
-   - Extracts all `[text](path.md)` links
+   - Extracts all markdown links to `.md` files
    - Resolves relative paths
    - **Fails** if any broken links found
 
