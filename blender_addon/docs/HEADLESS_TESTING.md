@@ -28,7 +28,7 @@ executes real operators and inspects the resulting scene graph.
 
 1. Launch Blender with ``--factory-startup`` and register the add-on.
 2. Set the preference ``db_path`` to point at a temporary database built from ``mini.db.sql``.
-3. Invoke ``EVE_OT_load_data`` to populate the in-memory cache via ``load_data`` / ``load_jumps`` and confirm the info report reflects the expected counts.【F:blender_addon/src/addon/operators/data_ops.py†L35-L73】
+3. Invoke ``EVE_OT_load_data`` so ``load_data`` / ``load_jumps`` fill the cache, then confirm the info report reflects the expected counts.【F:blender_addon/src/addon/operators/data_ops.py†L35-L73】
 4. Call ``EVE_OT_build_scene_modal`` in a tight loop (triggering ``modal`` ticks manually) and assert that objects end up under the ``Frontier`` collection with the custom properties that the shaders rely on, such as ``eve_name_char_bucket`` or ``eve_is_proper_noun``.【F:blender_addon/src/addon/operators/build_scene_modal.py†L57-L200】
 5. Optionally assert that ``clear_generated`` removes those collections so repeated runs stay idempotent.【F:blender_addon/src/addon/operators/_shared.py†L10-L79】
 
