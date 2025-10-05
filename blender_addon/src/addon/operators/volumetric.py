@@ -26,7 +26,7 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
     density: bpy.props.FloatProperty(  # type: ignore[valid-type]
         name="Density",
         description="Volume density (lower = more subtle)",
-        default=0.001,
+        default=0.05,
         min=0.0,
         max=1.0,
     )
@@ -99,19 +99,31 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
             self.report({"ERROR"}, "No objects found in Frontier collection")
             return {"CANCELLED"}
 
-        # Calculate bounding box
+        # Calculate bounding box including object bounds
         min_x = min_y = min_z = float("inf")
         max_x = max_y = max_z = float("-inf")
 
         for obj in objects:
-            # Get object world location
-            loc = obj.matrix_world.translation
-            min_x = min(min_x, loc.x)
-            min_y = min(min_y, loc.y)
-            min_z = min(min_z, loc.z)
-            max_x = max(max_x, loc.x)
-            max_y = max(max_y, loc.y)
-            max_z = max(max_z, loc.z)
+            # Get object's bounding box in world space
+            if obj.type == "MESH" or obj.type == "CURVE":
+                # For mesh/curve objects, get actual bounding box corners
+                bbox_corners = [obj.matrix_world @ v for v in obj.bound_box]
+                for corner in bbox_corners:
+                    min_x = min(min_x, corner.x)
+                    min_y = min(min_y, corner.y)
+                    min_z = min(min_z, corner.z)
+                    max_x = max(max_x, corner.x)
+                    max_y = max(max_y, corner.y)
+                    max_z = max(max_z, corner.z)
+            else:
+                # For other objects (empties, etc), just use location
+                loc = obj.matrix_world.translation
+                min_x = min(min_x, loc.x)
+                min_y = min(min_y, loc.y)
+                min_z = min(min_z, loc.z)
+                max_x = max(max_x, loc.x)
+                max_y = max(max_y, loc.y)
+                max_z = max(max_z, loc.z)
 
         # Add padding
         min_x -= self.padding
