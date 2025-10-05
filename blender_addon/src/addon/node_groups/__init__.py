@@ -17,6 +17,7 @@ def ensure_strategy_node_groups(context=None):
     """Ensure all strategy node groups exist in the blend file.
 
     Creates or updates the following node groups:
+    - EVE_Strategy_UniformOrange
     - EVE_Strategy_CharacterRainbow
     - EVE_Strategy_PatternCategories
     - EVE_Strategy_PositionEncoding
@@ -35,9 +36,11 @@ def ensure_strategy_node_groups(context=None):
         pattern_categories,
         position_encoding,
         proper_noun_highlight,
+        uniform_orange,
     )
 
     groups = []
+    groups.append(uniform_orange.ensure_node_group())
     groups.append(character_rainbow.ensure_node_group(context))
     groups.append(pattern_categories.ensure_node_group())
     groups.append(position_encoding.ensure_node_group())

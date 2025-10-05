@@ -17,6 +17,11 @@ if bpy:
         """Enum items for node-based strategies."""
         return [  # type: ignore
             (
+                "UniformOrange",
+                "Uniform Orange",
+                "All stars with uniform orange-red color",
+            ),
+            (
                 "CharacterRainbow",
                 "Character Rainbow",
                 "Color from first character, brightness from child count",
@@ -146,7 +151,7 @@ if bpy:
 
         # --- Node Group Strategy Material Infrastructure ---
         def _ensure_node_group_material(
-            self, strategy_name: str = "CharacterRainbow"
+            self, strategy_name: str = "UniformOrange"
         ) -> Optional["bpy.types.Material"]:  # type: ignore[name-defined]
             """Create or update material using node group strategies with switcher.
 
@@ -178,177 +183,197 @@ if bpy:
                         if n.type != "OUTPUT_MATERIAL":
                             nodes.remove(n)
                     out = next(n for n in nodes if n.type == "OUTPUT_MATERIAL")
-                    out.location = (800, 0)
+                    out.location = (1000, 0)
 
                     # Create node group references for each strategy
+                    ng_uniform = nodes.new("ShaderNodeGroup")
+                    ng_uniform.node_tree = bpy.data.node_groups.get("EVE_Strategy_UniformOrange")  # type: ignore[attr-defined]
+                    ng_uniform.location = (-600, 400)
+                    ng_uniform.name = "UniformOrange"
+
                     ng_char_rainbow = nodes.new("ShaderNodeGroup")
                     ng_char_rainbow.node_tree = bpy.data.node_groups.get(
                         "EVE_Strategy_CharacterRainbow"
                     )  # type: ignore[attr-defined]
-                    ng_char_rainbow.location = (-400, 300)
+                    ng_char_rainbow.location = (-600, 200)
                     ng_char_rainbow.name = "CharacterRainbow"
 
                     ng_pattern = nodes.new("ShaderNodeGroup")
                     ng_pattern.node_tree = bpy.data.node_groups.get(
                         "EVE_Strategy_PatternCategories"
                     )  # type: ignore[attr-defined]
-                    ng_pattern.location = (-400, 0)
+                    ng_pattern.location = (-600, 0)
                     ng_pattern.name = "PatternCategories"
 
                     ng_position = nodes.new("ShaderNodeGroup")
                     ng_position.node_tree = bpy.data.node_groups.get(
                         "EVE_Strategy_PositionEncoding"
                     )  # type: ignore[attr-defined]
-                    ng_position.location = (-400, -300)
+                    ng_position.location = (-600, -200)
                     ng_position.name = "PositionEncoding"
 
                     ng_proper = nodes.new("ShaderNodeGroup")
                     ng_proper.node_tree = bpy.data.node_groups.get(
                         "EVE_Strategy_ProperNounHighlight"
                     )  # type: ignore[attr-defined]
-                    ng_proper.location = (-400, -600)
+                    ng_proper.location = (-600, -400)
                     ng_proper.name = "ProperNounHighlight"
 
-                    # Create shader switchers for Color and Strength
-                    # We'll use Mix nodes in "Mix" mode to switch between strategies
-
-                    # Value node to control which strategy (0, 1, or 2)
+                    # Value node to control which strategy (0=Uniform, 1=Rainbow, 2=Pattern, 3=Position, 4=ProperNoun)
                     value_strategy = nodes.new("ShaderNodeValue")
-                    value_strategy.location = (-800, -500)
+                    value_strategy.location = (-1000, -500)
                     value_strategy.name = "StrategySelector"
                     value_strategy.label = (
-                        "Strategy (0=Rainbow, 1=Pattern, 2=Position, 3=ProperNoun)"
+                        "Strategy (0=Uniform, 1=Rainbow, 2=Pattern, 3=Position, 4=ProperNoun)"
                     )
-                    value_strategy.outputs[0].default_value = 0.0  # Default to CharacterRainbow
+                    value_strategy.outputs[0].default_value = 0.0  # Default to UniformOrange
 
-                    # First mix: Choose between CharacterRainbow (0) and PatternCategories (1)
+                    # Mix 1: UniformOrange (0) vs CharacterRainbow (1)
                     mix_color_1 = nodes.new("ShaderNodeMix")
                     mix_color_1.data_type = "RGBA"
-                    mix_color_1.location = (0, 200)
+                    mix_color_1.location = (-200, 200)
                     mix_color_1.name = "MixColor1"
-                    links.new(ng_char_rainbow.outputs["Color"], mix_color_1.inputs[6])  # A
-                    links.new(ng_pattern.outputs["Color"], mix_color_1.inputs[7])  # B
+                    links.new(ng_uniform.outputs["Color"], mix_color_1.inputs[6])  # A
+                    links.new(ng_char_rainbow.outputs["Color"], mix_color_1.inputs[7])  # B
 
-                    # Clamp strategy value to 0-1 for first mix
+                    # Factor for mix 1: clamp strategy to 0-1
                     math_clamp_1 = nodes.new("ShaderNodeMath")
                     math_clamp_1.operation = "MAXIMUM"
-                    math_clamp_1.location = (-200, -400)
+                    math_clamp_1.location = (-400, -400)
                     math_clamp_1.inputs[1].default_value = 0.0
                     links.new(value_strategy.outputs[0], math_clamp_1.inputs[0])
 
                     math_min_1 = nodes.new("ShaderNodeMath")
                     math_min_1.operation = "MINIMUM"
-                    math_min_1.location = (-100, -400)
+                    math_min_1.location = (-300, -400)
                     math_min_1.inputs[1].default_value = 1.0
                     links.new(math_clamp_1.outputs[0], math_min_1.inputs[0])
                     links.new(math_min_1.outputs[0], mix_color_1.inputs[0])  # Factor
 
-                    # Second mix: Choose between result of first mix and PositionEncoding (2)
+                    # Mix 2: Result vs PatternCategories (2)
                     mix_color_2 = nodes.new("ShaderNodeMix")
                     mix_color_2.data_type = "RGBA"
-                    mix_color_2.location = (200, 200)
+                    mix_color_2.location = (0, 200)
                     mix_color_2.name = "MixColor2"
-                    links.new(
-                        mix_color_1.outputs[2], mix_color_2.inputs[6]
-                    )  # A (result from first mix)
-                    links.new(ng_position.outputs["Color"], mix_color_2.inputs[7])  # B
+                    links.new(mix_color_1.outputs[2], mix_color_2.inputs[6])  # A
+                    links.new(ng_pattern.outputs["Color"], mix_color_2.inputs[7])  # B
 
-                    # Factor for second mix: clamp (strategy - 1) to 0-1
-                    math_sub = nodes.new("ShaderNodeMath")
-                    math_sub.operation = "SUBTRACT"
-                    math_sub.location = (-200, -500)
-                    math_sub.inputs[1].default_value = 1.0
-                    links.new(value_strategy.outputs[0], math_sub.inputs[0])
+                    # Factor for mix 2: clamp (strategy - 1) to 0-1
+                    math_sub_2 = nodes.new("ShaderNodeMath")
+                    math_sub_2.operation = "SUBTRACT"
+                    math_sub_2.location = (-400, -500)
+                    math_sub_2.inputs[1].default_value = 1.0
+                    links.new(value_strategy.outputs[0], math_sub_2.inputs[0])
 
                     math_clamp_2 = nodes.new("ShaderNodeMath")
                     math_clamp_2.operation = "MAXIMUM"
-                    math_clamp_2.location = (-100, -500)
+                    math_clamp_2.location = (-300, -500)
                     math_clamp_2.inputs[1].default_value = 0.0
-                    links.new(math_sub.outputs[0], math_clamp_2.inputs[0])
+                    links.new(math_sub_2.outputs[0], math_clamp_2.inputs[0])
 
                     math_min_2 = nodes.new("ShaderNodeMath")
                     math_min_2.operation = "MINIMUM"
-                    math_min_2.location = (0, -500)
+                    math_min_2.location = (-200, -500)
                     math_min_2.inputs[1].default_value = 1.0
                     links.new(math_clamp_2.outputs[0], math_min_2.inputs[0])
                     links.new(math_min_2.outputs[0], mix_color_2.inputs[0])  # Factor
 
-                    # Factor for third mix: clamp (strategy - 2) to 0-1
+                    # Mix 3: Result vs PositionEncoding (3)
+                    mix_color_3 = nodes.new("ShaderNodeMix")
+                    mix_color_3.data_type = "RGBA"
+                    mix_color_3.location = (200, 200)
+                    mix_color_3.name = "MixColor3"
+                    links.new(mix_color_2.outputs[2], mix_color_3.inputs[6])  # A
+                    links.new(ng_position.outputs["Color"], mix_color_3.inputs[7])  # B
+
+                    # Factor for mix 3: clamp (strategy - 2) to 0-1
                     math_sub_3 = nodes.new("ShaderNodeMath")
                     math_sub_3.operation = "SUBTRACT"
-                    math_sub_3.location = (-200, -600)
+                    math_sub_3.location = (-400, -600)
                     math_sub_3.inputs[1].default_value = 2.0
                     links.new(value_strategy.outputs[0], math_sub_3.inputs[0])
 
                     math_clamp_3 = nodes.new("ShaderNodeMath")
                     math_clamp_3.operation = "MAXIMUM"
-                    math_clamp_3.location = (-100, -600)
+                    math_clamp_3.location = (-300, -600)
                     math_clamp_3.inputs[1].default_value = 0.0
                     links.new(math_sub_3.outputs[0], math_clamp_3.inputs[0])
 
                     math_min_3 = nodes.new("ShaderNodeMath")
                     math_min_3.operation = "MINIMUM"
-                    math_min_3.location = (0, -600)
+                    math_min_3.location = (-200, -600)
                     math_min_3.inputs[1].default_value = 1.0
                     links.new(math_clamp_3.outputs[0], math_min_3.inputs[0])
+                    links.new(math_min_3.outputs[0], mix_color_3.inputs[0])  # Factor
 
-                    # Similar mix setup for Strength
+                    # Mix 4: Result vs ProperNounHighlight (4)
+                    mix_color_4 = nodes.new("ShaderNodeMix")
+                    mix_color_4.data_type = "RGBA"
+                    mix_color_4.location = (400, 200)
+                    mix_color_4.name = "MixColor4"
+                    links.new(mix_color_3.outputs[2], mix_color_4.inputs[6])  # A
+                    if bpy.data.node_groups.get("EVE_Strategy_ProperNounHighlight"):
+                        links.new(ng_proper.outputs["Color"], mix_color_4.inputs[7])  # B
+
+                    # Factor for mix 4: clamp (strategy - 3) to 0-1
+                    math_sub_4 = nodes.new("ShaderNodeMath")
+                    math_sub_4.operation = "SUBTRACT"
+                    math_sub_4.location = (-400, -700)
+                    math_sub_4.inputs[1].default_value = 3.0
+                    links.new(value_strategy.outputs[0], math_sub_4.inputs[0])
+
+                    math_clamp_4 = nodes.new("ShaderNodeMath")
+                    math_clamp_4.operation = "MAXIMUM"
+                    math_clamp_4.location = (-300, -700)
+                    math_clamp_4.inputs[1].default_value = 0.0
+                    links.new(math_sub_4.outputs[0], math_clamp_4.inputs[0])
+
+                    math_min_4 = nodes.new("ShaderNodeMath")
+                    math_min_4.operation = "MINIMUM"
+                    math_min_4.location = (-200, -700)
+                    math_min_4.inputs[1].default_value = 1.0
+                    links.new(math_clamp_4.outputs[0], math_min_4.inputs[0])
+                    links.new(math_min_4.outputs[0], mix_color_4.inputs[0])  # Factor
+
+                    # Same for Strength path
                     mix_strength_1 = nodes.new("ShaderNodeMix")
                     mix_strength_1.data_type = "FLOAT"
-                    mix_strength_1.location = (0, -100)
+                    mix_strength_1.location = (-200, -100)
                     mix_strength_1.name = "MixStrength1"
-                    links.new(ng_char_rainbow.outputs["Strength"], mix_strength_1.inputs[2])  # A
-                    links.new(ng_pattern.outputs["Strength"], mix_strength_1.inputs[3])  # B
-                    links.new(
-                        math_min_1.outputs[0], mix_strength_1.inputs[0]
-                    )  # Same factor as color mix 1
+                    links.new(ng_uniform.outputs["Strength"], mix_strength_1.inputs[2])  # A
+                    links.new(ng_char_rainbow.outputs["Strength"], mix_strength_1.inputs[3])  # B
+                    links.new(math_min_1.outputs[0], mix_strength_1.inputs[0])
 
                     mix_strength_2 = nodes.new("ShaderNodeMix")
                     mix_strength_2.data_type = "FLOAT"
-                    mix_strength_2.location = (200, -100)
+                    mix_strength_2.location = (0, -100)
                     mix_strength_2.name = "MixStrength2"
                     links.new(mix_strength_1.outputs[1], mix_strength_2.inputs[2])  # A
-                    links.new(ng_position.outputs["Strength"], mix_strength_2.inputs[3])  # B
-                    links.new(
-                        math_min_2.outputs[0], mix_strength_2.inputs[0]
-                    )  # Same factor as color mix 2
-
-                    # Third mix stage: allow ProperNounHighlight to override all others when selected
-                    mix_color_3 = nodes.new("ShaderNodeMix")
-                    mix_color_3.data_type = "RGBA"
-                    mix_color_3.location = (400, 200)
-                    mix_color_3.name = "MixColor3"
-                    links.new(mix_color_2.outputs[2], mix_color_3.inputs[6])  # A = previous result
-                    # only link proper noun color if the node group is present
-                    if bpy.data.node_groups.get("EVE_Strategy_ProperNounHighlight"):
-                        links.new(
-                            ng_proper.outputs["Color"], mix_color_3.inputs[7]
-                        )  # B = proper noun
+                    links.new(ng_pattern.outputs["Strength"], mix_strength_2.inputs[3])  # B
+                    links.new(math_min_2.outputs[0], mix_strength_2.inputs[0])
 
                     mix_strength_3 = nodes.new("ShaderNodeMix")
                     mix_strength_3.data_type = "FLOAT"
-                    mix_strength_3.location = (400, -100)
+                    mix_strength_3.location = (200, -100)
                     mix_strength_3.name = "MixStrength3"
                     links.new(mix_strength_2.outputs[1], mix_strength_3.inputs[2])  # A
-                    # only link proper noun strength if the node group is present
-                    if bpy.data.node_groups.get("EVE_Strategy_ProperNounHighlight"):
-                        links.new(ng_proper.outputs["Strength"], mix_strength_3.inputs[3])  # B
+                    links.new(ng_position.outputs["Strength"], mix_strength_3.inputs[3])  # B
+                    links.new(math_min_3.outputs[0], mix_strength_3.inputs[0])
 
-                    # Connect third mix factor (math_min_3) to the third mix nodes
-                    try:
-                        links.new(math_min_3.outputs[0], mix_color_3.inputs[0])
-                    except Exception:
-                        pass
-                    try:
-                        links.new(math_min_3.outputs[0], mix_strength_3.inputs[0])
-                    except Exception:
-                        pass
+                    mix_strength_4 = nodes.new("ShaderNodeMix")
+                    mix_strength_4.data_type = "FLOAT"
+                    mix_strength_4.location = (400, -100)
+                    mix_strength_4.name = "MixStrength4"
+                    links.new(mix_strength_3.outputs[1], mix_strength_4.inputs[2])  # A
+                    if bpy.data.node_groups.get("EVE_Strategy_ProperNounHighlight"):
+                        links.new(ng_proper.outputs["Strength"], mix_strength_4.inputs[3])  # B
+                    links.new(math_min_4.outputs[0], mix_strength_4.inputs[0])
 
                     # Emission shader
                     emission = nodes.new("ShaderNodeEmission")
-                    emission.location = (600, 0)
-                    links.new(mix_color_3.outputs[2], emission.inputs["Color"])
-                    links.new(mix_strength_3.outputs[1], emission.inputs["Strength"])
+                    emission.location = (800, 0)
+                    links.new(mix_color_4.outputs[2], emission.inputs["Color"])
+                    links.new(mix_strength_4.outputs[1], emission.inputs["Strength"])
 
                     # Connect to output
                     links.new(emission.outputs[0], out.inputs[0])
@@ -362,7 +387,11 @@ if bpy:
                             try:
                                 if getattr(node, "type", None) != "GROUP":
                                     continue
-                                if node.name == "CharacterRainbow":
+                                if node.name == "UniformOrange":
+                                    node.node_tree = bpy.data.node_groups.get(
+                                        "EVE_Strategy_UniformOrange"
+                                    )  # type: ignore[attr-defined]
+                                elif node.name == "CharacterRainbow":
                                     node.node_tree = bpy.data.node_groups.get(
                                         "EVE_Strategy_CharacterRainbow"
                                     )  # type: ignore[attr-defined]
@@ -386,10 +415,11 @@ if bpy:
                         selector = nt.nodes.get("StrategySelector")
                         if selector:
                             strategy_map = {
-                                "CharacterRainbow": 0.0,
-                                "PatternCategories": 1.0,
-                                "PositionEncoding": 2.0,
-                                "ProperNounHighlight": 3.0,
+                                "UniformOrange": 0.0,
+                                "CharacterRainbow": 1.0,
+                                "PatternCategories": 2.0,
+                                "PositionEncoding": 3.0,
+                                "ProperNounHighlight": 4.0,
                             }
                             selector.outputs[0].default_value = strategy_map.get(strategy_name, 0.0)
                 except Exception:
@@ -941,10 +971,11 @@ def _on_strategy_change(self, context):  # pragma: no cover
         selector = mat.node_tree.nodes.get("StrategySelector")
         if selector:
             strategy_map = {
-                "CharacterRainbow": 0.0,
-                "PatternCategories": 1.0,
-                "PositionEncoding": 2.0,
-                "ProperNounHighlight": 3.0,
+                "UniformOrange": 0.0,
+                "CharacterRainbow": 1.0,
+                "PatternCategories": 2.0,
+                "PositionEncoding": 3.0,
+                "ProperNounHighlight": 4.0,
             }
             new_value = strategy_map.get(strategy_name, 0.0)
             selector.outputs[0].default_value = new_value
