@@ -108,13 +108,14 @@ jobs:
         continue-on-error: true
 
       - name: Check test coverage by module
+        working-directory: ./blender_addon
         run: |
           echo "Detailed coverage by module:"
-          pytest --cov=addon --cov-report=term-missing
+          pytest --cov=src --cov-report=term-missing
           
           echo ""
           echo "Modules with <80% coverage:"
-          pytest --cov=addon --cov-report=term | grep -E "^\S+\s+\S+\s+\S+\s+[0-7][0-9]%" || echo "All modules above 80% ✓"
+          pytest --cov=src --cov-report=term | grep -E "^\S+\s+\S+\s+\S+\s+[0-7][0-9]%" || echo "All modules above 80% ✓"
 
       - name: Generate quality report
         run: |
