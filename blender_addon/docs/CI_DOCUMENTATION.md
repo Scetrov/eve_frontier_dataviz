@@ -166,11 +166,8 @@ This document describes the automated checks and workflows in the GitHub Actions
    - **Fails** if any broken links found
 
 2. **Outdated Example Detection**
-   - Searches for old strategy names:
-     - `NameFirstCharHue`
-     - `ChildCountEmission`
-     - `BlackholeBoost`
-   - **Fails** if found (should use current names)
+   - Searches for old strategy names (deprecated in v0.2.0)
+   - **Fails** if found (should use current: CharacterRainbow, PatternCategories, PositionEncoding, ProperNounHighlight, UniformOrange)
 
 3. **Documentation Structure Verification**
    - Ensures all required docs exist:
