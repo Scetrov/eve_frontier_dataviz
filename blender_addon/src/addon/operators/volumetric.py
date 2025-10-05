@@ -4,8 +4,10 @@ from __future__ import annotations
 
 try:  # pragma: no cover
     import bpy  # type: ignore
+    from mathutils import Vector  # type: ignore
 except Exception:  # noqa: BLE001
     bpy = None  # type: ignore
+    Vector = None  # type: ignore
 
 
 class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defined]
@@ -107,7 +109,8 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
             # Get object's bounding box in world space
             if obj.type == "MESH" or obj.type == "CURVE":
                 # For mesh/curve objects, get actual bounding box corners
-                bbox_corners = [obj.matrix_world @ v for v in obj.bound_box]
+                # Convert bound_box tuples to Vector objects for matrix multiplication
+                bbox_corners = [obj.matrix_world @ Vector(v) for v in obj.bound_box]
                 for corner in bbox_corners:
                     min_x = min(min_x, corner.x)
                     min_y = min(min_y, corner.y)
