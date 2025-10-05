@@ -203,18 +203,19 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
             math_multiply.location = (100, 0)
             math_multiply.inputs[0].default_value = self.density
 
-            # Create Math node to mix between uniform and noisy density
-            math_mix = nodes.new("ShaderNodeMath")
-            math_mix.operation = "MIX"
-            math_mix.location = (100, -150)
-            math_mix.inputs[0].default_value = self.noise_strength  # Factor
-            math_mix.inputs[1].default_value = self.density  # Uniform density
+            # Create Mix node to blend between uniform and noisy density
+            mix_node = nodes.new("ShaderNodeMix")
+            mix_node.data_type = "FLOAT"  # Mix float values
+            mix_node.location = (100, -150)
+            mix_node.inputs["Factor"].default_value = self.noise_strength
+            mix_node.inputs["A"].default_value = self.density  # Uniform density
+            # B will be connected to noisy density
 
             # Connect noise chain (use Alpha output from ColorRamp for float value)
             links.new(noise_tex.outputs["Fac"], color_ramp.inputs["Fac"])
             links.new(color_ramp.outputs["Alpha"], math_multiply.inputs[1])
-            links.new(math_multiply.outputs["Value"], math_mix.inputs[2])  # Noisy density
-            links.new(math_mix.outputs["Value"], volume.inputs["Density"])
+            links.new(math_multiply.outputs["Value"], mix_node.inputs["B"])  # Noisy density
+            links.new(mix_node.outputs["Result"], volume.inputs["Density"])
 
             # Connect to output
             links.new(volume.outputs["Volume"], output.inputs["Volume"])
@@ -227,6 +228,7 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
             noise_tex = next((n for n in nodes if n.type == "TEX_NOISE"), None)
             color_ramp = next((n for n in nodes if n.type == "VALTORGB"), None)
             math_nodes = [n for n in nodes if n.type == "MATH"]
+            mix_node = next((n for n in nodes if n.type == "MIX"), None)
             output = next((n for n in nodes if n.type == "OUTPUT_MATERIAL"), None)
 
             # Update properties
@@ -243,29 +245,30 @@ class EVE_OT_add_volumetric(bpy.types.Operator):  # type: ignore[misc,name-defin
                 noise_tex.inputs["Scale"].default_value = self.noise_scale
                 noise_tex.inputs["Detail"].default_value = self.noise_detail
 
-            # Find the multiply and mix nodes
+            # Find the multiply node
             math_multiply = None
-            math_mix = None
-            if len(math_nodes) >= 2:
+            if len(math_nodes) >= 1:
                 for node in math_nodes:
                     if node.operation == "MULTIPLY":
                         node.inputs[0].default_value = self.density
                         math_multiply = node
-                    elif node.operation == "MIX":
-                        node.inputs[0].default_value = self.noise_strength
-                        node.inputs[1].default_value = self.density
-                        math_mix = node
+                        break
+
+            # Update mix node
+            if mix_node:
+                mix_node.inputs["Factor"].default_value = self.noise_strength
+                mix_node.inputs["A"].default_value = self.density
 
             # Recreate connections in case they were broken
-            if all([noise_tex, color_ramp, math_multiply, math_mix, volume, output]):
+            if all([noise_tex, color_ramp, math_multiply, mix_node, volume, output]):
                 # Clear existing links
                 links.clear()
 
                 # Reconnect noise chain (use Alpha output from ColorRamp for float value)
                 links.new(noise_tex.outputs["Fac"], color_ramp.inputs["Fac"])
                 links.new(color_ramp.outputs["Alpha"], math_multiply.inputs[1])
-                links.new(math_multiply.outputs["Value"], math_mix.inputs[2])
-                links.new(math_mix.outputs["Value"], volume.inputs["Density"])
+                links.new(math_multiply.outputs["Value"], mix_node.inputs["B"])
+                links.new(mix_node.outputs["Result"], volume.inputs["Density"])
                 links.new(volume.outputs["Volume"], output.inputs["Volume"])
 
         # Assign material to cube
