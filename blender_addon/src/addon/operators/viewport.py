@@ -61,9 +61,9 @@ if bpy:
             if not hdri_found:
                 self.report(
                     {"INFO"},
-                    "HDRI file not found - using procedural space background instead",
+                    "HDRI file not found - using procedural starfield background instead",
                 )
-                # Create procedural space-like gradient
+                # Create procedural starfield background
                 world = bpy.context.scene.world  # type: ignore[union-attr]
                 if not world:
                     world = bpy.data.worlds.new("EVE_World")  # type: ignore[union-attr]
@@ -78,39 +78,45 @@ if bpy:
 
                 # Create output node
                 out = nodes.new("ShaderNodeOutputWorld")
-                out.location = (300, 0)
+                out.location = (600, 0)
 
                 # Create background shader
                 bg = nodes.new("ShaderNodeBackground")
-                bg.location = (100, 0)
+                bg.location = (400, 0)
                 bg.inputs[1].default_value = self.strength
 
-                # Create Sky Texture for procedural space
-                sky = nodes.new("ShaderNodeTexSky")
-                sky.location = (-100, 0)
-                sky.sky_type = "NISHITA"
-                sky.sun_elevation = 0.0  # Horizon
-                sky.sun_rotation = 0.0
-                sky.altitude = 0  # Sea level for deep space look
-                sky.air_density = 0.0  # No atmosphere
-                sky.dust_density = 0.0  # No dust
-                sky.ozone_density = 0.0  # No ozone
+                # Create noise texture for stars
+                noise = nodes.new("ShaderNodeTexNoise")
+                noise.location = (-400, 0)
+                noise.inputs["Scale"].default_value = 1000.0  # Many small stars
+                noise.inputs["Detail"].default_value = 0.0  # Sharp points
+                noise.inputs["Roughness"].default_value = 0.5
 
-                # Create ColorRamp to make it darker and more space-like
+                # Create ColorRamp to create star points
                 color_ramp = nodes.new("ShaderNodeValToRGB")
-                color_ramp.location = (-300, 0)
-                # Make it very dark
-                color_ramp.color_ramp.elements[0].position = 0.0
-                color_ramp.color_ramp.elements[0].color = (0.0, 0.0, 0.0, 1.0)
+                color_ramp.location = (-200, 0)
+                color_ramp.color_ramp.interpolation = "CONSTANT"
+                # Adjust for sparse bright stars on black
+                color_ramp.color_ramp.elements[0].position = 0.995  # Mostly black
+                color_ramp.color_ramp.elements[0].color = (0.0, 0.0, 0.01, 1.0)  # Very dark blue
                 color_ramp.color_ramp.elements[1].position = 1.0
-                color_ramp.color_ramp.elements[1].color = (0.01, 0.01, 0.02, 1.0)
+                color_ramp.color_ramp.elements[1].color = (1.0, 1.0, 1.0, 1.0)  # White stars
+
+                # Mix with a slight blue tint
+                mix_rgb = nodes.new("ShaderNodeMix")
+                mix_rgb.location = (0, 0)
+                mix_rgb.data_type = "RGBA"
+                mix_rgb.inputs[0].default_value = 0.3  # Factor
+                mix_rgb.inputs[6].default_value = (0.0, 0.0, 0.01, 1.0)  # Dark blue base (A)
+                # B comes from color ramp
 
                 # Connect nodes
-                links.new(sky.outputs["Color"], color_ramp.inputs["Fac"])
-                links.new(color_ramp.outputs["Color"], bg.inputs["Color"])
+                links.new(noise.outputs["Fac"], color_ramp.inputs["Fac"])
+                links.new(color_ramp.outputs["Color"], mix_rgb.inputs[7])  # B socket
+                links.new(mix_rgb.outputs[2], bg.inputs["Color"])  # Result to background
                 links.new(bg.outputs["Background"], out.inputs["Surface"])
 
-                self.report({"INFO"}, "Applied procedural space background")
+                self.report({"INFO"}, "Applied procedural starfield background")
                 return {"FINISHED"}
 
             # HDRI found - use it

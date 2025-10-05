@@ -33,7 +33,6 @@ exports/
 *.exr
 *.jpg
 *.jpeg
-*.tiff
 *.mp4
 *.mov
 
