@@ -19,17 +19,17 @@ if bpy:  # Only define classes when Blender API is present
 
         light_power: bpy.props.FloatProperty(  # type: ignore[valid-type]
             name="Light Power",
-            default=1000000.0,
-            min=1000.0,
-            soft_max=10000000.0,
+            default=100.0,
+            min=1.0,
+            soft_max=10000.0,
             description="Power of the point lights (in Watts)",
         )
 
         light_radius: bpy.props.FloatProperty(  # type: ignore[valid-type]
             name="Light Radius",
-            default=500.0,
-            min=10.0,
-            soft_max=5000.0,
+            default=0.1,
+            min=0.001,
+            soft_max=50.0,
             description="Radius of influence for the lights",
         )
 
