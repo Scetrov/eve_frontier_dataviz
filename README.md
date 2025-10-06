@@ -40,7 +40,7 @@ If the tab or operators don’t show up, see Troubleshooting below.
 ## 🌟 Key Features
 
 - **24,000+ Star Systems**: Full EVE Frontier galaxy visualization with accurate 3D coordinates
--- **Four GPU-Driven Shader Strategies**: Character Rainbow, Pattern Categories, Position Encoding, Proper Noun Highlight
+- **Five GPU-Driven Shader Strategies**: Uniform Orange, Character Rainbow, Pattern Categories, Position Encoding, Proper Noun Highlight
 - **Instant Strategy Switching**: Change visualizations without rebuilding the scene
 - **Navigation Landmarks**: Reference point labels at black holes and constellation centers
 - **Jump Network Analysis**: Visualize stargate connections and find isolated triangle islands
