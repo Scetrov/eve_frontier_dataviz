@@ -24,7 +24,7 @@ SQLite (data/static.db) -> data_loader (pure Python) -> in-memory systems + jump
 ### Key Conventions
 
 - Source layout: `blender_addon/src/addon` is the Python package root.
-- Collections created: `Frontier` (root), `EVE_Systems` (system objects), `EVE_Jumps` (jump line curves).
+- Collections created: `Frontier` (root, contains hierarchical Region/Constellation subcollections with system objects), `EVE_Jumps` (jump line curves).
 - Future reserved names (do not misuse): `EVE_Planets`, `EVE_Moons`.
 - Per-system custom properties:
     - `planet_count` (int)

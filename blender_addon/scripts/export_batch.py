@@ -19,9 +19,16 @@ def apply_strategy(strategy_id: str):
         print(f"Strategy {strategy_id} not found")
         return
     objs_by_type = {"systems": []}
-    systems_coll = bpy.data.collections.get("EVE_Systems")
-    if systems_coll:
-        objs_by_type["systems"].extend(systems_coll.objects)
+    # Collect systems from Frontier collection (hierarchical structure)
+    frontier = bpy.data.collections.get("Frontier")
+    if frontier:
+
+        def _collect_recursive(collection):
+            objs_by_type["systems"].extend(collection.objects)
+            for child in collection.children:
+                _collect_recursive(child)
+
+        _collect_recursive(frontier)
     strat.build(bpy.context, objs_by_type)
     print(f"Applied {strategy_id}")
 

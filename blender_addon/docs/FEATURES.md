@@ -20,7 +20,7 @@ This document describes the user-facing features of the EVE Frontier Data Visual
 1. Set database path in Preferences
 2. Click `Load / Refresh Data`
 3. Click `Build Scene`
-4. Systems appear in `EVE_Systems` collection
+4. Systems appear in `Frontier` collection (hierarchical: `Frontier/Region/Constellation/Systems`)
 
 **Properties Stored** (per system):
 
@@ -396,7 +396,7 @@ dev_reload.reload_addon()
 **"No systems to shade"**:
 
 - Build scene first
-- Check `EVE_Systems` collection exists and has objects
+- Check `Frontier` collection exists and has objects (hierarchical structure)
 
 **"Attribute not found" in shader**:
 
