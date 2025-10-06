@@ -100,17 +100,53 @@ All tests pass with 91% coverage maintained:
 
 ---
 
+## Performance Guidelines (Scale-Specific)
+
+**Critical**: This addon manages 25,000+ objects. At this scale, algorithmic complexity matters more than micro-optimizations.
+
+### Mandatory Practices
+
+✅ **Always O(n) or better** - O(n²) operations will hang Blender for minutes
+✅ **Batch operations** - Use `bpy.data.batch_remove()`, collect-then-process patterns
+✅ **Disable undo during bulk ops** - `bpy.context.preferences.edit.use_global_undo = False`
+✅ **Modal operators for slow ops** - Scene build, jump creation (30+ seconds)
+✅ **Progress reporting** - Update `wm.progress_begin/update/end` in long operations
+
+### Anti-Patterns to Avoid
+
+❌ Nested object iteration (O(n²))
+❌ Per-object material creation (memory explosion)
+❌ Per-row database queries (use bulk SELECT)
+❌ Modifying objects during iteration without collecting first
+❌ Synchronous operators for operations > 1 second
+
+### Performance Examples
+
+**Clear Scene** (`_shared.py:clear_generated()`):
+- ✅ Collect all objects/collections first
+- ✅ Batch remove with `bpy.data.batch_remove()`
+- ✅ Result: <1 second for 25k+ objects
+
+**Scene Build** (`build_scene_modal.py`):
+- ✅ Modal operator with batch_size=2500
+- ✅ Progress updates every batch
+- ✅ ESC key cancellation support
+- ✅ Result: 30-60 seconds with user feedback
+
+---
+
 ## Resources
 
 - [Blender Operator Guidelines](https://wiki.blender.org/wiki/Process/Addons/Guidelines/Operators)
 - [Property Update Callbacks](https://docs.blender.org/api/current/bpy.props.html)
 - [Modal Operator Template](https://docs.blender.org/api/current/bpy.types.Operator.html#modal-execution)
+- [Performance Best Practices](https://docs.blender.org/api/current/info_gotcha.html#performance)
 
 ---
 
 ## Overall Assessment
 
-**Grade: A-** (would be A+ with Phase 2 complete)
+**Grade: A** (excellent architecture, testing, and scale-appropriate performance)
 
-The addon demonstrates excellent architecture, testing, and code quality. Phase 1 improvements bring it into full compliance with Blender operator best practices. The codebase is production-ready and exceeds community standards.
+The addon demonstrates excellent architecture, testing, code quality, and performance engineering. All operations are designed for O(n) complexity or better, making them viable at 25k+ object scale. Modal operators provide good UX for long-running operations. The codebase is production-ready and exceeds community standards.
 

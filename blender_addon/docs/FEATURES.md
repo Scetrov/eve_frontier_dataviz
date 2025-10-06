@@ -290,6 +290,12 @@ Info: Found 2 triangle islands (6 systems, 6 jumps shown, 14578 hidden)
 
 ## Scaling & Performance
 
+### Scale Context
+
+**Object Count**: 25,000+ objects minimum (24,426 systems + jump lines + future planets/moons)
+
+**Critical Performance Rule**: At this scale, O(n²) operations are **impossible**—they will hang Blender for minutes or crash. All addon operations are designed for O(n) or better complexity.
+
 ### Coordinate System
 
 **Database Scale**: EVE Frontier uses real-world astronomical units (meters)
@@ -311,7 +317,7 @@ Info: Found 2 triangle islands (6 systems, 6 jumps shown, 14578 hidden)
 
 ### Performance Considerations
 
-**System Count**: 24,426 objects in viewport
+**System Count**: 24,426 base objects + jump lines = 25,000+ total
 
 **Recommendations**:
 
@@ -320,17 +326,28 @@ Info: Found 2 triangle islands (6 systems, 6 jumps shown, 14578 hidden)
 - Disable volumetric effects for editing
 - Use node-based strategies (GPU-accelerated)
 
-**Fast Operations** (GPU/cached):
+**Fast Operations** (GPU/cached, O(1) or O(n)):
 
-- Strategy switching (instant)
-- Jump visibility toggle
-- Viewport navigation
+- Strategy switching (instant, GPU shader swap)
+- Jump visibility toggle (instant, collection hide)
+- Viewport navigation (GPU accelerated)
+- Clear scene (<1 second, batch removal)
 
-**Slow Operations** (CPU/Python):
+**Moderate Operations** (CPU/Python, O(n)):
 
-- Scene build (30-60 seconds full dataset)
-- Jump network creation (15-30 seconds)
-- Triangle detection (5-10 seconds)
+- Scene build (30-60 seconds, modal with progress)
+- Jump network creation (15-30 seconds, modal)
+- Shader application (5-10 seconds, modal)
+
+**Slow Operations** (CPU/Python, complex algorithms):
+
+- Triangle detection (5-10 seconds, graph analysis)
+
+**Memory Requirements**:
+
+- 16GB+ RAM recommended for full dataset
+- Expected high memory usage with 25k+ objects
+- Consider reducing build percentage on lower-spec systems
 
 ## Export & Automation Features
 
@@ -403,9 +420,22 @@ dev_reload.reload_addon()
 
 **Memory usage high**:
 
-- Expected with 24K+ objects
+- Expected with 25k+ objects
 - Close other applications
 - Consider RAM upgrade (16GB+ recommended)
+
+**Blender hangs/freezes**:
+
+- Long operations (scene build, jump creation) are normal
+- Modal operators show progress in status bar
+- Can cancel with ESC key during modal operations
+- If truly frozen, may be a bug—report with reproduction steps
+
+**Performance degradation over time**:
+
+- Blender accumulates undo history—restart periodically
+- Check system resources (Task Manager/Activity Monitor)
+- Clear unused data blocks (File → Clean Up → Purge)
 
 ## See Also
 

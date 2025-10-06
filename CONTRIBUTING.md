@@ -68,6 +68,36 @@ If you see an import ordering (I001) failure in CI, it generally means hooks wer
 - Strategies must NOT create objects; only assign/update materials.
 - Future `scene_builder` will centralize object creation.
 
+## Performance Requirements (Scale-Critical)
+
+**Context**: This addon manages 25,000+ objects (24,426 systems minimum + jump lines + future planets/moons).
+
+**Critical Rule**: All operations must be **O(n) or better**. O(n²) operations will hang Blender for minutes or crash.
+
+**Required Patterns**:
+- ✅ Batch operations: `bpy.data.batch_remove()`, collect-then-process
+- ✅ Disable undo during bulk ops: `bpy.context.preferences.edit.use_global_undo = False`
+- ✅ Modal operators for operations > 1 second with progress reporting
+- ✅ Bulk SELECT queries, never per-row loops
+
+**Forbidden Patterns**:
+- ❌ Nested object iteration (`for obj in objs: for other in objs:`)
+- ❌ Per-object material creation (use shared materials with deterministic variants)
+- ❌ Synchronous long operations without progress feedback
+- ❌ Database queries inside object loops
+
+**Example - Correct Approach**:
+
+```python
+# Collect first, then batch process
+objects_to_remove = set()
+for coll in collections:
+    objects_to_remove.update(coll.objects)
+bpy.data.batch_remove(ids=objects_to_remove)
+```
+
+See `blender_addon/src/addon/operators/_shared.py:clear_generated()` for reference implementation.
+
 ## Testing Guidance
 
 - Keep tests fast (<1s). Avoid filesystem writes outside temp dirs.

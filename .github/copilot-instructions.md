@@ -51,13 +51,43 @@ Idempotent: re-running may reuse or lazily create a bounded set of materials; no
 
 ### Performance & Safety Guidelines
 
+**Scale Context**: This addon manages 25,000+ objects (24,426 systems + jump lines + planets/moons future). O(n²) operations are **impossible** at this scale—they will hang Blender for minutes or crash.
+
+**Critical Rules**:
+- **O(n) maximum**: All operations must be linear or better. Batch operations wherever possible.
+- **No nested object loops**: Never iterate objects inside another object loop (O(n²) death).
+- **Use batch APIs**: `bpy.data.batch_remove()` for deletions, bulk property sets, etc.
+- **Disable undo during bulk ops**: `bpy.context.preferences.edit.use_global_undo = False` before heavy operations.
+- **Collect then process**: Build sets/lists first, then batch process (see `clear_generated()` pattern).
+
+**Data Layer**:
 - Bulk SELECT; never open a cursor per entity.
 - Loader cache key: (resolved path, size, mtime_ns, limit_systems) → reuse when enabled.
+- Single JOIN query better than N queries in a loop.
+
+**Scene Layer**:
 - Only touch objects inside `EVE_*` collections you create.
 - Avoid scanning all materials each loop—cache lookups by name.
 - Keep operator `execute` methods fast; heavy work belongs in pure Python helpers where possible.
 - Ensure long-running operators (e.g. scene build) support cancellation and report progress.
-- Check the schema below if unsure about where to get data from.
+- Modal operators for operations > 1 second (scene build, shader apply, etc.).
+
+**Example Patterns**:
+
+```python
+# ❌ BAD - O(n²) will hang on 25k objects
+for obj in scene.objects:
+    for other in scene.objects:
+        compute_distance(obj, other)
+
+# ✅ GOOD - O(n) batch collection then process
+objects_to_remove = set()
+for coll in collections:
+    objects_to_remove.update(coll.objects)
+bpy.data.batch_remove(ids=objects_to_remove)
+```
+
+Check the schema below if unsure about where to get data from.
 
 ### When Extending
 

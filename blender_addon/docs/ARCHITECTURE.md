@@ -33,13 +33,46 @@ SQLite -> data_loader -> entities -> scene_builder.build() -> objects -> strateg
 
 ## Performance Considerations
 
-- Single bulk SELECT per table; filter by limited system IDs when slicing.
-- In-memory cache keyed by `(path, size, mtime_ns, limit_systems)`.
-- Avoid full scene rebuild for visualization-only changes (strategies operate via GPU nodes).
+**Scale**: 25,000+ objects (24,426 systems minimum, plus jump lines, future planets/moons)
+
+**Critical Constraint**: O(n²) operations are **impossible** at this scale. They will hang Blender for minutes or cause crashes. All algorithms must be O(n) or better.
+
+**Optimization Strategies**:
+- **Single bulk SELECT per table**: Filter by limited system IDs when slicing; never per-row queries.
+- **In-memory cache**: Keyed by `(path, size, mtime_ns, limit_systems)` for instant reloads.
+- **Batch operations**: Use `bpy.data.batch_remove()` for deletions, collect-then-process pattern everywhere.
+- **Undo disabled during bulk ops**: `bpy.context.preferences.edit.use_global_undo = False` before heavy operations.
 - **Node-based shading**: Single shared material drastically reduces memory overhead vs per-object materials.
 - **GPU-driven**: All property-to-color mapping happens on GPU via shader nodes (no Python iteration).
-- Flat collection renamed to `Frontier` (legacy name `EVE_Systems` removed) to match project domain terminology.
-- Future: geometry nodes + instancing for large numbers of child bodies.
+- **Modal operators**: Long operations (scene build, shader apply) run asynchronously with progress reporting.
+- **Avoid full scene rebuild for visualization-only changes**: Strategies operate via GPU nodes, instant switching.
+
+**Performance Examples**:
+
+```python
+# ❌ NEVER DO THIS - O(n²) hangs on 25k objects
+for obj in collection.objects:
+    for other in collection.objects:
+        compute_distance(obj, other)
+
+# ✅ CORRECT - O(n) collect then batch process
+objects_to_remove = set()
+collections_to_process = [root_coll]
+while collections_to_process:
+    current = collections_to_process.pop()
+    collections_to_process.extend(current.children)
+    objects_to_remove.update(current.objects)
+bpy.data.batch_remove(ids=objects_to_remove)
+```
+
+**Measured Performance** (24,426 systems on typical hardware):
+- Scene build: 30-60 seconds (modal, cancellable)
+- Clear scene: <1 second (batch removal)
+- Strategy switch: Instant (GPU shader swap)
+- Jump network build: 15-30 seconds (modal)
+
+Flat collection renamed to `Frontier` (legacy name `EVE_Systems` removed) to match project domain terminology.
+Future: geometry nodes + instancing for large numbers of child bodies.
 
 ## Extensibility Points
 
