@@ -238,12 +238,14 @@ if bpy:
 
                     # Factor for mix 1: clamp strategy to 0-1
                     math_clamp_1 = nodes.new("ShaderNodeMath")
+                    math_clamp_1.name = "Math_ClampStrategyToMin0"
                     math_clamp_1.operation = "MAXIMUM"
-                    math_clamp_1.location = (-400, -400)
+                    math_clamp_1.location = (-300, -400)
                     math_clamp_1.inputs[1].default_value = 0.0
                     links.new(value_strategy.outputs[0], math_clamp_1.inputs[0])
 
                     math_min_1 = nodes.new("ShaderNodeMath")
+                    math_min_1.name = "Math_ClampStrategyToMax1"
                     math_min_1.operation = "MINIMUM"
                     math_min_1.location = (-300, -400)
                     math_min_1.inputs[1].default_value = 1.0
@@ -260,18 +262,21 @@ if bpy:
 
                     # Factor for mix 2: clamp (strategy - 1) to 0-1
                     math_sub_2 = nodes.new("ShaderNodeMath")
+                    math_sub_2.name = "Math_SubStrategyMinus1"
                     math_sub_2.operation = "SUBTRACT"
                     math_sub_2.location = (-400, -500)
                     math_sub_2.inputs[1].default_value = 1.0
                     links.new(value_strategy.outputs[0], math_sub_2.inputs[0])
 
                     math_clamp_2 = nodes.new("ShaderNodeMath")
+                    math_clamp_2.name = "Math_ClampSub2ToMin0"
                     math_clamp_2.operation = "MAXIMUM"
                     math_clamp_2.location = (-300, -500)
                     math_clamp_2.inputs[1].default_value = 0.0
                     links.new(math_sub_2.outputs[0], math_clamp_2.inputs[0])
 
                     math_min_2 = nodes.new("ShaderNodeMath")
+                    math_min_2.name = "Math_MinSub2ToMax1"
                     math_min_2.operation = "MINIMUM"
                     math_min_2.location = (-200, -500)
                     math_min_2.inputs[1].default_value = 1.0
@@ -288,18 +293,21 @@ if bpy:
 
                     # Factor for mix 3: clamp (strategy - 2) to 0-1
                     math_sub_3 = nodes.new("ShaderNodeMath")
+                    math_sub_3.name = "Math_SubStrategyMinus2"
                     math_sub_3.operation = "SUBTRACT"
                     math_sub_3.location = (-400, -600)
                     math_sub_3.inputs[1].default_value = 2.0
                     links.new(value_strategy.outputs[0], math_sub_3.inputs[0])
 
                     math_clamp_3 = nodes.new("ShaderNodeMath")
+                    math_clamp_3.name = "Math_ClampSub3ToMin0"
                     math_clamp_3.operation = "MAXIMUM"
                     math_clamp_3.location = (-300, -600)
                     math_clamp_3.inputs[1].default_value = 0.0
                     links.new(math_sub_3.outputs[0], math_clamp_3.inputs[0])
 
                     math_min_3 = nodes.new("ShaderNodeMath")
+                    math_min_3.name = "Math_MinSub3ToMax1"
                     math_min_3.operation = "MINIMUM"
                     math_min_3.location = (-200, -600)
                     math_min_3.inputs[1].default_value = 1.0
@@ -317,63 +325,32 @@ if bpy:
 
                     # Factor for mix 4: clamp (strategy - 3) to 0-1
                     math_sub_4 = nodes.new("ShaderNodeMath")
+                    math_sub_4.name = "Math_SubStrategyMinus3"
                     math_sub_4.operation = "SUBTRACT"
                     math_sub_4.location = (-400, -700)
                     math_sub_4.inputs[1].default_value = 3.0
                     links.new(value_strategy.outputs[0], math_sub_4.inputs[0])
 
                     math_clamp_4 = nodes.new("ShaderNodeMath")
+                    math_clamp_4.name = "Math_ClampSub4ToMin0"
                     math_clamp_4.operation = "MAXIMUM"
                     math_clamp_4.location = (-300, -700)
                     math_clamp_4.inputs[1].default_value = 0.0
                     links.new(math_sub_4.outputs[0], math_clamp_4.inputs[0])
 
                     math_min_4 = nodes.new("ShaderNodeMath")
+                    math_min_4.name = "Math_MinSub4ToMax1"
                     math_min_4.operation = "MINIMUM"
                     math_min_4.location = (-200, -700)
                     math_min_4.inputs[1].default_value = 1.0
                     links.new(math_clamp_4.outputs[0], math_min_4.inputs[0])
                     links.new(math_min_4.outputs[0], mix_color_4.inputs[0])  # Factor
 
-                    # Same for Strength path
-                    mix_strength_1 = nodes.new("ShaderNodeMix")
-                    mix_strength_1.data_type = "FLOAT"
-                    mix_strength_1.location = (-200, -100)
-                    mix_strength_1.name = "MixStrength1"
-                    links.new(ng_uniform.outputs["Strength"], mix_strength_1.inputs[2])  # A
-                    links.new(ng_char_rainbow.outputs["Strength"], mix_strength_1.inputs[3])  # B
-                    links.new(math_min_1.outputs[0], mix_strength_1.inputs[0])
-
-                    mix_strength_2 = nodes.new("ShaderNodeMix")
-                    mix_strength_2.data_type = "FLOAT"
-                    mix_strength_2.location = (0, -100)
-                    mix_strength_2.name = "MixStrength2"
-                    links.new(mix_strength_1.outputs[1], mix_strength_2.inputs[2])  # A
-                    links.new(ng_pattern.outputs["Strength"], mix_strength_2.inputs[3])  # B
-                    links.new(math_min_2.outputs[0], mix_strength_2.inputs[0])
-
-                    mix_strength_3 = nodes.new("ShaderNodeMix")
-                    mix_strength_3.data_type = "FLOAT"
-                    mix_strength_3.location = (200, -100)
-                    mix_strength_3.name = "MixStrength3"
-                    links.new(mix_strength_2.outputs[1], mix_strength_3.inputs[2])  # A
-                    links.new(ng_position.outputs["Strength"], mix_strength_3.inputs[3])  # B
-                    links.new(math_min_3.outputs[0], mix_strength_3.inputs[0])
-
-                    mix_strength_4 = nodes.new("ShaderNodeMix")
-                    mix_strength_4.data_type = "FLOAT"
-                    mix_strength_4.location = (400, -100)
-                    mix_strength_4.name = "MixStrength4"
-                    links.new(mix_strength_3.outputs[1], mix_strength_4.inputs[2])  # A
-                    if bpy.data.node_groups.get("EVE_Strategy_ProperNounHighlight"):
-                        links.new(ng_proper.outputs["Strength"], mix_strength_4.inputs[3])  # B
-                    links.new(math_min_4.outputs[0], mix_strength_4.inputs[0])
-
                     # Emission shader
                     emission = nodes.new("ShaderNodeEmission")
+                    emission.name = "EVE_Emission"
                     emission.location = (800, 0)
                     links.new(mix_color_4.outputs[2], emission.inputs["Color"])
-                    links.new(mix_strength_4.outputs[1], emission.inputs["Strength"])
 
                     # Connect to output
                     links.new(emission.outputs[0], out.inputs[0])
