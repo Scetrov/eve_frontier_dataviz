@@ -59,38 +59,50 @@ def clear_generated():  # pragma: no cover - needs Blender
     prev_undo = bpy.context.preferences.edit.use_global_undo
     bpy.context.preferences.edit.use_global_undo = False
     try:
+        # First pass: collect all objects and collections to remove
+        objects_to_remove = set()
+        collections_to_remove = []
+
         for cname in GENERATED_COLLECTIONS:
             coll = bpy.data.collections.get(cname)
             if not coll:
                 continue
-            # Recursively remove all objects from this collection and subcollections
+
+            # Recursively collect all objects and subcollections
             collections_to_process = [coll]
             while collections_to_process:
                 current = collections_to_process.pop()
+                collections_to_remove.append(current)
                 # Add child collections to process queue
                 collections_to_process.extend(list(current.children))
-                # Remove all objects in current collection
-                for obj in list(current.objects):
+                # Collect all objects in current collection
+                objects_to_remove.update(current.objects)
+
+        # Second pass: batch remove all objects (much faster than one-by-one)
+        # Use batch_remove if available (Blender 3.2+), otherwise fall back to loop
+        if objects_to_remove:
+            try:
+                # batch_remove is significantly faster for large numbers of objects
+                bpy.data.batch_remove(ids=objects_to_remove)
+                removed_objs = len(objects_to_remove)
+            except (AttributeError, TypeError):  # noqa: BLE001
+                # Fallback for older Blender versions or if batch_remove fails
+                for obj in objects_to_remove:
                     try:
                         bpy.data.objects.remove(obj, do_unlink=True)
                         removed_objs += 1
                     except Exception:  # noqa: BLE001
                         pass
 
-            # Now recursively remove all subcollections, then the parent
-            def _remove_collection_recursive(c):
-                nonlocal removed_colls
-                # Remove children first (depth-first)
-                for child in list(c.children):
-                    _remove_collection_recursive(child)
-                # Remove this collection
-                try:
-                    bpy.data.collections.remove(c)
-                    removed_colls += 1
-                except Exception:  # noqa: BLE001
-                    pass
+        # Third pass: remove collections in reverse order (children before parents)
+        # This ensures we don't try to remove a parent before its children
+        for coll in reversed(collections_to_remove):
+            try:
+                bpy.data.collections.remove(coll)
+                removed_colls += 1
+            except Exception:  # noqa: BLE001
+                pass
 
-            _remove_collection_recursive(coll)
     finally:
         bpy.context.preferences.edit.use_global_undo = prev_undo
     return removed_objs, removed_colls
