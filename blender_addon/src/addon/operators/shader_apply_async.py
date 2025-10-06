@@ -663,150 +663,16 @@ def register():  # pragma: no cover
 
 
 def _on_strategy_param_change(self, context):  # pragma: no cover
-    """Rebuild node group when strategy parameters change."""
+    """Update node group when strategy parameters change."""
     if not bpy or not hasattr(bpy, "data"):
         return
 
     strategy_name = context.scene.eve_active_strategy
     print(f"[EVEVisualizer][param_change] Updating strategy: {strategy_name}")
 
-    # Recreate node groups with new parameters
+    # Update node groups with new parameters (updates in place, doesn't recreate)
     ensure_strategy_node_groups(context)
-
-    # CRITICAL: Relink node groups in material after recreation
-    # When node groups are deleted and recreated, existing material references break
-    # showing "Missing Data-Block" errors. We must reconnect them.
-    mat_name = "EVE_NodeGroupStrategies"
-    mat = bpy.data.materials.get(mat_name)  # type: ignore[attr-defined]
-
-    if mat and mat.use_nodes:
-        nodes = mat.node_tree.nodes
-        links = mat.node_tree.links
-
-        # Reconnect Character Rainbow node group
-        ng_char_rainbow = nodes.get("CharacterRainbow")
-        if ng_char_rainbow:
-            ng_char_rainbow.node_tree = bpy.data.node_groups.get(  # type: ignore[attr-defined]
-                "EVE_Strategy_CharacterRainbow"
-            )
-            print("[EVEVisualizer][param_change] Reconnected CharacterRainbow node group")
-
-        # Reconnect Pattern Categories node group
-        ng_pattern = nodes.get("PatternCategories")
-        if ng_pattern:
-            ng_pattern.node_tree = bpy.data.node_groups.get(  # type: ignore[attr-defined]
-                "EVE_Strategy_PatternCategories"
-            )
-            print("[EVEVisualizer][param_change] Reconnected PatternCategories node group")
-
-        # Reconnect Position Encoding node group
-        ng_position = nodes.get("PositionEncoding")
-        if ng_position:
-            ng_position.node_tree = bpy.data.node_groups.get(  # type: ignore[attr-defined]
-                "EVE_Strategy_PositionEncoding"
-            )
-            print("[EVEVisualizer][param_change] Reconnected PositionEncoding node group")
-
-        print("[EVEVisualizer][param_change] Node group relinking complete")
-
-        # CRITICAL: Rebuild all connections between node groups and mix nodes
-        # Node group recreation breaks not just the references but also the socket connections
-        print("[EVEVisualizer][param_change] Rebuilding node connections...")
-
-        # Get all node references
-        ng_uniform = nodes.get("UniformOrange")
-        ng_char_rainbow = nodes.get("CharacterRainbow")
-        ng_pattern = nodes.get("PatternCategories")
-        ng_position = nodes.get("PositionEncoding")
-        ng_proper = nodes.get("ProperNounHighlight")
-        mix_color_1 = nodes.get("MixColor1")
-        mix_color_2 = nodes.get("MixColor2")
-        mix_color_3 = nodes.get("MixColor3")
-        mix_color_4 = nodes.get("MixColor4")
-        mix_strength_1 = nodes.get("MixStrength1")
-        mix_strength_2 = nodes.get("MixStrength2")
-        mix_strength_3 = nodes.get("MixStrength3")
-        mix_strength_4 = nodes.get("MixStrength4")
-
-        # Reconnect color paths (must match the creation order!)
-        # Mix1: UniformOrange vs CharacterRainbow
-        if ng_uniform and ng_char_rainbow and mix_color_1:
-            # Clear existing connections to these inputs
-            for input_socket in [mix_color_1.inputs[6], mix_color_1.inputs[7]]:
-                for link in list(input_socket.links):
-                    links.remove(link)
-            # Reconnect
-            links.new(ng_uniform.outputs["Color"], mix_color_1.inputs[6])  # A
-            links.new(ng_char_rainbow.outputs["Color"], mix_color_1.inputs[7])  # B
-            print("[EVEVisualizer][param_change] Reconnected MixColor1")
-
-        # Mix2: Result vs PatternCategories
-        if mix_color_1 and ng_pattern and mix_color_2:
-            # Clear existing connections
-            for input_socket in [mix_color_2.inputs[6], mix_color_2.inputs[7]]:
-                for link in list(input_socket.links):
-                    links.remove(link)
-            # Reconnect
-            links.new(mix_color_1.outputs[2], mix_color_2.inputs[6])  # A
-            links.new(ng_pattern.outputs["Color"], mix_color_2.inputs[7])  # B
-            print("[EVEVisualizer][param_change] Reconnected MixColor2")
-
-        # Mix3: Result vs PositionEncoding
-        if mix_color_2 and ng_position and mix_color_3:
-            for input_socket in [mix_color_3.inputs[6], mix_color_3.inputs[7]]:
-                for link in list(input_socket.links):
-                    links.remove(link)
-            links.new(mix_color_2.outputs[2], mix_color_3.inputs[6])  # A
-            links.new(ng_position.outputs["Color"], mix_color_3.inputs[7])  # B
-            print("[EVEVisualizer][param_change] Reconnected MixColor3")
-
-        # Mix4: Result vs ProperNounHighlight
-        if mix_color_3 and ng_proper and mix_color_4:
-            for input_socket in [mix_color_4.inputs[6], mix_color_4.inputs[7]]:
-                for link in list(input_socket.links):
-                    links.remove(link)
-            links.new(mix_color_3.outputs[2], mix_color_4.inputs[6])  # A
-            links.new(ng_proper.outputs["Color"], mix_color_4.inputs[7])  # B
-            print("[EVEVisualizer][param_change] Reconnected MixColor4")
-
-        # Reconnect strength paths (must match the creation order!)
-        # Strength Mix1: UniformOrange vs CharacterRainbow
-        if ng_uniform and ng_char_rainbow and mix_strength_1:
-            for input_socket in [mix_strength_1.inputs[2], mix_strength_1.inputs[3]]:
-                for link in list(input_socket.links):
-                    links.remove(link)
-            links.new(ng_uniform.outputs["Strength"], mix_strength_1.inputs[2])  # A
-            links.new(ng_char_rainbow.outputs["Strength"], mix_strength_1.inputs[3])  # B
-            print("[EVEVisualizer][param_change] Reconnected MixStrength1")
-
-        # Strength Mix2: Result vs PatternCategories
-        if mix_strength_1 and ng_pattern and mix_strength_2:
-            for input_socket in [mix_strength_2.inputs[2], mix_strength_2.inputs[3]]:
-                for link in list(input_socket.links):
-                    links.remove(link)
-            links.new(mix_strength_1.outputs[1], mix_strength_2.inputs[2])  # A
-            links.new(ng_pattern.outputs["Strength"], mix_strength_2.inputs[3])  # B
-            print("[EVEVisualizer][param_change] Reconnected MixStrength2")
-
-        # Strength Mix3: Result vs PositionEncoding
-        if mix_strength_2 and ng_position and mix_strength_3:
-            for input_socket in [mix_strength_3.inputs[2], mix_strength_3.inputs[3]]:
-                for link in list(input_socket.links):
-                    links.remove(link)
-            links.new(mix_strength_2.outputs[1], mix_strength_3.inputs[2])  # A
-            links.new(ng_position.outputs["Strength"], mix_strength_3.inputs[3])  # B
-            print("[EVEVisualizer][param_change] Reconnected MixStrength3")
-
-        # Strength Mix4: Result vs ProperNounHighlight
-        if mix_strength_3 and ng_proper and mix_strength_4:
-            for input_socket in [mix_strength_4.inputs[2], mix_strength_4.inputs[3]]:
-                for link in list(input_socket.links):
-                    links.remove(link)
-            links.new(mix_strength_3.outputs[1], mix_strength_4.inputs[2])  # A
-            links.new(ng_proper.outputs["Strength"], mix_strength_4.inputs[3])  # B
-            print("[EVEVisualizer][param_change] Reconnected MixStrength4")
-
-        print("[EVEVisualizer][param_change] Connection rebuild complete")
+    print("[EVEVisualizer][param_change] Node group update complete")
 
 
 def _on_strategy_change(self, context):  # pragma: no cover

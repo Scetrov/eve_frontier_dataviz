@@ -35,9 +35,18 @@ def ensure_node_group(context=None):
 
     group_name = "EVE_Strategy_CharacterRainbow"
 
-    # Remove existing if present (for updates)
-    if group_name in bpy.data.node_groups:  # type: ignore[attr-defined]
-        bpy.data.node_groups.remove(bpy.data.node_groups[group_name])  # type: ignore[attr-defined]
+    # Check if node group already exists
+    existing_group = bpy.data.node_groups.get(group_name)  # type: ignore[attr-defined]
+
+    if existing_group:
+        # Update existing node group - just change the attribute name
+        nodes = existing_group.nodes
+        attr_char = nodes.get("AttrCharIndex")
+        if attr_char and attr_char.type == "ATTRIBUTE":
+            attr_char.attribute_name = f"eve_name_char_index_{char_index}_ord"
+            return group_name
+        # If structure is broken, fall through to recreate
+        bpy.data.node_groups.remove(existing_group)  # type: ignore[attr-defined]
 
     # Create new node group
     group = bpy.data.node_groups.new(group_name, "ShaderNodeTree")  # type: ignore[attr-defined]
@@ -52,8 +61,9 @@ def ensure_node_group(context=None):
 
     # === COLOR PATH: Selected character → HSV or Grey ===
 
-    # Read selected character index
+    # Read selected character index (NAMED so we can find it for updates)
     attr_char = nodes.new("ShaderNodeAttribute")
+    attr_char.name = "AttrCharIndex"  # Named for easy lookup
     attr_char.attribute_name = f"eve_name_char_index_{char_index}_ord"
     attr_char.attribute_type = "OBJECT"
     attr_char.location = (-800, 200)
