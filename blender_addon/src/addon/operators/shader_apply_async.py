@@ -237,18 +237,13 @@ if bpy:
                     links.new(ng_char_rainbow.outputs["Color"], mix_color_1.inputs[7])  # B
 
                     # Factor for mix 1: clamp strategy to 0-1
-                    math_clamp_1 = nodes.new("ShaderNodeMath")
-                    math_clamp_1.operation = "MAXIMUM"
-                    math_clamp_1.location = (-400, -400)
-                    math_clamp_1.inputs[1].default_value = 0.0
-                    links.new(value_strategy.outputs[0], math_clamp_1.inputs[0])
-
-                    math_min_1 = nodes.new("ShaderNodeMath")
-                    math_min_1.operation = "MINIMUM"
-                    math_min_1.location = (-300, -400)
-                    math_min_1.inputs[1].default_value = 1.0
-                    links.new(math_clamp_1.outputs[0], math_min_1.inputs[0])
-                    links.new(math_min_1.outputs[0], mix_color_1.inputs[0])  # Factor
+                    clamp_1 = nodes.new("ShaderNodeClamp")
+                    clamp_1.name = "Clamp_Strategy0to1"
+                    clamp_1.location = (-350, -400)
+                    clamp_1.inputs["Min"].default_value = 0.0
+                    clamp_1.inputs["Max"].default_value = 1.0
+                    links.new(value_strategy.outputs[0], clamp_1.inputs["Value"])
+                    links.new(clamp_1.outputs["Result"], mix_color_1.inputs[0])  # Factor
 
                     # Mix 2: Result vs PatternCategories (2)
                     mix_color_2 = nodes.new("ShaderNodeMix")
@@ -260,23 +255,19 @@ if bpy:
 
                     # Factor for mix 2: clamp (strategy - 1) to 0-1
                     math_sub_2 = nodes.new("ShaderNodeMath")
+                    math_sub_2.name = "Math_SubStrategyMinus1"
                     math_sub_2.operation = "SUBTRACT"
-                    math_sub_2.location = (-400, -500)
+                    math_sub_2.location = (-450, -500)
                     math_sub_2.inputs[1].default_value = 1.0
                     links.new(value_strategy.outputs[0], math_sub_2.inputs[0])
 
-                    math_clamp_2 = nodes.new("ShaderNodeMath")
-                    math_clamp_2.operation = "MAXIMUM"
-                    math_clamp_2.location = (-300, -500)
-                    math_clamp_2.inputs[1].default_value = 0.0
-                    links.new(math_sub_2.outputs[0], math_clamp_2.inputs[0])
-
-                    math_min_2 = nodes.new("ShaderNodeMath")
-                    math_min_2.operation = "MINIMUM"
-                    math_min_2.location = (-200, -500)
-                    math_min_2.inputs[1].default_value = 1.0
-                    links.new(math_clamp_2.outputs[0], math_min_2.inputs[0])
-                    links.new(math_min_2.outputs[0], mix_color_2.inputs[0])  # Factor
+                    clamp_2 = nodes.new("ShaderNodeClamp")
+                    clamp_2.name = "Clamp_Sub1to0_1"
+                    clamp_2.location = (-250, -500)
+                    clamp_2.inputs["Min"].default_value = 0.0
+                    clamp_2.inputs["Max"].default_value = 1.0
+                    links.new(math_sub_2.outputs[0], clamp_2.inputs["Value"])
+                    links.new(clamp_2.outputs["Result"], mix_color_2.inputs[0])  # Factor
 
                     # Mix 3: Result vs PositionEncoding (3)
                     mix_color_3 = nodes.new("ShaderNodeMix")
@@ -288,23 +279,19 @@ if bpy:
 
                     # Factor for mix 3: clamp (strategy - 2) to 0-1
                     math_sub_3 = nodes.new("ShaderNodeMath")
+                    math_sub_3.name = "Math_SubStrategyMinus2"
                     math_sub_3.operation = "SUBTRACT"
-                    math_sub_3.location = (-400, -600)
+                    math_sub_3.location = (-450, -600)
                     math_sub_3.inputs[1].default_value = 2.0
                     links.new(value_strategy.outputs[0], math_sub_3.inputs[0])
 
-                    math_clamp_3 = nodes.new("ShaderNodeMath")
-                    math_clamp_3.operation = "MAXIMUM"
-                    math_clamp_3.location = (-300, -600)
-                    math_clamp_3.inputs[1].default_value = 0.0
-                    links.new(math_sub_3.outputs[0], math_clamp_3.inputs[0])
-
-                    math_min_3 = nodes.new("ShaderNodeMath")
-                    math_min_3.operation = "MINIMUM"
-                    math_min_3.location = (-200, -600)
-                    math_min_3.inputs[1].default_value = 1.0
-                    links.new(math_clamp_3.outputs[0], math_min_3.inputs[0])
-                    links.new(math_min_3.outputs[0], mix_color_3.inputs[0])  # Factor
+                    clamp_3 = nodes.new("ShaderNodeClamp")
+                    clamp_3.name = "Clamp_Sub2to0_1"
+                    clamp_3.location = (-250, -600)
+                    clamp_3.inputs["Min"].default_value = 0.0
+                    clamp_3.inputs["Max"].default_value = 1.0
+                    links.new(math_sub_3.outputs[0], clamp_3.inputs["Value"])
+                    links.new(clamp_3.outputs["Result"], mix_color_3.inputs[0])  # Factor
 
                     # Mix 4: Result vs ProperNounHighlight (4)
                     mix_color_4 = nodes.new("ShaderNodeMix")
@@ -317,63 +304,26 @@ if bpy:
 
                     # Factor for mix 4: clamp (strategy - 3) to 0-1
                     math_sub_4 = nodes.new("ShaderNodeMath")
+                    math_sub_4.name = "Math_SubStrategyMinus3"
                     math_sub_4.operation = "SUBTRACT"
-                    math_sub_4.location = (-400, -700)
+                    math_sub_4.location = (-450, -700)
                     math_sub_4.inputs[1].default_value = 3.0
                     links.new(value_strategy.outputs[0], math_sub_4.inputs[0])
 
-                    math_clamp_4 = nodes.new("ShaderNodeMath")
-                    math_clamp_4.operation = "MAXIMUM"
-                    math_clamp_4.location = (-300, -700)
-                    math_clamp_4.inputs[1].default_value = 0.0
-                    links.new(math_sub_4.outputs[0], math_clamp_4.inputs[0])
+                    clamp_4 = nodes.new("ShaderNodeClamp")
+                    clamp_4.name = "Clamp_Sub3to0_1"
+                    clamp_4.location = (-250, -700)
+                    clamp_4.inputs["Min"].default_value = 0.0
+                    clamp_4.inputs["Max"].default_value = 1.0
+                    links.new(math_sub_4.outputs[0], clamp_4.inputs["Value"])
+                    links.new(clamp_4.outputs["Result"], mix_color_4.inputs[0])  # Factor
 
-                    math_min_4 = nodes.new("ShaderNodeMath")
-                    math_min_4.operation = "MINIMUM"
-                    math_min_4.location = (-200, -700)
-                    math_min_4.inputs[1].default_value = 1.0
-                    links.new(math_clamp_4.outputs[0], math_min_4.inputs[0])
-                    links.new(math_min_4.outputs[0], mix_color_4.inputs[0])  # Factor
-
-                    # Same for Strength path
-                    mix_strength_1 = nodes.new("ShaderNodeMix")
-                    mix_strength_1.data_type = "FLOAT"
-                    mix_strength_1.location = (-200, -100)
-                    mix_strength_1.name = "MixStrength1"
-                    links.new(ng_uniform.outputs["Strength"], mix_strength_1.inputs[2])  # A
-                    links.new(ng_char_rainbow.outputs["Strength"], mix_strength_1.inputs[3])  # B
-                    links.new(math_min_1.outputs[0], mix_strength_1.inputs[0])
-
-                    mix_strength_2 = nodes.new("ShaderNodeMix")
-                    mix_strength_2.data_type = "FLOAT"
-                    mix_strength_2.location = (0, -100)
-                    mix_strength_2.name = "MixStrength2"
-                    links.new(mix_strength_1.outputs[1], mix_strength_2.inputs[2])  # A
-                    links.new(ng_pattern.outputs["Strength"], mix_strength_2.inputs[3])  # B
-                    links.new(math_min_2.outputs[0], mix_strength_2.inputs[0])
-
-                    mix_strength_3 = nodes.new("ShaderNodeMix")
-                    mix_strength_3.data_type = "FLOAT"
-                    mix_strength_3.location = (200, -100)
-                    mix_strength_3.name = "MixStrength3"
-                    links.new(mix_strength_2.outputs[1], mix_strength_3.inputs[2])  # A
-                    links.new(ng_position.outputs["Strength"], mix_strength_3.inputs[3])  # B
-                    links.new(math_min_3.outputs[0], mix_strength_3.inputs[0])
-
-                    mix_strength_4 = nodes.new("ShaderNodeMix")
-                    mix_strength_4.data_type = "FLOAT"
-                    mix_strength_4.location = (400, -100)
-                    mix_strength_4.name = "MixStrength4"
-                    links.new(mix_strength_3.outputs[1], mix_strength_4.inputs[2])  # A
-                    if bpy.data.node_groups.get("EVE_Strategy_ProperNounHighlight"):
-                        links.new(ng_proper.outputs["Strength"], mix_strength_4.inputs[3])  # B
-                    links.new(math_min_4.outputs[0], mix_strength_4.inputs[0])
-
-                    # Emission shader
+                    # Emission shader with constant strength
                     emission = nodes.new("ShaderNodeEmission")
+                    emission.name = "EVE_Emission"
                     emission.location = (800, 0)
+                    emission.inputs["Strength"].default_value = 2.0  # Constant emission strength
                     links.new(mix_color_4.outputs[2], emission.inputs["Color"])
-                    links.new(mix_strength_4.outputs[1], emission.inputs["Strength"])
 
                     # Connect to output
                     links.new(emission.outputs[0], out.inputs[0])
@@ -672,6 +622,31 @@ def _on_strategy_param_change(self, context):  # pragma: no cover
 
     # Update node groups with new parameters (updates in place, doesn't recreate)
     ensure_strategy_node_groups(context)
+
+    # Fix material references after node group update
+    mat_name = "EVE_NodeGroupStrategies"
+    mat = bpy.data.materials.get(mat_name)  # type: ignore[attr-defined]
+
+    if mat and mat.node_tree:
+        nodes = mat.node_tree.nodes
+
+        # Re-link all node group references to ensure they're up-to-date
+        node_group_map = {
+            "UniformOrange": "EVE_Strategy_UniformOrange",
+            "CharacterRainbow": "EVE_Strategy_CharacterRainbow",
+            "PatternCategories": "EVE_Strategy_PatternCategories",
+            "PositionEncoding": "EVE_Strategy_PositionEncoding",
+            "ProperNounHighlight": "EVE_Strategy_ProperNounHighlight",
+        }
+
+        for node_name, ng_name in node_group_map.items():
+            node = nodes.get(node_name)
+            if node and node.type == "GROUP":
+                # Always refresh the reference to pick up node group changes
+                node.node_tree = bpy.data.node_groups.get(ng_name)  # type: ignore[attr-defined]
+                if node.node_tree:
+                    print(f"[EVEVisualizer][param_change] Refreshed {ng_name}")
+
     print("[EVEVisualizer][param_change] Node group update complete")
 
 
@@ -738,12 +713,12 @@ def _on_strategy_change(self, context):  # pragma: no cover
     else:
         print("[EVEVisualizer][strategy_change] Material already exists, updating selector...")
 
-    # If the material exists but is missing newer nodes (MixColor3/MixStrength3/ProperNounHighlight),
+    # If the material exists but is missing newer nodes (MixColor3/ProperNounHighlight),
     # recreate it so the proper noun strategy is available.
     if mat and mat.node_tree:
         nodes = mat.node_tree.nodes
         missing_critical = False
-        for name in ("MixColor3", "MixStrength3", "ProperNounHighlight"):
+        for name in ("MixColor3", "ProperNounHighlight"):
             if not nodes.get(name):
                 missing_critical = True
                 break
@@ -824,10 +799,6 @@ def _on_strategy_change(self, context):  # pragma: no cover
             mix_color_2 = nodes.get("MixColor2")
             mix_color_3 = nodes.get("MixColor3")
             mix_color_4 = nodes.get("MixColor4")
-            mix_strength_1 = nodes.get("MixStrength1")
-            mix_strength_2 = nodes.get("MixStrength2")
-            mix_strength_3 = nodes.get("MixStrength3")
-            mix_strength_4 = nodes.get("MixStrength4")
 
             # Reconnect color paths (5-strategy chain)
             # Mix1: UniformOrange vs CharacterRainbow
@@ -876,43 +847,7 @@ def _on_strategy_change(self, context):  # pragma: no cover
                     links.new(ng_proper.outputs["Color"], mix_color_4.inputs[7])
                 print("[EVEVisualizer][strategy_change] Reconnected MixColor4")
 
-            # Reconnect strength paths (5-strategy chain)
-            # Strength Mix1: UniformOrange vs CharacterRainbow
-            if ng_uniform and ng_char_rainbow and mix_strength_1:
-                for input_socket in [mix_strength_1.inputs[2], mix_strength_1.inputs[3]]:
-                    for link in input_socket.links:
-                        links.remove(link)
-                links.new(ng_uniform.outputs["Strength"], mix_strength_1.inputs[2])  # A
-                links.new(ng_char_rainbow.outputs["Strength"], mix_strength_1.inputs[3])  # B
-                print("[EVEVisualizer][strategy_change] Reconnected MixStrength1")
-
-            # Strength Mix2: Result vs PatternCategories
-            if mix_strength_1 and ng_pattern and mix_strength_2:
-                for input_socket in [mix_strength_2.inputs[2], mix_strength_2.inputs[3]]:
-                    for link in input_socket.links:
-                        links.remove(link)
-                links.new(mix_strength_1.outputs[1], mix_strength_2.inputs[2])  # A
-                links.new(ng_pattern.outputs["Strength"], mix_strength_2.inputs[3])  # B
-                print("[EVEVisualizer][strategy_change] Reconnected MixStrength2")
-
-            # Strength Mix3: Result vs PositionEncoding
-            if mix_strength_2 and ng_position and mix_strength_3:
-                for input_socket in [mix_strength_3.inputs[2], mix_strength_3.inputs[3]]:
-                    for link in input_socket.links:
-                        links.remove(link)
-                links.new(mix_strength_2.outputs[1], mix_strength_3.inputs[2])  # A
-                links.new(ng_position.outputs["Strength"], mix_strength_3.inputs[3])  # B
-                print("[EVEVisualizer][strategy_change] Reconnected MixStrength3")
-
-            # Strength Mix4: Result vs ProperNounHighlight
-            if mix_strength_3 and mix_strength_4:
-                for input_socket in [mix_strength_4.inputs[2], mix_strength_4.inputs[3]]:
-                    for link in list(input_socket.links):
-                        links.remove(link)
-                links.new(mix_strength_3.outputs[1], mix_strength_4.inputs[2])  # A
-                if ng_proper and ng_proper.outputs.get("Strength"):
-                    links.new(ng_proper.outputs["Strength"], mix_strength_4.inputs[3])  # B
-                print("[EVEVisualizer][strategy_change] Reconnected MixStrength4")
+            # Note: Strength mixing removed - using constant emission strength instead
 
         selector = mat.node_tree.nodes.get("StrategySelector")
         if selector:
