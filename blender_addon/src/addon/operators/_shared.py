@@ -31,22 +31,22 @@ def get_or_create_subcollection(parent, name: str):  # pragma: no cover - needs 
 
     Unlike get_or_create_collection this will not implicitly link the new
     collection to the scene root; it links only beneath the supplied parent.
-    If the collection already exists but is not parented, it will be linked
-    to the parent (allowing reuse without duplicate trees).
+    Checks if collection is already a child of parent before reusing.
     """
     if bpy is None or parent is None:
         return None
+    # First check if this collection already exists as a child of parent
+    for child in parent.children:
+        if child.name == name:
+            return child
+    # Not found as child - create new or reuse orphaned collection
     coll = bpy.data.collections.get(name)
     if not coll:
         coll = bpy.data.collections.new(name)
-        parent.children.link(coll)
-        return coll
-    # Ensure parent link present (a collection can have multiple parents, but
-    # we only add if not already linked).
+    # Link to parent (handles both new and orphaned collections)
     try:
-        if parent not in coll.parents:  # type: ignore[attr-defined]
-            parent.children.link(coll)
-    except Exception:  # noqa: BLE001
+        parent.children.link(coll)
+    except Exception:  # noqa: BLE001 - already linked or error
         pass
     return coll
 
@@ -63,17 +63,34 @@ def clear_generated():  # pragma: no cover - needs Blender
             coll = bpy.data.collections.get(cname)
             if not coll:
                 continue
-            for obj in list(coll.objects):
+            # Recursively remove all objects from this collection and subcollections
+            collections_to_process = [coll]
+            while collections_to_process:
+                current = collections_to_process.pop()
+                # Add child collections to process queue
+                collections_to_process.extend(list(current.children))
+                # Remove all objects in current collection
+                for obj in list(current.objects):
+                    try:
+                        bpy.data.objects.remove(obj, do_unlink=True)
+                        removed_objs += 1
+                    except Exception:  # noqa: BLE001
+                        pass
+
+            # Now recursively remove all subcollections, then the parent
+            def _remove_collection_recursive(c):
+                nonlocal removed_colls
+                # Remove children first (depth-first)
+                for child in list(c.children):
+                    _remove_collection_recursive(child)
+                # Remove this collection
                 try:
-                    bpy.data.objects.remove(obj, do_unlink=True)
-                    removed_objs += 1
+                    bpy.data.collections.remove(c)
+                    removed_colls += 1
                 except Exception:  # noqa: BLE001
                     pass
-            try:
-                bpy.data.collections.remove(coll)
-                removed_colls += 1
-            except Exception:  # noqa: BLE001
-                pass
+
+            _remove_collection_recursive(coll)
     finally:
         bpy.context.preferences.edit.use_global_undo = prev_undo
     return removed_objs, removed_colls
