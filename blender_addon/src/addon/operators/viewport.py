@@ -4,7 +4,7 @@ from __future__ import annotations
 
 try:  # pragma: no cover
     import bpy  # type: ignore
-except (ImportError, ModuleNotFoundError):  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):
     bpy = None  # type: ignore
 
 
@@ -25,7 +25,7 @@ if bpy:
                 world.use_nodes = True
                 bg = next(n for n in world.node_tree.nodes if n.type == "BACKGROUND")
                 bg.inputs[0].default_value = (0.0, 0.0, 0.0, 1.0)
-            except (StopIteration, AttributeError, RuntimeError):  # noqa: BLE001
+            except (StopIteration, AttributeError, RuntimeError):
                 # No background node or unexpected Blender state
                 pass
             self.report({"INFO"}, "World set to black")
