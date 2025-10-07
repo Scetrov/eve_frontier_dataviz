@@ -92,8 +92,8 @@ class EVE_PT_main(Panel):
         # Guard access to addon preferences - use explicit checks instead of broad
         # exception swallowing so we don't hide programming errors.
         # Use clearer variable names: module_parts -> top-level package name
-        module_parts = __name__.split(".")
-        addon_key = module_parts[0] if module_parts else "addon"
+        name_parts = __name__.split(".")
+        addon_key = name_parts[0] if name_parts else "addon"
         prefs_context = getattr(context, "preferences", None)
         try:
             addon_prefs_container = (
