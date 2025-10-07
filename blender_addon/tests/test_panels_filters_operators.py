@@ -118,4 +118,4 @@ def test_filters_show_all_no_root_returns_cancelled(monkeypatch):
 
     op_show = panels.EVE_OT_filters_show_all()
     res = op_show.execute(None)
-    assert res == {"CANCELLED"} or res == {"CANCELLED"}
+    assert res == {"CANCELLED"}
