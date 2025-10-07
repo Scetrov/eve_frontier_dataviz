@@ -222,5 +222,40 @@ Near-term: scene builder module, planet/moon instancing, node-based attribute-dr
 
 Add a tiny helper function near related code or start a focused module only when a pattern repeats 3+ times. Document new public surfaces in `docs/`.
 
+### Release workflow (how releases are created)
+
+This repo uses an automated release workflow (`.github/workflows/release.yml`) that runs when a semantic tag matching `v*.*.*` is pushed. A few important rules to follow so releases are reproducible and secure:
+
+- Tag format: strictly `vMAJOR.MINOR.PATCH` (for example `v0.6.0`). The release workflow only triggers on tags that match this pattern.
+- Tags must be annotated or, preferably, GPG-signed. Lightweight (simple) tags are rejected by the workflow. Use `git tag -s v0.6.0 -m "Release v0.6.0"` to create a signed tag.
+- The workflow verifies the tag object is annotated and looks for a PGP signature. For full verification, ensure your signing key is uploaded to GitHub (Settings → SSH and GPG keys → New GPG key).
+- What `release.yml` does (high level):
+    - Re-fetches tag objects and verifies the tag is annotated/signed
+    - Generates a changelog (grouped by conventional commit types) between the previous semver tag and the new tag
+    - Collects contributors from the commit range
+    - Builds the add-on ZIP and renames it to include the tag
+    - Generates an attestation for the ZIP (supply-chain provenance) and creates a GitHub Release with the ZIP attached
+
+- Permissions: the release workflow requires `contents: write` (to create releases and upload artifacts) and additional attestation scopes (`id-token: write`, `attestations: write`) — these are already set in `release.yml`.
+
+- Quick local workflow (how to create a compliant release tag):
+
+    1. Make sure your work is on `main` and up-to-date.
+    2. Create a signed annotated tag (GPG key must be available locally):
+
+         git tag -s v0.6.0 -m "Release v0.6.0"
+
+    3. Push the tag to trigger the release workflow:
+
+         git push origin v0.6.0
+
+    4. The release job will run and (if successful) create the Release on GitHub and upload the ZIP. The release body is generated from the tag message, changelog, and contributors.
+
+- If you cannot sign locally, do not create lightweight tags. Instead, create an annotated tag (`git tag -a v0.6.0 -m "Release v0.6.0"`) — the workflow will accept annotated tags but will emit a warning if not PGP-signed.
+
+- Post-release: the workflow uploads JUnit/coverage artifacts for CI (see `ci.yml`) and generates attestations for the built ZIP. If you need to update the Release body after it's created, use the GitHub UI or the GitHub API; automation may also update it via the MCP if authorized.
+
+Keeping releases signed and annotated ensures authenticity and makes supply-chain verification straightforward for downstream users.
+
 ---
 Questions or ambiguous areas? Highlight them in PR or ask for clarification before broad refactors.
