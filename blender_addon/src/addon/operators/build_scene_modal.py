@@ -34,6 +34,10 @@ from .property_calculators import (
     is_proper_noun,
 )
 
+# Named defaults to avoid magic numbers in modal linking and pattern fallbacks
+DEFAULT_OTHER_PATTERN_IDX = 4
+DEFAULT_BLACKHOLE_PATTERN_IDX = 5
+
 
 def _ensure_mesh(kind: str, r: float):  # pragma: no cover
     if not bpy:
@@ -361,9 +365,11 @@ if bpy:
                         is_bh = 0
                     if is_bh:
                         # Use the persisted blackhole pattern index determined at init
-                        pattern_idx = getattr(self, "_blackhole_pattern_idx", 5)
+                        pattern_idx = getattr(
+                            self, "_blackhole_pattern_idx", DEFAULT_BLACKHOLE_PATTERN_IDX
+                        )
                     else:
-                        pattern_idx = obj.get("eve_name_pattern", 4)
+                        pattern_idx = obj.get("eve_name_pattern", DEFAULT_OTHER_PATTERN_IDX)
                     pattern_coll = getattr(self, "_systems_by_name_children", {}).get(pattern_idx)
                     if pattern_coll is not None:
                         # Avoid duplicate link exceptions

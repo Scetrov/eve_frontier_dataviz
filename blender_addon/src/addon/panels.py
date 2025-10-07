@@ -11,6 +11,13 @@ def _resolve_get_prefs():
     loaded under different top-level names when installed into Blender. If
     none of the strategies succeed we return a no-op function so the panels
     can still draw in test or limited contexts.
+
+    Returns
+    -------
+    callable
+        A function accepting a single argument 'context' and returning the
+        add-on preferences object. If preferences cannot be resolved the
+        returned callable will accept 'context' and return None (no-op).
     """
     # Strategy 1: Normal relative import when running as the package `addon`
     try:
