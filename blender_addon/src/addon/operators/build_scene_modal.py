@@ -56,7 +56,7 @@ if bpy:
 
     class EVE_OT_build_scene_modal(bpy.types.Operator):  # type: ignore
         bl_idname = "eve.build_scene_modal"
-        bl_label = "Build Scene (Async)"
+        bl_label = "Build Scene"
         bl_description = "Instantiate star system objects asynchronously with progress reporting. Supports sampling and filtering options."
         bl_options = {"REGISTER"}
 
