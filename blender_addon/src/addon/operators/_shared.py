@@ -4,7 +4,7 @@ from __future__ import annotations
 
 try:  # pragma: no cover
     import bpy  # type: ignore
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):  # noqa: BLE001
     bpy = None  # type: ignore
 
 GENERATED_COLLECTIONS = ["Frontier", "EVE_Planets", "EVE_Moons", "SystemsByName"]
@@ -46,7 +46,8 @@ def get_or_create_subcollection(parent, name: str):  # pragma: no cover - needs 
     # Link to parent (handles both new and orphaned collections)
     try:
         parent.children.link(coll)
-    except Exception:  # noqa: BLE001 - already linked or error
+    except (RuntimeError, AttributeError):  # noqa: BLE001 - already linked or error
+        # Already linked or Blender returned an attribute/runtime error; skip
         pass
     return coll
 
@@ -91,7 +92,8 @@ def clear_generated():  # pragma: no cover - needs Blender
                     try:
                         bpy.data.objects.remove(obj, do_unlink=True)
                         removed_objs += 1
-                    except Exception:  # noqa: BLE001
+                    except (RuntimeError, AttributeError, TypeError):  # noqa: BLE001
+                        # Skip objects that fail removal for Blender API reasons
                         pass
 
         # Third pass: remove collections in reverse order (children before parents)
@@ -100,7 +102,8 @@ def clear_generated():  # pragma: no cover - needs Blender
             try:
                 bpy.data.collections.remove(coll)
                 removed_colls += 1
-            except Exception:  # noqa: BLE001
+            except (RuntimeError, AttributeError):  # noqa: BLE001
+                # Skip collections that fail removal (linked elsewhere or API issue)
                 pass
 
     finally:
@@ -138,11 +141,11 @@ def collapse_collections_to_depth(
             if child_depth > depth:
                 try:
                     child.hide_viewport = True
-                except Exception:
+                except AttributeError:
                     pass
                 try:
                     child.hide_render = True
-                except Exception:
+                except AttributeError:
                     pass
             else:
                 # Still within allowed depth, traverse children
