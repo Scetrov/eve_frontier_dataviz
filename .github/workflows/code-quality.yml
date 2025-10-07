@@ -1,4 +1,6 @@
 name: Code Quality Deep Scan
+permissions:
+  contents: read
 
 on:
   # Run weekly on Mondays at 9 AM UTC
