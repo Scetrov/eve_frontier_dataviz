@@ -12,7 +12,7 @@ try:  # pragma: no cover - allows tests without Blender runtime
         StringProperty,
     )
     from bpy.types import AddonPreferences, Operator  # type: ignore
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - tests without Blender
     bpy = None  # type: ignore
 
     # Lightweight shims so type checkers / tests don't explode if accidentally imported
@@ -46,7 +46,7 @@ def _default_db_path():
     """  # noqa: D401
     try:
         return str(Path(__file__).resolve().parents[3] / "data" / "static.db")
-    except Exception as e:  # pragma: no cover - safety net
+    except (OSError, RuntimeError) as e:  # pragma: no cover - safety net
         print(f"[EVEVisualizer][warn] default db path resolution failed: {e}")
         traceback.print_exc()
         return ""
@@ -482,7 +482,7 @@ try:  # pragma: no cover - runtime safety
         print(f"[EVEVisualizer][info] Injected fallback properties: {_missing}")
     else:
         print("[EVEVisualizer][info] Annotation properties present (no fallback needed)")
-except Exception as _e:  # pragma: no cover
+except (AttributeError, RuntimeError, TypeError) as _e:  # pragma: no cover
     print(f"[EVEVisualizer][warn] Fallback property injection failed: {_e}")
 
 
