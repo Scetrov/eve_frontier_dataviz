@@ -244,7 +244,7 @@ if bpy:
                             is_blackhole_system(sys.id)
                             and getattr(self, "_blackhole_scale_multiplier", 1.0) != 1.0
                         ):
-                            m = float(self._blackhole_scale_multiplier)
+                            m = float(getattr(self, "_blackhole_scale_multiplier", 1.0))
                             # Uniform scale (do not modify mesh data - scale on object)
                             obj.scale = (m, m, m)
                     except (TypeError, ValueError, AttributeError, RuntimeError) as e:
