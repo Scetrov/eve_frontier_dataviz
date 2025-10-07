@@ -67,3 +67,39 @@ def test__load_modules_handles_import_errors(monkeypatch):
         assert isinstance(mods, list)
     finally:
         importlib.reload(ai)
+
+
+def test_default_db_path_normal(monkeypatch):
+    """Exercise the normal _default_db_path branch by making Path.resolve return a known path."""
+    from pathlib import Path
+
+    from addon import preferences
+
+    def _good_resolve(self):
+        # Return a path with at least 4 parents so parents[3] is valid
+        return Path("C:/repo_root/blender_addon/src/addon/preferences.py")
+
+    monkeypatch.setattr(Path, "resolve", _good_resolve, raising=False)
+    val = preferences._default_db_path()
+    from pathlib import Path as _P
+
+    assert isinstance(val, str)
+    parts = _P(val).parts
+    # Expect the last two components to be ('data', 'static.db') regardless of OS path separator
+    assert parts[-2:] == ("data", "static.db")
+
+
+def test_get_prefs_raises_keyerror():
+    """When no addon matches, get_prefs should raise KeyError."""
+    from addon import preferences
+
+    class FakePrefs:
+        def __init__(self):
+            self.addons = {}
+
+    class FakeContext:
+        def __init__(self):
+            self.preferences = FakePrefs()
+
+    with pytest.raises(KeyError):
+        preferences.get_prefs(FakeContext())
