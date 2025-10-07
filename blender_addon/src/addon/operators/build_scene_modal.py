@@ -11,7 +11,8 @@ import re
 try:  # pragma: no cover  # noqa: I001 (dynamic bpy import grouping)
     import bmesh  # type: ignore
     import bpy  # type: ignore
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):  # pragma: no cover  # noqa: BLE001
+    # Running outside Blender (tests/CI)
     bpy = None  # type: ignore
     bmesh = None  # type: ignore
 
@@ -89,7 +90,7 @@ if bpy:
             try:
                 excl_ad = bool(getattr(prefs, "exclude_ad_systems", False))
                 excl_vdash = bool(getattr(prefs, "exclude_vdash_systems", False))
-            except Exception:
+            except (AttributeError, TypeError):
                 excl_ad = excl_vdash = False
             if excl_ad or excl_vdash:
                 filtered = []
@@ -120,7 +121,7 @@ if bpy:
                 self._blackhole_scale_multiplier = float(
                     getattr(prefs, "blackhole_scale_multiplier", 1.0) or 1.0
                 )
-            except Exception:
+            except (TypeError, ValueError):
                 self._blackhole_scale_multiplier = 1.0
             self._apply_axis = bool(getattr(prefs, "apply_axis_transform", False))
             self._hierarchy = bool(getattr(prefs, "build_region_hierarchy", False))
@@ -189,26 +190,30 @@ if bpy:
                 coll.hide_viewport = False
                 try:
                     coll.hide_render = False
-                except Exception:
+                except AttributeError:
                     pass
             # Optionally auto-apply default visualization
             try:
                 prefs = get_prefs(context)
                 if getattr(prefs, "auto_apply_default_visualization", False):
                     # Invoke shader apply operator (will choose default strategy if none selected)
-                    bpy.ops.eve.apply_shader_modal("INVOKE_DEFAULT")  # type: ignore[attr-defined]
-            except Exception:
+                    try:
+                        bpy.ops.eve.apply_shader_modal("INVOKE_DEFAULT")  # type: ignore[attr-defined]
+                    except Exception as e:
+                        print(f"[EVEVisualizer][build] auto-apply shader failed: {e}")
+            except (AttributeError, TypeError):
+                # prefs unavailable or malformed - skip auto-apply
                 pass
             # Keep generated collections hidden by default (SystemsByName controls visibility).
             # Collapse collections so only root + immediate children are visible by default.
             try:
                 collapse_collections_to_depth("Frontier", depth=1)
-            except Exception:
-                pass
+            except (AttributeError, RuntimeError, TypeError) as e:
+                print(f"[EVEVisualizer][build] collapse Frontier failed: {e}")
             try:
                 collapse_collections_to_depth("SystemsByName", depth=1)
-            except Exception:
-                pass
+            except (AttributeError, RuntimeError, TypeError) as e:
+                print(f"[EVEVisualizer][build] collapse SystemsByName failed: {e}")
 
         def execute(self, context):  # noqa: D401
             if not self._init(context):
@@ -242,8 +247,11 @@ if bpy:
                             m = float(self._blackhole_scale_multiplier)
                             # Uniform scale (do not modify mesh data - scale on object)
                             obj.scale = (m, m, m)
-                    except Exception:
-                        pass
+                    except (TypeError, ValueError, AttributeError, RuntimeError) as e:
+                        # Skip scaling but log minimal info
+                        print(
+                            f"[EVEVisualizer][build] blackhole scale skip for {getattr(sys,'name',repr(sys))}: {e}"
+                        )
 
                     # Store visualization properties (for shader-driven strategies)
                     system_name = sys.name or ""

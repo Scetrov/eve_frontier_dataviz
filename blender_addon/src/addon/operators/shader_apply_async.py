@@ -4,7 +4,8 @@ from __future__ import annotations
 
 try:  # pragma: no cover  # noqa: I001 (dynamic bpy import grouping)
     import bpy  # type: ignore
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):  # pragma: no cover  # noqa: BLE001
+    # Running in test/CI environment without Blender available
     bpy = None  # type: ignore
 
 from typing import Optional
@@ -146,7 +147,8 @@ if bpy:
                 # Connect to output
                 links.new(emission.outputs[0], out.inputs[0])
                 return mat
-            except Exception:  # noqa: BLE001
+            except (AttributeError, RuntimeError, TypeError):  # noqa: BLE001
+                # Best-effort: if Blender API access fails while building nodes, return None
                 return None
 
         # --- Node Group Strategy Material Infrastructure ---
@@ -501,7 +503,11 @@ if bpy:
                             # Count repaired nodes
                             if node.node_tree:
                                 repaired += 1
-                        except Exception:
+                        except (AttributeError, TypeError, RuntimeError) as e:
+                            # Skip problematic nodes but continue processing others
+                            print(
+                                f"[EVEVisualizer][repair] Skipping node {getattr(node,'name',repr(node))}: {e}"
+                            )
                             continue
 
                     # Update StrategySelector node label/value if present
@@ -511,7 +517,8 @@ if bpy:
 
                 self.report({"INFO"}, f"Repaired {repaired} strategy node references")
                 return {"FINISHED"}
-            except Exception as e:  # noqa: BLE001
+            except (AttributeError, RuntimeError, TypeError) as e:  # noqa: BLE001
+                # Non-fatal: if anything unexpected happens with Blender API, report and cancel
                 self.report({"ERROR"}, f"Error repairing materials: {e}")
                 return {"CANCELLED"}
 
@@ -545,12 +552,16 @@ def _repair_strategy_materials_silent():
                         )
                     if node.node_tree:
                         repaired += 1
-                except Exception:
+                except (AttributeError, TypeError, RuntimeError) as e:
+                    print(
+                        f"[EVEVisualizer][repair_silent] Skipping node {getattr(node,'name',repr(node))}: {e}"
+                    )
                     continue
             selector = nt.nodes.get("StrategySelector")
             if selector:
                 selector.label = "Strategy (0=Rainbow, 1=Pattern, 2=Position, 3=ProperNoun)"
-    except Exception:
+    except (AttributeError, RuntimeError, TypeError):
+        # If Blender API errors occur, return the count we have so far
         return repaired
     return repaired
 
@@ -720,7 +731,8 @@ def _on_strategy_change(self, context):  # pragma: no cover
                             obj.data.materials[0] = mat
                         else:
                             obj.data.materials.append(mat)
-                except Exception:  # noqa: BLE001
+                except (AttributeError, RuntimeError, TypeError):  # noqa: BLE001
+                    # Best-effort assignment failure - skip this object
                     pass
     else:
         print("[EVEVisualizer][strategy_change] Material already exists, updating selector...")
@@ -762,7 +774,8 @@ def _on_strategy_change(self, context):  # pragma: no cover
                                 obj.data.materials[0] = mat
                             else:
                                 obj.data.materials.append(mat)
-                    except Exception:  # noqa: BLE001
+                    except (AttributeError, RuntimeError, TypeError):  # noqa: BLE001
+                        # Best-effort assignment failure - skip this object
                         pass
 
     # Update the StrategySelector value AND fix broken node group references
