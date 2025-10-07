@@ -20,25 +20,22 @@ This document describes the user-facing features of the EVE Frontier Data Visual
 1. Set database path in Preferences
 2. Click `Load / Refresh Data`
 3. Click `Build Scene`
-4. Systems appear in `Frontier` collection (hierarchical: `Frontier/Region/Constellation/Systems`) and a new top-level
-  `SystemsByName` grouping is created. By default the flat `Frontier` collection (and its region/constellation
-  parents) are hidden on import so users can control visibility via `SystemsByName` subcollections. Each
-  `SystemsByName` child corresponds to a naming-pattern bucket (DASH, COLON, DOTSEQ, PIPE, OTHER).
+4. Systems appear in `Frontier` collection (hierarchical: `Frontier/Region/Constellation/Systems`) and a new top-level `SystemsByName` grouping is created. By default the flat `Frontier` collection (and its region/constellation parents) are hidden on import so users can control visibility via `SystemsByName` subcollections. Each `SystemsByName` child corresponds to a naming-pattern bucket (DASH, COLON, DOTSEQ, PIPE, OTHER).
 
-  ### SystemsByName & Filters
+### SystemsByName & Filters
 
-  To make large-scale visibility control easy, the build now creates a top-level `SystemsByName` collection
-  containing five child collections (DASH, COLON, DOTSEQ, PIPE, OTHER). By default the `Frontier` hierarchy
-  (Region/Constellation) is hidden so these buckets control what's visible in the viewport and render.
+To make large-scale visibility control easy, the build now creates a top-level `SystemsByName` collection
+containing five child collections (DASH, COLON, DOTSEQ, PIPE, OTHER). By default the `Frontier` hierarchy
+(Region/Constellation) is hidden so these buckets control what's visible in the viewport and render.
 
-  Use the Filters panel (3D View → Sidebar → EVE Frontier → Filters) to:
+Use the Filters panel (3D View → Sidebar → EVE Frontier → Filters) to:
 
-  - Toggle individual buckets via checkboxes (session-only toggles affect the current blend file).
-  - Use Show All / Hide All to persist a default across Blender sessions — these bulk actions update
-    the add-on preferences so your chosen default persists across restarts.
+- Toggle individual buckets via checkboxes (session-only toggles affect the current blend file).
+- Use Show All / Hide All to persist a default across Blender sessions — these bulk actions update
+  the add-on preferences so your chosen default persists across restarts.
 
-  Note: Manual checkbox toggles do not automatically update saved preferences. Use Show All / Hide All
-  to change the persistent defaults.
+Note: Manual checkbox toggles do not automatically update saved preferences. Use Show All / Hide All
+to change the persistent defaults.
 
 **Properties Stored** (per system):
 
