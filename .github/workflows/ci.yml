@@ -66,7 +66,14 @@ jobs:
         run: |
           # Explicitly set coverage source and config so CI measures the
           # same files as local runs regardless of working-directory.
-          pytest --cov=src/addon --cov-config=../.coveragerc --cov-report=term-missing --cov-report=xml
+          # Also emit JUnit XML for test-reporting integrations.
+          pytest --cov=src/addon --cov-config=../.coveragerc --cov-report=term-missing --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Check coverage threshold
         working-directory: ./blender_addon
