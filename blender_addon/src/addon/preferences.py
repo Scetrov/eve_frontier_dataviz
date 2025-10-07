@@ -459,18 +459,18 @@ else:  # pragma: no cover
 
 class EVE_OT_locate_static_db(_BaseOp):  # pragma: no cover - Blender runtime usage
     bl_idname = "eve.locate_static_db"
-    bl_label = "Locate static.db"
-    bl_description = "Browse for a static.db file and set it as database path"
+    bl_label = "Locate database file"
+    bl_description = "Browse for a database file and set it as database path"
 
     filepath: StringProperty(subtype="FILE_PATH")  # type: ignore[valid-type]
 
     def execute(self, context):
         prefs = get_prefs(context)
-        if self.filepath and self.filepath.lower().endswith("static.db"):
+        if self.filepath:
             prefs.db_path = self.filepath
             self.report({"INFO"}, f"Database path set: {self.filepath}")
             return {"FINISHED"}
-        self.report({"ERROR"}, "Please select a static.db file")
+        self.report({"ERROR"}, "Please select a sqlite database file")
         return {"CANCELLED"}
 
     def invoke(self, context, event):  # noqa: D401
