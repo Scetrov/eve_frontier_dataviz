@@ -77,29 +77,30 @@ class EVE_PT_main(Panel):
             row_cancel.operator("eve.cancel_build", text="Cancel", icon="CANCEL")
             row_cancel.operator("eve.clear_scene", text="Clear", icon="TRASH")
         # Inline controls (sampling, scale, radius, display)
+        # Guard access to addon preferences - use explicit checks instead of broad
+        # exception swallowing so we don't hide programming errors.
+        mod_name = __name__.split(".")
+        addon_key = mod_name[0] if mod_name else "addon"
+        prefs_container = getattr(context, "preferences", None)
         try:
-            mod_name = __name__.split(".")
-            addon_key = mod_name[0] if mod_name else "addon"
-            prefs_container = context.preferences.addons.get(addon_key)
-            if prefs_container:
-                prefs = getattr(prefs_container, "preferences", None)
-                if prefs:
-                    if hasattr(prefs, "build_percentage"):
-                        box_build.prop(
-                            prefs, "build_percentage", text="Sample Proportion (0.0 to 1.0)"
-                        )
-                    # Coordinate scale now panel-only (removed from preferences UI)
-                    if hasattr(prefs, "scale_exponent"):
-                        box_build.prop(prefs, "scale_exponent", text="Scale (10^x)")
-                    if hasattr(prefs, "system_point_radius"):
-                        box_build.prop(prefs, "system_point_radius", text="Star Radius")
-                    if hasattr(prefs, "system_representation"):
-                        box_build.prop(prefs, "system_representation", text="Display")
-                    # Black hole scale remains accessible where user tweaks visualization
-                    if hasattr(prefs, "blackhole_scale_multiplier"):
-                        box_build.prop(prefs, "blackhole_scale_multiplier", text="Black Hole Scale")
-        except Exception:
-            pass
+            prefs_container = context.preferences.addons.get(addon_key) if prefs_container else None
+        except (AttributeError, TypeError):
+            prefs_container = None
+        if prefs_container:
+            prefs = getattr(prefs_container, "preferences", None)
+            if prefs:
+                if hasattr(prefs, "build_percentage"):
+                    box_build.prop(prefs, "build_percentage", text="Sample Proportion (0.0 to 1.0)")
+                # Coordinate scale now panel-only (removed from preferences UI)
+                if hasattr(prefs, "scale_exponent"):
+                    box_build.prop(prefs, "scale_exponent", text="Scale (10^x)")
+                if hasattr(prefs, "system_point_radius"):
+                    box_build.prop(prefs, "system_point_radius", text="Star Radius")
+                if hasattr(prefs, "system_representation"):
+                    box_build.prop(prefs, "system_representation", text="Display")
+                # Black hole scale remains accessible where user tweaks visualization
+                if hasattr(prefs, "blackhole_scale_multiplier"):
+                    box_build.prop(prefs, "blackhole_scale_multiplier", text="Black Hole Scale")
 
         # --- Visualization Section ---
         box_vis = layout.box()
@@ -193,49 +194,55 @@ class EVE_PT_filters(Panel):
 
     def draw(self, context):  # noqa: D401
         layout = self.layout
+        systems_by_name = None
         try:
             systems_by_name = bpy.data.collections.get("SystemsByName")
-            if not systems_by_name:
-                layout.label(text="No SystemsByName collection (build scene first)")
-                return
+        except (AttributeError, RuntimeError):
+            systems_by_name = None
 
-            box = layout.box()
-            box.label(text="SystemsByName Filters", icon="FILTER")
+        if not systems_by_name:
+            layout.label(text="No SystemsByName collection (build scene first)")
+            return
 
-            # Sort children for stable display
-            children = sorted(list(systems_by_name.children), key=lambda c: c.name)
-            if not children:
-                box.label(text="No pattern buckets found")
-                return
+        box = layout.box()
+        box.label(text="SystemsByName Filters", icon="FILTER")
 
-            for child in children:
-                row = box.row(align=True)
-                # Use the collection's hide_viewport as the checkbox; keep hide_render synced
-                # Show an Outliner-like camera icon to indicate render/collection visibility
-                try:
-                    row.prop(child, "hide_viewport", text=child.name, icon="OUTLINER_OB_CAMERA")
-                    # Keep render visibility in sync with viewport visibility for consistent behavior
-                    try:
-                        child.hide_render = child.hide_viewport
-                    except Exception:
-                        pass
-                except Exception:
-                    # Fall back to a simple label if property access fails
-                    row.label(text=child.name)
-            # Show/Hide All quick actions
-            row_ops = box.row(align=True)
-            row_ops.operator("eve.filters_show_all", text="Show All", icon="HIDE_OFF")
-            row_ops.operator("eve.filters_hide_all", text="Hide All", icon="HIDE_ON")
-            # Status and sync with preferences if available
+        # Sort children for stable display
+        children = sorted(list(systems_by_name.children), key=lambda c: c.name)
+        if not children:
+            box.label(text="No pattern buckets found")
+            return
+
+        for child in children:
+            row = box.row(align=True)
+            # Use the collection's hide_viewport as the checkbox; keep hide_render synced
+            # Show an Outliner-like camera icon to indicate render/collection visibility
             try:
-                # Ensure preferences are available (we don't need the object value)
-                get_prefs(context)
-                vis_count = sum(0 if c.hide_viewport else 1 for c in children)
-                box.label(text=f"Visible buckets: {vis_count}/{len(children)}")
-            except Exception:
+                row.prop(child, "hide_viewport", text=child.name, icon="OUTLINER_OB_CAMERA")
+            except (AttributeError, TypeError):
+                # Fall back to a simple label if property access fails
+                row.label(text=child.name)
+                continue
+            # Keep render visibility in sync with viewport visibility for consistent behavior
+            try:
+                child.hide_render = child.hide_viewport
+            except AttributeError:
+                # Older or test contexts may not expose hide_render
                 pass
-        except Exception:
-            layout.label(text="Filters unavailable (Blender context needed)")
+
+        # Show/Hide All quick actions
+        row_ops = box.row(align=True)
+        row_ops.operator("eve.filters_show_all", text="Show All", icon="HIDE_OFF")
+        row_ops.operator("eve.filters_hide_all", text="Hide All", icon="HIDE_ON")
+        # Status and sync with preferences if available
+        try:
+            # Ensure preferences are available (we don't need the object value)
+            get_prefs(context)
+            vis_count = sum(0 if c.hide_viewport else 1 for c in children)
+            box.label(text=f"Visible buckets: {vis_count}/{len(children)}")
+        except (AttributeError, ImportError, ModuleNotFoundError):
+            # best-effort: if preferences are not reachable, skip
+            pass
 
 
 def register():  # pragma: no cover - Blender runtime usage
@@ -243,15 +250,16 @@ def register():  # pragma: no cover - Blender runtime usage
         return
     bpy.utils.register_class(EVE_PT_main)
     bpy.utils.register_class(EVE_PT_filters)
-    # Register filter toggle operators
+    # Register filter toggle operators - be noisy if registration fails so
+    # that CI / development logs show an actionable message.
     try:
         bpy.utils.register_class(EVE_OT_filters_show_all)
-    except Exception:
-        pass
+    except (RuntimeError, ValueError) as e:
+        print(f"[EVEVisualizer][panels] ERROR registering show_all operator: {e}")
     try:
         bpy.utils.register_class(EVE_OT_filters_hide_all)
-    except Exception:
-        pass
+    except (RuntimeError, ValueError) as e:
+        print(f"[EVEVisualizer][panels] ERROR registering hide_all operator: {e}")
 
 
 def unregister():  # pragma: no cover - Blender runtime usage
@@ -259,12 +267,12 @@ def unregister():  # pragma: no cover - Blender runtime usage
         return
     try:
         bpy.utils.unregister_class(EVE_OT_filters_hide_all)
-    except Exception:
-        pass
+    except (RuntimeError, ValueError) as e:
+        print(f"[EVEVisualizer][panels] WARNING unregister hide_all: {e}")
     try:
         bpy.utils.unregister_class(EVE_OT_filters_show_all)
-    except Exception:
-        pass
+    except (RuntimeError, ValueError) as e:
+        print(f"[EVEVisualizer][panels] WARNING unregister show_all: {e}")
     bpy.utils.unregister_class(EVE_PT_filters)
     bpy.utils.unregister_class(EVE_PT_main)
 
@@ -284,11 +292,12 @@ class EVE_OT_filters_show_all(bpy.types.Operator):
             for child in root.children:
                 try:
                     child.hide_viewport = False
-                except Exception:
+                except AttributeError:
+                    # Some test contexts may not expose these attributes
                     pass
                 try:
                     child.hide_render = False
-                except Exception:
+                except AttributeError:
                     pass
             # Persist preference if available
             try:
@@ -300,9 +309,11 @@ class EVE_OT_filters_show_all(bpy.types.Operator):
                 prefs.filter_other = True
                 try:
                     prefs.filter_blackhole = True
-                except Exception:
+                except AttributeError:
+                    # Older preference objects may not include the blackhole flag
                     pass
-            except Exception:
+            except (AttributeError, ImportError, ModuleNotFoundError):
+                # best-effort persistence; ignore if prefs not reachable
                 pass
             return {"FINISHED"}
         except Exception as e:
@@ -325,11 +336,11 @@ class EVE_OT_filters_hide_all(bpy.types.Operator):
             for child in root.children:
                 try:
                     child.hide_viewport = True
-                except Exception:
+                except AttributeError:
                     pass
                 try:
                     child.hide_render = True
-                except Exception:
+                except AttributeError:
                     pass
             # Persist preference if available
             try:
@@ -341,9 +352,9 @@ class EVE_OT_filters_hide_all(bpy.types.Operator):
                 prefs.filter_other = False
                 try:
                     prefs.filter_blackhole = False
-                except Exception:
+                except AttributeError:
                     pass
-            except Exception:
+            except (AttributeError, ImportError, ModuleNotFoundError):
                 pass
             return {"FINISHED"}
         except Exception as e:

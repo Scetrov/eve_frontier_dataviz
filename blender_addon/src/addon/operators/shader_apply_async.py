@@ -357,8 +357,11 @@ if bpy:
                                     node.node_tree = bpy.data.node_groups.get(
                                         "EVE_Strategy_ProperNounHighlight"
                                     )  # type: ignore[attr-defined]
-                            except Exception:
-                                # best-effort: skip broken nodes
+                            except (AttributeError, TypeError, RuntimeError) as e:
+                                # best-effort: skip broken nodes but log minimal info
+                                print(
+                                    f"[EVEVisualizer][repair] Skipping node {getattr(node,'name',repr(node))}: {e}"
+                                )
                                 continue
 
                         # Update strategy selector value (if present)
@@ -372,8 +375,11 @@ if bpy:
                                 "ProperNounHighlight": 4.0,
                             }
                             selector.outputs[0].default_value = strategy_map.get(strategy_name, 0.0)
-                except Exception:
+                except (AttributeError, RuntimeError, TypeError) as e:
                     # Non-fatal: if anything goes wrong here, leave existing material as-is
+                    print(
+                        f"[EVEVisualizer][node_material] Warning while repairing material {getattr(mat,'name',repr(mat))}: {e}"
+                    )
                     pass
 
                 return mat
@@ -391,7 +397,10 @@ if bpy:
                             o.data.materials[0] = mat
                         else:
                             o.data.materials.append(mat)
-                except Exception:  # noqa: BLE001
+                except (AttributeError, RuntimeError, TypeError) as e:  # noqa: BLE001
+                    print(
+                        f"[EVEVisualizer][apply_attr_mat] Failed on object {getattr(o,'name',repr(o))}: {e}"
+                    )
                     continue
 
         def _apply_node_group_material(self, objs, strategy_name: str):
@@ -406,7 +415,10 @@ if bpy:
                             o.data.materials[0] = mat
                         else:
                             o.data.materials.append(mat)
-                except Exception:  # noqa: BLE001
+                except (AttributeError, RuntimeError, TypeError) as e:  # noqa: BLE001
+                    print(
+                        f"[EVEVisualizer][apply_node_mat] Failed on object {getattr(o,'name',repr(o))}: {e}"
+                    )
                     continue
 
         def execute(self, context):  # noqa: D401
@@ -589,9 +601,9 @@ def register():  # pragma: no cover
         repaired_count = _repair_strategy_materials_silent()
         print(f"[EVEVisualizer] Repaired {repaired_count} node group references in materials")
     except Exception:
-        pass
         import traceback
 
+        print("[EVEVisualizer] Error during silent repair of strategy materials:")
         traceback.print_exc()
 
     # Strategy-specific parameters

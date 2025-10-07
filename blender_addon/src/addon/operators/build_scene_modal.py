@@ -133,11 +133,11 @@ if bpy:
                 # collections can control visibility. Also hide render.
                 try:
                     coll.hide_viewport = True
-                except Exception:
+                except AttributeError:
                     pass
                 try:
                     coll.hide_render = True
-                except Exception:
+                except AttributeError:
                     pass
             # Ensure SystemsByName parent and child collections exist (top-level)
             systems_by_name = get_or_create_collection("SystemsByName")
@@ -302,12 +302,12 @@ if bpy:
                             try:
                                 if reg_coll is not None:
                                     reg_coll.hide_viewport = True
-                            except Exception:
+                            except AttributeError:
                                 pass
                             try:
                                 if reg_coll is not None:
                                     reg_coll.hide_render = True
-                            except Exception:
+                            except AttributeError:
                                 pass
                             if self._region_cache is not None:
                                 self._region_cache[region_key] = {"coll": reg_coll, "const": {}}
@@ -321,12 +321,12 @@ if bpy:
                             try:
                                 if const_coll is not None:
                                     const_coll.hide_viewport = True
-                            except Exception:
+                            except AttributeError:
                                 pass
                             try:
                                 if const_coll is not None:
                                     const_coll.hide_render = True
-                            except Exception:
+                            except AttributeError:
                                 pass
                             if cache_entry:
                                 const_map[const_key] = const_coll
@@ -334,32 +334,37 @@ if bpy:
                         if const_coll is not None:
                             try:
                                 const_coll.objects.link(obj)
-                            except Exception:  # already linked or error
+                            except RuntimeError as e:  # already linked or Blender linking error
+                                print(
+                                    f"[EVEVisualizer][build] link const failed for {obj.name} -> {getattr(const_coll,'name',repr(const_coll))}: {e}"
+                                )
+                            except AttributeError:
                                 pass
                     else:
                         if coll:
                             coll.objects.link(obj)
                     # Also link object into SystemsByName/<pattern> collection
+                    # Black holes are a special-case bucket regardless of name pattern
+                    # simplify retrieval of the stored blackhole flag
                     try:
-                        # Black holes are a special-case bucket regardless of name pattern
-                        # simplify retrieval of the stored blackhole flag
                         is_bh = int(obj.get("eve_is_blackhole", 0))
-                        if is_bh:
-                            pattern_idx = self._blackhole_pattern_idx
-                        else:
-                            pattern_idx = obj.get("eve_name_pattern", 4)
-                        pattern_coll = getattr(self, "_systems_by_name_children", {}).get(
-                            pattern_idx
-                        )
-                        if pattern_coll is not None:
-                            # Avoid duplicate link exceptions
-                            try:
-                                pattern_coll.objects.link(obj)
-                            except Exception:
-                                pass
-                    except Exception:
-                        # Non-fatal - linking to SystemsByName is best-effort
-                        pass
+                    except (TypeError, ValueError):
+                        is_bh = 0
+                    if is_bh:
+                        pattern_idx = self._blackhole_pattern_idx
+                    else:
+                        pattern_idx = obj.get("eve_name_pattern", 4)
+                    pattern_coll = getattr(self, "_systems_by_name_children", {}).get(pattern_idx)
+                    if pattern_coll is not None:
+                        # Avoid duplicate link exceptions
+                        try:
+                            pattern_coll.objects.link(obj)
+                        except RuntimeError as e:
+                            print(
+                                f"[EVEVisualizer][build] link pattern failed for {obj.name} -> {getattr(pattern_coll,'name',repr(pattern_coll))}: {e}"
+                            )
+                        except AttributeError:
+                            pass
                     created += 1
                 self._index = batch_end
                 wm = context.window_manager
