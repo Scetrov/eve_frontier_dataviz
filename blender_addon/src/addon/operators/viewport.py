@@ -145,12 +145,19 @@ if bpy:
                     self.report({"ERROR"}, f"Load failed: {e}")
                     return {"CANCELLED"}
             env.image = img
-            try:
-                if hasattr(env.image, "colorspace_settings"):
-                    env.image.colorspace_settings.name = "Linear"
-            except AttributeError:
-                # Some image objects may not have colorspace settings
-                pass
+            # Set a sensible colorspace for environment HDRIs. Different Blender
+            # installs expose slightly different enum names, so try a short
+            # priority list and stop on the first successful assignment.
+            if hasattr(env.image, "colorspace_settings"):
+                cs = env.image.colorspace_settings
+                preferred = ["Linear", "Non-Color", "sRGB", "Linear CIE-XYZ D65"]
+                for name in preferred:
+                    try:
+                        cs.name = name
+                        break
+                    except Exception:
+                        # Assignment will raise if the enum value isn't available
+                        continue
             # Rewire links
             try:
                 for link in list(env.outputs[0].links):
