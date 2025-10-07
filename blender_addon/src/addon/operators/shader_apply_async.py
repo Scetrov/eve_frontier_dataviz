@@ -612,10 +612,10 @@ def register():  # pragma: no cover
     try:
         repaired_count = _repair_strategy_materials_silent()
         print(f"[EVEVisualizer] Repaired {repaired_count} node group references in materials")
-    except (AttributeError, RuntimeError, TypeError):
+    except (AttributeError, RuntimeError, TypeError) as e:
         import traceback
 
-        print("[EVEVisualizer] Error during silent repair of strategy materials:")
+        print(f"[EVEVisualizer] Error during silent repair of strategy materials: {e}")
         traceback.print_exc()
 
     # Strategy-specific parameters
