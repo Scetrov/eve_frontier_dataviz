@@ -25,7 +25,8 @@ if bpy:
                 world.use_nodes = True
                 bg = next(n for n in world.node_tree.nodes if n.type == "BACKGROUND")
                 bg.inputs[0].default_value = (0.0, 0.0, 0.0, 1.0)
-            except Exception:  # noqa: BLE001
+            except (StopIteration, AttributeError, RuntimeError):  # noqa: BLE001
+                # No background node or unexpected Blender state
                 pass
             self.report({"INFO"}, "World set to black")
             return {"FINISHED"}

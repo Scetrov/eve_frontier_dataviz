@@ -306,7 +306,8 @@ class EVEVisualizerPreferences(_BasePrefs):
             if isinstance(self.db_path, str) and self.db_path:
                 if not Path(self.db_path).exists():
                     col.label(text="(File not found)", icon="ERROR")
-        except Exception:
+        except (TypeError, OSError):
+            # Path resolution could fail for unusual objects
             pass
 
 
@@ -525,7 +526,8 @@ def _unregister_prefs():  # pragma: no cover - Blender runtime usage
         return
     try:
         bpy.utils.unregister_class(EVEVisualizerPreferences)
-    except Exception:
+    except (RuntimeError, AttributeError):
+        # Unregister may fail in odd Blender states; ignore safely
         pass
 
 
@@ -566,7 +568,7 @@ def register():  # noqa: D401
         return
     try:  # operator
         bpy.utils.register_class(EVE_OT_locate_static_db)
-    except Exception as e:  # pragma: no cover
+    except (RuntimeError, AttributeError, TypeError) as e:  # pragma: no cover
         print(f"[EVEVisualizer][warn] Failed to register locate operator: {e}")
 
 
