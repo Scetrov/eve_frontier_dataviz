@@ -20,6 +20,7 @@ from .. import data_state
 from ..preferences import get_prefs
 from ._shared import (
     clear_generated,
+    collapse_collections_to_depth,
     get_or_create_collection,
     get_or_create_subcollection,
 )
@@ -114,6 +115,13 @@ if bpy:
             self._total = len(systems)
             self._radius = float(getattr(prefs, "system_point_radius", 2.0) or 2.0)
             self._scale = float(getattr(prefs, "scale_factor", 1.0) or 1.0)
+            # Black hole visual scale multiplier (applied to object.scale for BH systems)
+            try:
+                self._blackhole_scale_multiplier = float(
+                    getattr(prefs, "blackhole_scale_multiplier", 1.0) or 1.0
+                )
+            except Exception:
+                self._blackhole_scale_multiplier = 1.0
             self._apply_axis = bool(getattr(prefs, "apply_axis_transform", False))
             self._hierarchy = bool(getattr(prefs, "build_region_hierarchy", False))
             if self.clear_previous:
@@ -121,7 +129,36 @@ if bpy:
             coll = get_or_create_collection("Frontier")
             # Keep visible when hierarchy enabled so users can still find flat list
             if coll and not self._hierarchy:
-                coll.hide_viewport = True
+                # Hide the flat Frontier collection on import so SystemsByName
+                # collections can control visibility. Also hide render.
+                try:
+                    coll.hide_viewport = True
+                except Exception:
+                    pass
+                try:
+                    coll.hide_render = True
+                except Exception:
+                    pass
+            # Ensure SystemsByName parent and child collections exist (top-level)
+            systems_by_name = get_or_create_collection("SystemsByName")
+            # Create deterministic child buckets used by calculate_name_pattern_category
+            # Map integer category -> collection name; keep simple human labels
+            pattern_buckets = {
+                0: "DASH",
+                1: "COLON",
+                2: "DOTSEQ",
+                3: "PIPE",
+                4: "OTHER",
+                5: "BLACKHOLE",
+            }
+            # Create or ensure child collections under SystemsByName
+            systems_by_name_children = {}
+            for idx, name in pattern_buckets.items():
+                # Use get_or_create_subcollection to keep these under SystemsByName
+                child = get_or_create_subcollection(systems_by_name, name)
+                systems_by_name_children[idx] = child
+            # persist for modal linking
+            self._systems_by_name_children = systems_by_name_children
             self._mesh = _ensure_mesh("ICO", self._radius)
             wm = context.window_manager
             wm.eve_build_in_progress = True
@@ -141,12 +178,26 @@ if bpy:
             coll = bpy.data.collections.get("Frontier")
             if coll:
                 coll.hide_viewport = False
+                try:
+                    coll.hide_render = False
+                except Exception:
+                    pass
             # Optionally auto-apply default visualization
             try:
                 prefs = get_prefs(context)
                 if getattr(prefs, "auto_apply_default_visualization", False):
                     # Invoke shader apply operator (will choose default strategy if none selected)
                     bpy.ops.eve.apply_shader_modal("INVOKE_DEFAULT")  # type: ignore[attr-defined]
+            except Exception:
+                pass
+            # Keep generated collections hidden by default (SystemsByName controls visibility).
+            # Collapse collections so only root + immediate children are visible by default.
+            try:
+                collapse_collections_to_depth("Frontier", depth=1)
+            except Exception:
+                pass
+            try:
+                collapse_collections_to_depth("SystemsByName", depth=1)
             except Exception:
                 pass
 
@@ -172,6 +223,18 @@ if bpy:
                         x, y, z = x, z, -y
                     obj = bpy.data.objects.new(sys.name or f"System_{i}", self._mesh)  # type: ignore[union-attr]
                     obj.location = (x, y, z)
+
+                    # Apply black hole scale multiplier to the object transform if applicable.
+                    try:
+                        if (
+                            is_blackhole_system(sys.id)
+                            and getattr(self, "_blackhole_scale_multiplier", 1.0) != 1.0
+                        ):
+                            m = float(self._blackhole_scale_multiplier)
+                            # Uniform scale (do not modify mesh data - scale on object)
+                            obj.scale = (m, m, m)
+                    except Exception:
+                        pass
 
                     # Store visualization properties (for shader-driven strategies)
                     system_name = sys.name or ""
@@ -226,6 +289,17 @@ if bpy:
                             reg_coll = (
                                 get_or_create_subcollection(root, region_key) if root else None
                             )
+                            # Hide region collection on creation so SystemsByName visibility takes precedence
+                            try:
+                                if reg_coll is not None:
+                                    reg_coll.hide_viewport = True
+                            except Exception:
+                                pass
+                            try:
+                                if reg_coll is not None:
+                                    reg_coll.hide_render = True
+                            except Exception:
+                                pass
                             if self._region_cache is not None:
                                 self._region_cache[region_key] = {"coll": reg_coll, "const": {}}
                             cache_entry = self._region_cache.get(region_key)
@@ -234,6 +308,17 @@ if bpy:
                         const_coll = const_map.get(const_key)
                         if not const_coll:
                             const_coll = get_or_create_subcollection(reg_coll, const_key)
+                            # Hide constellation collection on creation so SystemsByName visibility takes precedence
+                            try:
+                                if const_coll is not None:
+                                    const_coll.hide_viewport = True
+                            except Exception:
+                                pass
+                            try:
+                                if const_coll is not None:
+                                    const_coll.hide_render = True
+                            except Exception:
+                                pass
                             if cache_entry:
                                 const_map[const_key] = const_coll
                     if self._hierarchy:
@@ -245,6 +330,26 @@ if bpy:
                     else:
                         if coll:
                             coll.objects.link(obj)
+                    # Also link object into SystemsByName/<pattern> collection
+                    try:
+                        # Black holes are a special-case bucket regardless of name pattern
+                        is_bh = int(obj.get("eve_is_blackhole", 0) or 0)
+                        if is_bh:
+                            pattern_idx = 5
+                        else:
+                            pattern_idx = obj.get("eve_name_pattern", 4)
+                        pattern_coll = getattr(self, "_systems_by_name_children", {}).get(
+                            pattern_idx
+                        )
+                        if pattern_coll is not None:
+                            # Avoid duplicate link exceptions
+                            try:
+                                pattern_coll.objects.link(obj)
+                            except Exception:
+                                pass
+                    except Exception:
+                        # Non-fatal - linking to SystemsByName is best-effort
+                        pass
                     created += 1
                 self._index = batch_end
                 wm = context.window_manager

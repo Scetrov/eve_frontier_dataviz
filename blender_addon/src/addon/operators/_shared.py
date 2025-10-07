@@ -7,7 +7,7 @@ try:  # pragma: no cover
 except Exception:  # noqa: BLE001
     bpy = None  # type: ignore
 
-GENERATED_COLLECTIONS = ["Frontier", "EVE_Planets", "EVE_Moons"]
+GENERATED_COLLECTIONS = ["Frontier", "EVE_Planets", "EVE_Moons", "SystemsByName"]
 
 
 def get_or_create_collection(name: str):  # pragma: no cover - needs Blender
@@ -106,3 +106,44 @@ def clear_generated():  # pragma: no cover - needs Blender
     finally:
         bpy.context.preferences.edit.use_global_undo = prev_undo
     return removed_objs, removed_colls
+
+
+def collapse_collections_to_depth(
+    root_name: str, depth: int = 1
+):  # pragma: no cover - needs Blender
+    """Hide (viewport + render) all subcollections deeper than `depth` under root_name.
+
+    This is a pragmatic approximation of "collapsing" groups in the Outliner by
+    hiding their contents. Blender does not expose Outliner expansion state via
+    the stable Python API, so hiding child collections gives a similar, useful
+    default: only the root and its immediate children remain visible.
+
+    Args:
+        root_name: Top-level collection name to operate on (e.g., 'Frontier').
+        depth: Maximum depth to keep visible (0 = only root, 1 = root + immediate children).
+    """
+    if bpy is None:
+        return
+    root = bpy.data.collections.get(root_name)
+    if not root:
+        return
+
+    # Iterative DFS/BFS with depth tracking (avoid recursion limits)
+    stack = [(root, 0)]
+    while stack:
+        coll, d = stack.pop()
+        for child in coll.children:
+            child_depth = d + 1
+            # If the child is deeper than allowed, hide it; otherwise keep and traverse
+            if child_depth > depth:
+                try:
+                    child.hide_viewport = True
+                except Exception:
+                    pass
+                try:
+                    child.hide_render = True
+                except Exception:
+                    pass
+            else:
+                # Still within allowed depth, traverse children
+                stack.append((child, child_depth))

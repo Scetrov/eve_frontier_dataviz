@@ -220,6 +220,37 @@ class EVEVisualizerPreferences(_BasePrefs):
             "If enabled (default), Frontier contains nested <Region>/<Constellation> subcollections instead of only a flat list"
         ),
     )
+    # Per-pattern visibility preferences (True = visible)
+    filter_dash: BoolProperty(  # type: ignore[valid-type]
+        name="Show DASH",
+        default=True,
+        description="Show systems matching DASH naming pattern by default",
+    )
+    filter_colon: BoolProperty(  # type: ignore[valid-type]
+        name="Show COLON",
+        default=True,
+        description="Show systems matching COLON naming pattern by default",
+    )
+    filter_dotseq: BoolProperty(  # type: ignore[valid-type]
+        name="Show DOTSEQ",
+        default=True,
+        description="Show systems matching DOTSEQ naming pattern by default",
+    )
+    filter_pipe: BoolProperty(  # type: ignore[valid-type]
+        name="Show PIPE",
+        default=True,
+        description="Show systems matching PIPE naming pattern by default",
+    )
+    filter_other: BoolProperty(  # type: ignore[valid-type]
+        name="Show OTHER",
+        default=True,
+        description="Show systems matching OTHER naming pattern by default",
+    )
+    filter_blackhole: BoolProperty(  # type: ignore[valid-type]
+        name="Show BLACKHOLE",
+        default=True,
+        description="Show special black hole systems as a separate bucket by default",
+    )
 
     def draw(self, context):  # noqa: D401
         if not bpy:  # skip UI logic in test / non-Blender env
@@ -360,6 +391,48 @@ try:  # pragma: no cover - runtime safety
             precision=3,
         )
         _missing.append("build_percentage")
+    if not hasattr(EVEVisualizerPreferences, "filter_dash"):
+        EVEVisualizerPreferences.filter_dash = BoolProperty(  # type: ignore[attr-defined]
+            name="Show DASH",
+            default=True,
+            description="Show systems matching DASH naming pattern by default",
+        )
+        _missing.append("filter_dash")
+    if not hasattr(EVEVisualizerPreferences, "filter_colon"):
+        EVEVisualizerPreferences.filter_colon = BoolProperty(  # type: ignore[attr-defined]
+            name="Show COLON",
+            default=True,
+            description="Show systems matching COLON naming pattern by default",
+        )
+        _missing.append("filter_colon")
+    if not hasattr(EVEVisualizerPreferences, "filter_dotseq"):
+        EVEVisualizerPreferences.filter_dotseq = BoolProperty(  # type: ignore[attr-defined]
+            name="Show DOTSEQ",
+            default=True,
+            description="Show systems matching DOTSEQ naming pattern by default",
+        )
+        _missing.append("filter_dotseq")
+    if not hasattr(EVEVisualizerPreferences, "filter_pipe"):
+        EVEVisualizerPreferences.filter_pipe = BoolProperty(  # type: ignore[attr-defined]
+            name="Show PIPE",
+            default=True,
+            description="Show systems matching PIPE naming pattern by default",
+        )
+        _missing.append("filter_pipe")
+    if not hasattr(EVEVisualizerPreferences, "filter_other"):
+        EVEVisualizerPreferences.filter_other = BoolProperty(  # type: ignore[attr-defined]
+            name="Show OTHER",
+            default=True,
+            description="Show systems matching OTHER naming pattern by default",
+        )
+        _missing.append("filter_other")
+    if not hasattr(EVEVisualizerPreferences, "filter_blackhole"):
+        EVEVisualizerPreferences.filter_blackhole = BoolProperty(  # type: ignore[attr-defined]
+            name="Show BLACKHOLE",
+            default=True,
+            description="Show special black hole systems as a separate bucket by default",
+        )
+        _missing.append("filter_blackhole")
     if not hasattr(EVEVisualizerPreferences, "exclude_ad_systems"):
         EVEVisualizerPreferences.exclude_ad_systems = BoolProperty(  # type: ignore[attr-defined]
             name="Exclude AD###",

@@ -28,6 +28,14 @@ If the tab or operators don’t show up, see Troubleshooting below.
 
 ---
 
+Notes about visibility and filtering
+
+- The add-on now creates a top-level `SystemsByName` collection containing five name-pattern buckets
+   (DASH, COLON, DOTSEQ, PIPE, OTHER) to help manage the visibility of large numbers of systems.
+- By default the `Frontier` hierarchy (Region → Constellation → System) is hidden on import so the
+   `SystemsByName` buckets control what's visible. Open the Filters panel (3D View → Sidebar → EVE Frontier → Filters)
+   to toggle buckets. Use the Show All / Hide All buttons to persist defaults to the add-on preferences.
+
 ## ✨ Core Goals
 
 - Parse a large SQLite database (`static.db`) without committing it to version control.

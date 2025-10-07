@@ -1,5 +1,38 @@
+import importlib
+
 import bpy
 from bpy.types import Panel
+
+# Robustly import get_prefs. When the add-on is installed into Blender it may be
+# loaded under a different top-level package name (for example
+# `eve_frontier_visualizer`). Pure-Python tests import the package as
+# `addon`. Try a few strategies and fall back to a safe no-op function so the
+# UI can still draw in limited contexts.
+try:
+    # Normal relative import when running as the package `addon`
+    from .preferences import get_prefs
+except Exception:
+    try:
+        # If this module was loaded as a submodule of another top-level package
+        # (Blender copies the folder and the package name changes), try to
+        # import preferences from the root package.
+        root_pkg = __package__.split(".")[0] if __package__ else None
+        if root_pkg:
+            mod = importlib.import_module(f"{root_pkg}.preferences")
+            get_prefs = mod.get_prefs
+        else:
+            raise ImportError("no package context")
+    except Exception:
+        try:
+            # Last-resort: tests or dev environment may expose the package as
+            # `addon.preferences` (src layout during pytest).
+            from addon.preferences import get_prefs
+        except Exception:
+            # Fallback: provide a no-op that keeps panels working in very
+            # limited contexts (will cause Show/Hide All persistence to be a
+            # no-op).
+            def get_prefs(context):
+                return None
 
 
 class EVE_PT_main(Panel):
@@ -143,9 +176,176 @@ class EVE_PT_main(Panel):
         row_view4.operator("eve.viewport_hide_overlays", text="Toggle Grid/Axis", icon="GRID")
 
 
+# Note: panel registration for both main and filters is handled below where
+# both classes and operators are registered together. The single-class
+# register/unregister definitions above were duplicate and caused ruff
+# redefinition errors; they have been removed.
+
+
+class EVE_PT_filters(Panel):
+    """Filters panel exposing SystemsByName child collections as check boxes."""
+
+    bl_label = "Filters"
+    bl_idname = "EVE_PT_filters"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "EVE Frontier"
+
+    def draw(self, context):  # noqa: D401
+        layout = self.layout
+        try:
+            systems_by_name = bpy.data.collections.get("SystemsByName")
+            if not systems_by_name:
+                layout.label(text="No SystemsByName collection (build scene first)")
+                return
+
+            box = layout.box()
+            box.label(text="SystemsByName Filters", icon="FILTER")
+
+            # Sort children for stable display
+            children = sorted(list(systems_by_name.children), key=lambda c: c.name)
+            if not children:
+                box.label(text="No pattern buckets found")
+                return
+
+            for child in children:
+                row = box.row(align=True)
+                # Use the collection's hide_viewport as the checkbox; keep hide_render synced
+                # Show an Outliner-like camera icon to indicate render/collection visibility
+                try:
+                    row.prop(child, "hide_viewport", text=child.name, icon="OUTLINER_OB_CAMERA")
+                    # Keep render visibility in sync with viewport visibility for consistent behavior
+                    try:
+                        child.hide_render = child.hide_viewport
+                    except Exception:
+                        pass
+                except Exception:
+                    # Fall back to a simple label if property access fails
+                    row.label(text=child.name)
+            # Show/Hide All quick actions
+            row_ops = box.row(align=True)
+            row_ops.operator("eve.filters_show_all", text="Show All", icon="HIDE_OFF")
+            row_ops.operator("eve.filters_hide_all", text="Hide All", icon="HIDE_ON")
+            # Status and sync with preferences if available
+            try:
+                # Ensure preferences are available (we don't need the object value)
+                get_prefs(context)
+                vis_count = sum(0 if c.hide_viewport else 1 for c in children)
+                box.label(text=f"Visible buckets: {vis_count}/{len(children)}")
+            except Exception:
+                pass
+        except Exception:
+            layout.label(text="Filters unavailable (Blender context needed)")
+
+
 def register():  # pragma: no cover - Blender runtime usage
+    if not bpy:
+        return
     bpy.utils.register_class(EVE_PT_main)
+    bpy.utils.register_class(EVE_PT_filters)
+    # Register filter toggle operators
+    try:
+        bpy.utils.register_class(EVE_OT_filters_show_all)
+    except Exception:
+        pass
+    try:
+        bpy.utils.register_class(EVE_OT_filters_hide_all)
+    except Exception:
+        pass
 
 
 def unregister():  # pragma: no cover - Blender runtime usage
+    if not bpy:
+        return
+    try:
+        bpy.utils.unregister_class(EVE_OT_filters_hide_all)
+    except Exception:
+        pass
+    try:
+        bpy.utils.unregister_class(EVE_OT_filters_show_all)
+    except Exception:
+        pass
+    bpy.utils.unregister_class(EVE_PT_filters)
     bpy.utils.unregister_class(EVE_PT_main)
+
+
+class EVE_OT_filters_show_all(bpy.types.Operator):
+    """Show all SystemsByName child collections"""
+
+    bl_idname = "eve.filters_show_all"
+    bl_label = "Show All SystemsByName"
+
+    def execute(self, context):
+        try:
+            root = bpy.data.collections.get("SystemsByName")
+            if not root:
+                self.report({"WARNING"}, "SystemsByName not found")
+                return {"CANCELLED"}
+            for child in root.children:
+                try:
+                    child.hide_viewport = False
+                except Exception:
+                    pass
+                try:
+                    child.hide_render = False
+                except Exception:
+                    pass
+            # Persist preference if available
+            try:
+                prefs = get_prefs(bpy.context)
+                prefs.filter_dash = True
+                prefs.filter_colon = True
+                prefs.filter_dotseq = True
+                prefs.filter_pipe = True
+                prefs.filter_other = True
+                try:
+                    prefs.filter_blackhole = True
+                except Exception:
+                    pass
+            except Exception:
+                pass
+            return {"FINISHED"}
+        except Exception as e:
+            self.report({"ERROR"}, f"Show all failed: {e}")
+            return {"CANCELLED"}
+
+
+class EVE_OT_filters_hide_all(bpy.types.Operator):
+    """Hide all SystemsByName child collections"""
+
+    bl_idname = "eve.filters_hide_all"
+    bl_label = "Hide All SystemsByName"
+
+    def execute(self, context):
+        try:
+            root = bpy.data.collections.get("SystemsByName")
+            if not root:
+                self.report({"WARNING"}, "SystemsByName not found")
+                return {"CANCELLED"}
+            for child in root.children:
+                try:
+                    child.hide_viewport = True
+                except Exception:
+                    pass
+                try:
+                    child.hide_render = True
+                except Exception:
+                    pass
+            # Persist preference if available
+            try:
+                prefs = get_prefs(bpy.context)
+                prefs.filter_dash = False
+                prefs.filter_colon = False
+                prefs.filter_dotseq = False
+                prefs.filter_pipe = False
+                prefs.filter_other = False
+                try:
+                    prefs.filter_blackhole = False
+                except Exception:
+                    pass
+            except Exception:
+                pass
+            return {"FINISHED"}
+        except Exception as e:
+            self.report({"ERROR"}, f"Hide all failed: {e}")
+            return {"CANCELLED"}
