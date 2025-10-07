@@ -316,7 +316,8 @@ class EVE_OT_filters_show_all(bpy.types.Operator):
                 # best-effort persistence; ignore if prefs not reachable
                 pass
             return {"FINISHED"}
-        except Exception as e:
+        except (AttributeError, RuntimeError, TypeError, ImportError) as e:
+            # Non-fatal: report actionable error instead of silencing all exceptions
             self.report({"ERROR"}, f"Show all failed: {e}")
             return {"CANCELLED"}
 
@@ -357,6 +358,7 @@ class EVE_OT_filters_hide_all(bpy.types.Operator):
             except (AttributeError, ImportError, ModuleNotFoundError):
                 pass
             return {"FINISHED"}
-        except Exception as e:
+        except (AttributeError, RuntimeError, TypeError, ImportError) as e:
+            # Non-fatal: report actionable error instead of silencing all exceptions
             self.report({"ERROR"}, f"Hide all failed: {e}")
             return {"CANCELLED"}
