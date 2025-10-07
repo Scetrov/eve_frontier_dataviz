@@ -385,7 +385,8 @@ if bpy:
                     pass
 
                 return mat
-            except Exception:  # noqa: BLE001
+            except (AttributeError, RuntimeError, TypeError):  # noqa: BLE001
+                # Best-effort: likely Blender API/attribute issues - surface as None
                 return None
 
         def _apply_attribute_material(self, objs):
@@ -575,7 +576,7 @@ def register():  # pragma: no cover
     try:
         bpy.utils.register_class(EVE_OT_apply_shader_modal)
         print("[EVEVisualizer][shader_apply_async] Registered EVE_OT_apply_shader_modal")
-    except Exception as e:
+    except (RuntimeError, ValueError) as e:
         print(
             f"[EVEVisualizer][shader_apply_async] ERROR registering EVE_OT_apply_shader_modal: {e}"
         )
@@ -583,13 +584,13 @@ def register():  # pragma: no cover
     try:
         bpy.utils.register_class(EVE_OT_cancel_shader)
         print("[EVEVisualizer][shader_apply_async] Registered EVE_OT_cancel_shader")
-    except Exception as e:
+    except (RuntimeError, ValueError) as e:
         print(f"[EVEVisualizer][shader_apply_async] ERROR registering EVE_OT_cancel_shader: {e}")
 
     try:
         bpy.utils.register_class(EVE_OT_repair_strategy_materials)
         print("[EVEVisualizer][shader_apply_async] Registered EVE_OT_repair_strategy_materials")
-    except Exception as e:
+    except (RuntimeError, ValueError) as e:
         print(
             f"[EVEVisualizer][shader_apply_async] ERROR registering EVE_OT_repair_strategy_materials: {e}"
         )
@@ -605,13 +606,13 @@ def register():  # pragma: no cover
             update=_on_strategy_change,
         )
         print("[EVEVisualizer][shader_apply_async] Registered eve_active_strategy property")
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError) as e:
         print(f"[EVEVisualizer][shader_apply_async] ERROR registering eve_active_strategy: {e}")
     # Attempt a best-effort repair of node group references in existing materials
     try:
         repaired_count = _repair_strategy_materials_silent()
         print(f"[EVEVisualizer] Repaired {repaired_count} node group references in materials")
-    except Exception:
+    except (AttributeError, RuntimeError, TypeError):
         import traceback
 
         print("[EVEVisualizer] Error during silent repair of strategy materials:")
@@ -628,7 +629,7 @@ def register():  # pragma: no cover
             update=_on_strategy_param_change,
         )
         print("[EVEVisualizer][shader_apply_async] Registered eve_char_rainbow_index property")
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError) as e:
         print(f"[EVEVisualizer][shader_apply_async] ERROR registering strategy params: {e}")
         import traceback
 
