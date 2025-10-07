@@ -12,7 +12,7 @@ try:  # pragma: no cover - allows tests without Blender runtime
         StringProperty,
     )
     from bpy.types import AddonPreferences, Operator  # type: ignore
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - tests without Blender
     bpy = None  # type: ignore
 
     # Lightweight shims so type checkers / tests don't explode if accidentally imported
@@ -46,7 +46,7 @@ def _default_db_path():
     """  # noqa: D401
     try:
         return str(Path(__file__).resolve().parents[3] / "data" / "static.db")
-    except Exception as e:  # pragma: no cover - safety net
+    except (OSError, RuntimeError) as e:  # pragma: no cover - safety net
         print(f"[EVEVisualizer][warn] default db path resolution failed: {e}")
         traceback.print_exc()
         return ""
@@ -220,6 +220,37 @@ class EVEVisualizerPreferences(_BasePrefs):
             "If enabled (default), Frontier contains nested <Region>/<Constellation> subcollections instead of only a flat list"
         ),
     )
+    # Per-pattern visibility preferences (True = visible)
+    filter_dash: BoolProperty(  # type: ignore[valid-type]
+        name="Show DASH",
+        default=True,
+        description="Show systems matching DASH naming pattern by default",
+    )
+    filter_colon: BoolProperty(  # type: ignore[valid-type]
+        name="Show COLON",
+        default=True,
+        description="Show systems matching COLON naming pattern by default",
+    )
+    filter_dotseq: BoolProperty(  # type: ignore[valid-type]
+        name="Show DOTSEQ",
+        default=True,
+        description="Show systems matching DOTSEQ naming pattern by default",
+    )
+    filter_pipe: BoolProperty(  # type: ignore[valid-type]
+        name="Show PIPE",
+        default=True,
+        description="Show systems matching PIPE naming pattern by default",
+    )
+    filter_other: BoolProperty(  # type: ignore[valid-type]
+        name="Show OTHER",
+        default=True,
+        description="Show systems matching OTHER naming pattern by default",
+    )
+    filter_blackhole: BoolProperty(  # type: ignore[valid-type]
+        name="Show BLACKHOLE",
+        default=True,
+        description="Show special black hole systems as a separate bucket by default",
+    )
 
     def draw(self, context):  # noqa: D401
         if not bpy:  # skip UI logic in test / non-Blender env
@@ -227,7 +258,11 @@ class EVEVisualizerPreferences(_BasePrefs):
         layout = self.layout  # type: ignore[attr-defined]
         try:
             col = layout.column(align=True)  # type: ignore[attr-defined]
-        except Exception:  # pragma: no cover - safety in odd Blender states
+        except (
+            AttributeError,
+            RuntimeError,
+            TypeError,
+        ):  # pragma: no cover - safety in odd Blender states
             return
         # Draw DB path first with Locate just beneath
         if "db_path" in self.__class__.__dict__:
@@ -236,7 +271,7 @@ class EVEVisualizerPreferences(_BasePrefs):
                 row.enabled = False
             try:
                 row.prop(self, "db_path")
-            except Exception as e:  # pragma: no cover
+            except (AttributeError, RuntimeError, TypeError) as e:  # pragma: no cover
                 col.label(text=f"(Failed db_path: {e})", icon="ERROR")
             locate_row = col.row(align=True)
             locate_row.operator("eve.locate_static_db", text="Locate", icon="FILE_FOLDER")
@@ -258,7 +293,7 @@ class EVEVisualizerPreferences(_BasePrefs):
             if prop_name in self.__class__.__dict__:
                 try:
                     col.prop(self, prop_name)
-                except Exception as e:  # pragma: no cover
+                except (AttributeError, RuntimeError, TypeError) as e:  # pragma: no cover
                     col.label(text=f"(Failed prop {prop_name}: {e})", icon="ERROR")
         if _ENV_DB_PATH:
             col.label(text=f"Env {ENV_DB_VAR} in use (read-only)", icon="INFO")
@@ -271,7 +306,8 @@ class EVEVisualizerPreferences(_BasePrefs):
             if isinstance(self.db_path, str) and self.db_path:
                 if not Path(self.db_path).exists():
                     col.label(text="(File not found)", icon="ERROR")
-        except Exception:
+        except (TypeError, OSError):
+            # Path resolution could fail for unusual objects
             pass
 
 
@@ -360,6 +396,48 @@ try:  # pragma: no cover - runtime safety
             precision=3,
         )
         _missing.append("build_percentage")
+    if not hasattr(EVEVisualizerPreferences, "filter_dash"):
+        EVEVisualizerPreferences.filter_dash = BoolProperty(  # type: ignore[attr-defined]
+            name="Show DASH",
+            default=True,
+            description="Show systems matching DASH naming pattern by default",
+        )
+        _missing.append("filter_dash")
+    if not hasattr(EVEVisualizerPreferences, "filter_colon"):
+        EVEVisualizerPreferences.filter_colon = BoolProperty(  # type: ignore[attr-defined]
+            name="Show COLON",
+            default=True,
+            description="Show systems matching COLON naming pattern by default",
+        )
+        _missing.append("filter_colon")
+    if not hasattr(EVEVisualizerPreferences, "filter_dotseq"):
+        EVEVisualizerPreferences.filter_dotseq = BoolProperty(  # type: ignore[attr-defined]
+            name="Show DOTSEQ",
+            default=True,
+            description="Show systems matching DOTSEQ naming pattern by default",
+        )
+        _missing.append("filter_dotseq")
+    if not hasattr(EVEVisualizerPreferences, "filter_pipe"):
+        EVEVisualizerPreferences.filter_pipe = BoolProperty(  # type: ignore[attr-defined]
+            name="Show PIPE",
+            default=True,
+            description="Show systems matching PIPE naming pattern by default",
+        )
+        _missing.append("filter_pipe")
+    if not hasattr(EVEVisualizerPreferences, "filter_other"):
+        EVEVisualizerPreferences.filter_other = BoolProperty(  # type: ignore[attr-defined]
+            name="Show OTHER",
+            default=True,
+            description="Show systems matching OTHER naming pattern by default",
+        )
+        _missing.append("filter_other")
+    if not hasattr(EVEVisualizerPreferences, "filter_blackhole"):
+        EVEVisualizerPreferences.filter_blackhole = BoolProperty(  # type: ignore[attr-defined]
+            name="Show BLACKHOLE",
+            default=True,
+            description="Show special black hole systems as a separate bucket by default",
+        )
+        _missing.append("filter_blackhole")
     if not hasattr(EVEVisualizerPreferences, "exclude_ad_systems"):
         EVEVisualizerPreferences.exclude_ad_systems = BoolProperty(  # type: ignore[attr-defined]
             name="Exclude AD###",
@@ -409,7 +487,7 @@ try:  # pragma: no cover - runtime safety
         print(f"[EVEVisualizer][info] Injected fallback properties: {_missing}")
     else:
         print("[EVEVisualizer][info] Annotation properties present (no fallback needed)")
-except Exception as _e:  # pragma: no cover
+except (AttributeError, RuntimeError, TypeError) as _e:  # pragma: no cover
     print(f"[EVEVisualizer][warn] Fallback property injection failed: {_e}")
 
 
@@ -434,7 +512,11 @@ def _register_prefs():  # internal helper
             f"[EVEVisualizer] Preferences registered: bl_idname='{getattr(EVEVisualizerPreferences, 'bl_idname', 'unknown')}', "
             f"folder='{Path(__file__).parent.name}', env_override={'yes' if _ENV_DB_PATH else 'no'}"
         )
-    except Exception as e:  # pragma: no cover - show why preferences might be blank
+    except (
+        RuntimeError,
+        AttributeError,
+        TypeError,
+    ) as e:  # pragma: no cover - show why preferences might be blank
         print(f"[EVEVisualizer][error] register_class(EVEVisualizerPreferences) failed: {e}")
         traceback.print_exc()
 
@@ -444,7 +526,8 @@ def _unregister_prefs():  # pragma: no cover - Blender runtime usage
         return
     try:
         bpy.utils.unregister_class(EVEVisualizerPreferences)
-    except Exception:
+    except (RuntimeError, AttributeError):
+        # Unregister may fail in odd Blender states; ignore safely
         pass
 
 
@@ -485,7 +568,7 @@ def register():  # noqa: D401
         return
     try:  # operator
         bpy.utils.register_class(EVE_OT_locate_static_db)
-    except Exception as e:  # pragma: no cover
+    except (RuntimeError, AttributeError, TypeError) as e:  # pragma: no cover
         print(f"[EVEVisualizer][warn] Failed to register locate operator: {e}")
 
 

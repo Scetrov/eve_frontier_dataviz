@@ -5,7 +5,7 @@ from __future__ import annotations
 try:  # pragma: no cover
     import bpy  # type: ignore
     from mathutils import Vector  # type: ignore
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):  # noqa: BLE001
     bpy = None  # type: ignore
     Vector = None  # type: ignore
 

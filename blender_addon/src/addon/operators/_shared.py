@@ -4,10 +4,10 @@ from __future__ import annotations
 
 try:  # pragma: no cover
     import bpy  # type: ignore
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):  # noqa: BLE001
     bpy = None  # type: ignore
 
-GENERATED_COLLECTIONS = ["Frontier", "EVE_Planets", "EVE_Moons"]
+GENERATED_COLLECTIONS = ["Frontier", "EVE_Planets", "EVE_Moons", "SystemsByName"]
 
 
 def get_or_create_collection(name: str):  # pragma: no cover - needs Blender
@@ -46,7 +46,8 @@ def get_or_create_subcollection(parent, name: str):  # pragma: no cover - needs 
     # Link to parent (handles both new and orphaned collections)
     try:
         parent.children.link(coll)
-    except Exception:  # noqa: BLE001 - already linked or error
+    except (RuntimeError, AttributeError):  # noqa: BLE001 - already linked or error
+        # Already linked or Blender returned an attribute/runtime error; skip
         pass
     return coll
 
@@ -91,7 +92,8 @@ def clear_generated():  # pragma: no cover - needs Blender
                     try:
                         bpy.data.objects.remove(obj, do_unlink=True)
                         removed_objs += 1
-                    except Exception:  # noqa: BLE001
+                    except (RuntimeError, AttributeError, TypeError):  # noqa: BLE001
+                        # Skip objects that fail removal for Blender API reasons
                         pass
 
         # Third pass: remove collections in reverse order (children before parents)
@@ -100,9 +102,51 @@ def clear_generated():  # pragma: no cover - needs Blender
             try:
                 bpy.data.collections.remove(coll)
                 removed_colls += 1
-            except Exception:  # noqa: BLE001
+            except (RuntimeError, AttributeError):  # noqa: BLE001
+                # Skip collections that fail removal (linked elsewhere or API issue)
                 pass
 
     finally:
         bpy.context.preferences.edit.use_global_undo = prev_undo
     return removed_objs, removed_colls
+
+
+def collapse_collections_to_depth(
+    root_name: str, depth: int = 1
+):  # pragma: no cover - needs Blender
+    """Hide (viewport + render) all subcollections deeper than `depth` under root_name.
+
+    This is a pragmatic approximation of "collapsing" groups in the Outliner by
+    hiding their contents. Blender does not expose Outliner expansion state via
+    the stable Python API, so hiding child collections gives a similar, useful
+    default: only the root and its immediate children remain visible.
+
+    Args:
+        root_name: Top-level collection name to operate on (e.g., 'Frontier').
+        depth: Maximum depth to keep visible (0 = only root, 1 = root + immediate children).
+    """
+    if bpy is None:
+        return
+    root = bpy.data.collections.get(root_name)
+    if not root:
+        return
+
+    # Iterative DFS/BFS with depth tracking (avoid recursion limits)
+    stack = [(root, 0)]
+    while stack:
+        coll, d = stack.pop()
+        for child in coll.children:
+            child_depth = d + 1
+            # If the child is deeper than allowed, hide it; otherwise keep and traverse
+            if child_depth > depth:
+                try:
+                    child.hide_viewport = True
+                except AttributeError:
+                    pass
+                try:
+                    child.hide_render = True
+                except AttributeError:
+                    pass
+            else:
+                # Still within allowed depth, traverse children
+                stack.append((child, child_depth))

@@ -6,8 +6,9 @@ import os
 
 try:  # pragma: no cover  # noqa: I001 (dynamic bpy import grouping)
     import bpy  # type: ignore
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):  # noqa: BLE001
     bpy = None  # type: ignore
+import sqlite3
 
 from .. import data_state
 from ..data_loader import load_data, load_jumps
@@ -59,7 +60,14 @@ if bpy:  # Only define classes when Blender API is present
                 system_ids = [s.id for s in systems]
                 jumps = load_jumps(db_path, system_ids=system_ids)
                 data_state.set_loaded_jumps(jumps)
-            except Exception as e:  # noqa: BLE001
+            except (
+                RuntimeError,
+                FileNotFoundError,
+                sqlite3.DatabaseError,
+                ValueError,
+                TypeError,
+            ) as e:
+                # Surface expected loader/database errors to the user. Avoid silencing unrelated exceptions.
                 self.report({"ERROR"}, f"Load failed: {e}")
                 return {"CANCELLED"}
             data_state.set_loaded_systems(systems)

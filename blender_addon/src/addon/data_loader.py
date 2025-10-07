@@ -223,7 +223,8 @@ def load_data(
                 regions_table = cur.fetchone()
                 if regions_table:
                     sys_query += f" LEFT JOIN {regions_table[0]} r ON s.{c_region_id} = r.regionId"
-            except Exception:
+            except sqlite3.DatabaseError:
+                # Unexpected DB error during metadata lookup - skip joining
                 pass
 
         if c_const_id:
@@ -235,7 +236,8 @@ def load_data(
                 constellations_table = cur.fetchone()
                 if constellations_table:
                     sys_query += f" LEFT JOIN {constellations_table[0]} c ON s.{c_const_id} = c.constellationId"
-            except Exception:
+            except sqlite3.DatabaseError:
+                # Unexpected DB error during metadata lookup - skip joining
                 pass
 
         sys_query += f" ORDER BY s.{c_id}"
@@ -253,7 +255,7 @@ def load_data(
             if c_sec and c_sec in r.keys() and r[c_sec] is not None:
                 try:
                     security_val = float(r[c_sec])
-                except Exception:
+                except (ValueError, TypeError):
                     security_val = None
 
             # Extract region and constellation names if available
@@ -262,12 +264,12 @@ def load_data(
             try:
                 if "region_name" in r.keys() and r["region_name"]:
                     region_name = str(r["region_name"])
-            except Exception:
+            except (TypeError, ValueError):
                 pass
             try:
                 if "constellation_name" in r.keys() and r["constellation_name"]:
                     constellation_name = str(r["constellation_name"])
-            except Exception:
+            except (TypeError, ValueError):
                 pass
 
             system_map[rid] = System(
@@ -319,7 +321,7 @@ def load_data(
         # Sort to keep deterministic ordering by planet id
         try:
             planet_rows.sort(key=lambda r: int(r[pl_id]))  # type: ignore[arg-type]
-        except Exception:
+        except (ValueError, TypeError):
             pass
         planet_map: Dict[int, Planet] = {}
         for r in planet_rows:
@@ -368,7 +370,7 @@ def load_data(
                     moon_rows.extend(cur.fetchall())
             try:
                 moon_rows.sort(key=lambda r: int(r[m_id]))  # type: ignore[arg-type]
-            except Exception:
+            except (ValueError, TypeError):
                 pass
             for r in moon_rows:
                 mid = int(r[m_id])
@@ -403,7 +405,7 @@ def load_data(
                         count = int(row[1])
                         if sys_id in system_map:
                             system_map[sys_id].npc_station_count = count
-            except Exception:
+            except (sqlite3.DatabaseError, ValueError, TypeError, KeyError):
                 # Table might not exist or have different schema - skip silently
                 pass
 

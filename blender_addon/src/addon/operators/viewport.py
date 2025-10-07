@@ -4,7 +4,7 @@ from __future__ import annotations
 
 try:  # pragma: no cover
     import bpy  # type: ignore
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):
     bpy = None  # type: ignore
 
 
@@ -25,7 +25,8 @@ if bpy:
                 world.use_nodes = True
                 bg = next(n for n in world.node_tree.nodes if n.type == "BACKGROUND")
                 bg.inputs[0].default_value = (0.0, 0.0, 0.0, 1.0)
-            except Exception:  # noqa: BLE001
+            except (StopIteration, AttributeError, RuntimeError):
+                # No background node or unexpected Blender state
                 pass
             self.report({"INFO"}, "World set to black")
             return {"FINISHED"}
@@ -48,10 +49,9 @@ if bpy:
             hdri_found = False
             try:
                 hdri_path = Path(__file__).resolve().parents[3] / "hdris" / "HDR_multi_nebulae.hdr"
-                if hdri_path.exists():
-                    hdri_found = True
-            except Exception:
-                pass
+                hdri_found = hdri_path.exists()
+            except (OSError, RuntimeError):
+                hdri_found = False
 
             # If HDRI not found, use procedural space background instead
             if not hdri_found:
@@ -140,15 +140,24 @@ if bpy:
             if not img:
                 try:
                     img = bpy.data.images.load(str(hdri_path))
-                except Exception as e:
+                except (RuntimeError, FileNotFoundError, AttributeError) as e:
+                    # Image loading can raise RuntimeError on invalid files or missing path
                     self.report({"ERROR"}, f"Load failed: {e}")
                     return {"CANCELLED"}
             env.image = img
-            try:
-                if hasattr(env.image, "colorspace_settings"):
-                    env.image.colorspace_settings.name = "Linear"
-            except Exception:
-                pass
+            # Set a sensible colorspace for environment HDRIs. Different Blender
+            # installs expose slightly different enum names, so try a short
+            # priority list and stop on the first successful assignment.
+            if hasattr(env.image, "colorspace_settings"):
+                cs = env.image.colorspace_settings
+                preferred = ["Linear", "Non-Color", "sRGB", "Linear CIE-XYZ D65"]
+                for name in preferred:
+                    try:
+                        cs.name = name
+                        break
+                    except Exception:
+                        # Assignment will raise if the enum value isn't available
+                        continue
             # Rewire links
             try:
                 for link in list(env.outputs[0].links):
@@ -157,7 +166,8 @@ if bpy:
                     nt.links.remove(link)
                 links.new(env.outputs[0], bg.inputs[0])
                 links.new(bg.outputs[0], out.inputs[0])
-            except Exception:
+            except (AttributeError, RuntimeError):
+                # Node trees can raise on missing sockets or invalid node types
                 pass
             self.report({"INFO"}, f"Applied HDRI: {hdri_path.name}")
             return {"FINISHED"}
@@ -244,7 +254,11 @@ if bpy:
                 bpy.ops.object.select_all(action="DESELECT")
 
                 self.report({"INFO"}, f"Framed {len(systems)} systems in viewport")
-            except Exception as e:  # noqa: BLE001
+            except (
+                AttributeError,
+                RuntimeError,
+                TypeError,
+            ) as e:  # pragma: no cover - Blender UI failures
                 self.report({"ERROR"}, f"Failed to frame view: {e}")
                 return {"CANCELLED"}
 

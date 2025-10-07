@@ -63,7 +63,10 @@ jobs:
 
       - name: Run tests with coverage
         working-directory: ./blender_addon
-        run: pytest --cov-report=term-missing --cov-report=xml
+        run: |
+          # Explicitly set coverage source and config so CI measures the
+          # same files as local runs regardless of working-directory.
+          pytest --cov=src/addon --cov-config=../.coveragerc --cov-report=term-missing --cov-report=xml
 
       - name: Check coverage threshold
         working-directory: ./blender_addon

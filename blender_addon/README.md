@@ -86,13 +86,17 @@ Then install the produced zip in Blender.
 1. Set DB path in Add-on Preferences if not default.
 2. Click **Load / Refresh Data** to parse and cache entities.
 3. Click **Build Scene** to instantiate objects with pre-calculated properties.
+  - The build now creates a top-level `SystemsByName` grouping with child collections for naming-pattern buckets (DASH, COLON, DOTSEQ, PIPE, OTHER). The `Frontier` hierarchy (Region/Constellation) is created but hidden by default so visibility is controlled via `SystemsByName`.
 4. Select a visualization strategy from the **Strategy** dropdown:
    - Character Rainbow
    - Pattern Categories
    - Position Encoding
 5. Click **Apply Visualization** to create/update the shared material.
 6. Change strategies instantly via dropdown (no rebuild needed).
-7. (Optional) Run batch export:
+7. Filter systems by naming-pattern using the new Filters panel (EVE Frontier → Filters).
+  - Toggle individual buckets via checkboxes (session-only).
+  - Use "Show All" / "Hide All" to persist a default across Blender sessions (these buttons update add-on preferences).
+8. (Optional) Run batch export:
 
 ```sh
 blender -b your_scene.blend -P scripts/export_batch.py

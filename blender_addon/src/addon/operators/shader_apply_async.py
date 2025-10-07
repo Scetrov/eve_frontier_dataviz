@@ -4,7 +4,8 @@ from __future__ import annotations
 
 try:  # pragma: no cover  # noqa: I001 (dynamic bpy import grouping)
     import bpy  # type: ignore
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):  # pragma: no cover  # noqa: BLE001
+    # Running in test/CI environment without Blender available
     bpy = None  # type: ignore
 
 from typing import Optional
@@ -146,7 +147,8 @@ if bpy:
                 # Connect to output
                 links.new(emission.outputs[0], out.inputs[0])
                 return mat
-            except Exception:  # noqa: BLE001
+            except (AttributeError, RuntimeError, TypeError):  # noqa: BLE001
+                # Best-effort: if Blender API access fails while building nodes, return None
                 return None
 
         # --- Node Group Strategy Material Infrastructure ---
@@ -357,8 +359,11 @@ if bpy:
                                     node.node_tree = bpy.data.node_groups.get(
                                         "EVE_Strategy_ProperNounHighlight"
                                     )  # type: ignore[attr-defined]
-                            except Exception:
-                                # best-effort: skip broken nodes
+                            except (AttributeError, TypeError, RuntimeError) as e:
+                                # best-effort: skip broken nodes but log minimal info
+                                print(
+                                    f"[EVEVisualizer][repair] Skipping node {getattr(node,'name',repr(node))}: {e}"
+                                )
                                 continue
 
                         # Update strategy selector value (if present)
@@ -372,12 +377,16 @@ if bpy:
                                 "ProperNounHighlight": 4.0,
                             }
                             selector.outputs[0].default_value = strategy_map.get(strategy_name, 0.0)
-                except Exception:
+                except (AttributeError, RuntimeError, TypeError) as e:
                     # Non-fatal: if anything goes wrong here, leave existing material as-is
+                    print(
+                        f"[EVEVisualizer][node_material] Warning while repairing material {getattr(mat,'name',repr(mat))}: {e}"
+                    )
                     pass
 
                 return mat
-            except Exception:  # noqa: BLE001
+            except (AttributeError, RuntimeError, TypeError):  # noqa: BLE001
+                # Best-effort: likely Blender API/attribute issues - surface as None
                 return None
 
         def _apply_attribute_material(self, objs):
@@ -391,7 +400,10 @@ if bpy:
                             o.data.materials[0] = mat
                         else:
                             o.data.materials.append(mat)
-                except Exception:  # noqa: BLE001
+                except (AttributeError, RuntimeError, TypeError) as e:  # noqa: BLE001
+                    print(
+                        f"[EVEVisualizer][apply_attr_mat] Failed on object {getattr(o,'name',repr(o))}: {e}"
+                    )
                     continue
 
         def _apply_node_group_material(self, objs, strategy_name: str):
@@ -406,7 +418,10 @@ if bpy:
                             o.data.materials[0] = mat
                         else:
                             o.data.materials.append(mat)
-                except Exception:  # noqa: BLE001
+                except (AttributeError, RuntimeError, TypeError) as e:  # noqa: BLE001
+                    print(
+                        f"[EVEVisualizer][apply_node_mat] Failed on object {getattr(o,'name',repr(o))}: {e}"
+                    )
                     continue
 
         def execute(self, context):  # noqa: D401
@@ -489,7 +504,11 @@ if bpy:
                             # Count repaired nodes
                             if node.node_tree:
                                 repaired += 1
-                        except Exception:
+                        except (AttributeError, TypeError, RuntimeError) as e:
+                            # Skip problematic nodes but continue processing others
+                            print(
+                                f"[EVEVisualizer][repair] Skipping node {getattr(node,'name',repr(node))}: {e}"
+                            )
                             continue
 
                     # Update StrategySelector node label/value if present
@@ -499,7 +518,8 @@ if bpy:
 
                 self.report({"INFO"}, f"Repaired {repaired} strategy node references")
                 return {"FINISHED"}
-            except Exception as e:  # noqa: BLE001
+            except (AttributeError, RuntimeError, TypeError) as e:  # noqa: BLE001
+                # Non-fatal: if anything unexpected happens with Blender API, report and cancel
                 self.report({"ERROR"}, f"Error repairing materials: {e}")
                 return {"CANCELLED"}
 
@@ -533,12 +553,16 @@ def _repair_strategy_materials_silent():
                         )
                     if node.node_tree:
                         repaired += 1
-                except Exception:
+                except (AttributeError, TypeError, RuntimeError) as e:
+                    print(
+                        f"[EVEVisualizer][repair_silent] Skipping node {getattr(node,'name',repr(node))}: {e}"
+                    )
                     continue
             selector = nt.nodes.get("StrategySelector")
             if selector:
                 selector.label = "Strategy (0=Rainbow, 1=Pattern, 2=Position, 3=ProperNoun)"
-    except Exception:
+    except (AttributeError, RuntimeError, TypeError):
+        # If Blender API errors occur, return the count we have so far
         return repaired
     return repaired
 
@@ -552,7 +576,7 @@ def register():  # pragma: no cover
     try:
         bpy.utils.register_class(EVE_OT_apply_shader_modal)
         print("[EVEVisualizer][shader_apply_async] Registered EVE_OT_apply_shader_modal")
-    except Exception as e:
+    except (RuntimeError, ValueError) as e:
         print(
             f"[EVEVisualizer][shader_apply_async] ERROR registering EVE_OT_apply_shader_modal: {e}"
         )
@@ -560,13 +584,13 @@ def register():  # pragma: no cover
     try:
         bpy.utils.register_class(EVE_OT_cancel_shader)
         print("[EVEVisualizer][shader_apply_async] Registered EVE_OT_cancel_shader")
-    except Exception as e:
+    except (RuntimeError, ValueError) as e:
         print(f"[EVEVisualizer][shader_apply_async] ERROR registering EVE_OT_cancel_shader: {e}")
 
     try:
         bpy.utils.register_class(EVE_OT_repair_strategy_materials)
         print("[EVEVisualizer][shader_apply_async] Registered EVE_OT_repair_strategy_materials")
-    except Exception as e:
+    except (RuntimeError, ValueError) as e:
         print(
             f"[EVEVisualizer][shader_apply_async] ERROR registering EVE_OT_repair_strategy_materials: {e}"
         )
@@ -582,16 +606,16 @@ def register():  # pragma: no cover
             update=_on_strategy_change,
         )
         print("[EVEVisualizer][shader_apply_async] Registered eve_active_strategy property")
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError) as e:
         print(f"[EVEVisualizer][shader_apply_async] ERROR registering eve_active_strategy: {e}")
     # Attempt a best-effort repair of node group references in existing materials
     try:
         repaired_count = _repair_strategy_materials_silent()
         print(f"[EVEVisualizer] Repaired {repaired_count} node group references in materials")
-    except Exception:
-        pass
+    except (AttributeError, RuntimeError, TypeError) as e:
         import traceback
 
+        print(f"[EVEVisualizer] Error during silent repair of strategy materials: {e}")
         traceback.print_exc()
 
     # Strategy-specific parameters
@@ -605,7 +629,7 @@ def register():  # pragma: no cover
             update=_on_strategy_param_change,
         )
         print("[EVEVisualizer][shader_apply_async] Registered eve_char_rainbow_index property")
-    except Exception as e:
+    except (AttributeError, TypeError, RuntimeError) as e:
         print(f"[EVEVisualizer][shader_apply_async] ERROR registering strategy params: {e}")
         import traceback
 
@@ -708,7 +732,8 @@ def _on_strategy_change(self, context):  # pragma: no cover
                             obj.data.materials[0] = mat
                         else:
                             obj.data.materials.append(mat)
-                except Exception:  # noqa: BLE001
+                except (AttributeError, RuntimeError, TypeError):  # noqa: BLE001
+                    # Best-effort assignment failure - skip this object
                     pass
     else:
         print("[EVEVisualizer][strategy_change] Material already exists, updating selector...")
@@ -750,7 +775,8 @@ def _on_strategy_change(self, context):  # pragma: no cover
                                 obj.data.materials[0] = mat
                             else:
                                 obj.data.materials.append(mat)
-                    except Exception:  # noqa: BLE001
+                    except (AttributeError, RuntimeError, TypeError):  # noqa: BLE001
+                        # Best-effort assignment failure - skip this object
                         pass
 
     # Update the StrategySelector value AND fix broken node group references

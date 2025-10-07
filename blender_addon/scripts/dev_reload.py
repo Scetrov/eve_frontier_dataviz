@@ -8,11 +8,12 @@ def reload_addon():
         if mod.__name__.endswith(ADDON_NAME):
             try:
                 addon_utils.disable(mod.__name__, default_set=False)
-            except Exception:
+            except (ImportError, RuntimeError, AttributeError):
+                # Best-effort reload helper - ignore disable failures
                 pass
             try:
                 addon_utils.enable(mod.__name__, default_set=False)
-            except Exception as e:
+            except (ImportError, RuntimeError, AttributeError) as e:
                 print("Failed to reload:", e)
             break
 
