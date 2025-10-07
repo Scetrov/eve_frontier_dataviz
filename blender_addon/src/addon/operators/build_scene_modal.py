@@ -199,7 +199,7 @@ if bpy:
                     # Invoke shader apply operator (will choose default strategy if none selected)
                     try:
                         bpy.ops.eve.apply_shader_modal("INVOKE_DEFAULT")  # type: ignore[attr-defined]
-                    except Exception as e:
+                    except (AttributeError, RuntimeError) as e:
                         print(f"[EVEVisualizer][build] auto-apply shader failed: {e}")
             except (AttributeError, TypeError):
                 # prefs unavailable or malformed - skip auto-apply
@@ -353,13 +353,15 @@ if bpy:
                             coll.objects.link(obj)
                     # Also link object into SystemsByName/<pattern> collection
                     # Black holes are a special-case bucket regardless of name pattern
-                    # simplify retrieval of the stored blackhole flag
+                    # Convert the stored eve_is_blackhole flag to an int with a
+                    # deterministic fallback (0) if missing or malformed.
                     try:
                         is_bh = int(obj.get("eve_is_blackhole", 0))
                     except (TypeError, ValueError):
                         is_bh = 0
                     if is_bh:
-                        pattern_idx = self._blackhole_pattern_idx
+                        # Use the persisted blackhole pattern index determined at init
+                        pattern_idx = getattr(self, "_blackhole_pattern_idx", 5)
                     else:
                         pattern_idx = obj.get("eve_name_pattern", 4)
                     pattern_coll = getattr(self, "_systems_by_name_children", {}).get(pattern_idx)

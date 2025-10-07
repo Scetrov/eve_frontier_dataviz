@@ -3,36 +3,48 @@ import importlib
 import bpy
 from bpy.types import Panel
 
-# Robustly import get_prefs. When the add-on is installed into Blender it may be
-# loaded under a different top-level package name (for example
-# `eve_frontier_visualizer`). Pure-Python tests import the package as
-# `addon`. Try a few strategies and fall back to a safe no-op function so the
-# UI can still draw in limited contexts.
-try:
-    # Normal relative import when running as the package `addon`
-    from .preferences import get_prefs
-except (ImportError, ModuleNotFoundError):
+
+def _resolve_get_prefs():
+    """Resolve and return a suitable get_prefs(context) callable.
+
+    We try a small set of import strategies because the add-on package may be
+    loaded under different top-level names when installed into Blender. If
+    none of the strategies succeed we return a no-op function so the panels
+    can still draw in test or limited contexts.
+    """
+    # Strategy 1: Normal relative import when running as the package `addon`
     try:
-        # If this module was loaded as a submodule of another top-level package
-        # (Blender copies the folder and the package name changes), try to
-        # import preferences from the root package.
+        from .preferences import get_prefs  # type: ignore
+
+        return get_prefs
+    except (ImportError, ModuleNotFoundError):
+        pass
+
+    # Strategy 2: Import from root package if loaded as a submodule
+    try:
         root_pkg = __package__.split(".")[0] if __package__ else None
         if root_pkg:
             mod = importlib.import_module(f"{root_pkg}.preferences")
-            get_prefs = mod.get_prefs
-        else:
-            raise ImportError("no package context")
+            return mod.get_prefs
+    except (ImportError, ModuleNotFoundError, AttributeError):
+        pass
+
+    # Strategy 3: Import from addon.preferences (src layout during pytest/dev)
+    try:
+        from addon.preferences import get_prefs  # type: ignore
+
+        return get_prefs
     except (ImportError, ModuleNotFoundError):
-        try:
-            # Last-resort: tests or dev environment may expose the package as
-            # `addon.preferences` (src layout during pytest).
-            from addon.preferences import get_prefs
-        except (ImportError, ModuleNotFoundError):
-            # Fallback: provide a no-op that keeps panels working in very
-            # limited contexts (will cause Show/Hide All persistence to be a
-            # no-op).
-            def get_prefs(context):
-                return None
+        pass
+
+    # Fallback: no-op
+    def _noop_get_prefs(context):
+        return None
+
+    return _noop_get_prefs
+
+
+get_prefs = _resolve_get_prefs()
 
 
 class EVE_PT_main(Panel):
@@ -79,15 +91,18 @@ class EVE_PT_main(Panel):
         # Inline controls (sampling, scale, radius, display)
         # Guard access to addon preferences - use explicit checks instead of broad
         # exception swallowing so we don't hide programming errors.
-        mod_name = __name__.split(".")
-        addon_key = mod_name[0] if mod_name else "addon"
-        prefs_container = getattr(context, "preferences", None)
+        # Use clearer variable names: module_parts -> top-level package name
+        module_parts = __name__.split(".")
+        addon_key = module_parts[0] if module_parts else "addon"
+        prefs_context = getattr(context, "preferences", None)
         try:
-            prefs_container = context.preferences.addons.get(addon_key) if prefs_container else None
+            addon_prefs_container = (
+                context.preferences.addons.get(addon_key) if prefs_context else None
+            )
         except (AttributeError, TypeError):
-            prefs_container = None
-        if prefs_container:
-            prefs = getattr(prefs_container, "preferences", None)
+            addon_prefs_container = None
+        if addon_prefs_container:
+            prefs = getattr(addon_prefs_container, "preferences", None)
             if prefs:
                 if hasattr(prefs, "build_percentage"):
                     box_build.prop(prefs, "build_percentage", text="Sample Proportion (0.0 to 1.0)")
@@ -302,16 +317,17 @@ class EVE_OT_filters_show_all(bpy.types.Operator):
             # Persist preference if available
             try:
                 prefs = get_prefs(bpy.context)
-                prefs.filter_dash = True
-                prefs.filter_colon = True
-                prefs.filter_dotseq = True
-                prefs.filter_pipe = True
-                prefs.filter_other = True
-                try:
-                    prefs.filter_blackhole = True
-                except AttributeError:
-                    # Older preference objects may not include the blackhole flag
-                    pass
+                # Set each preference only if it exists to avoid nested try/except
+                for attr in (
+                    "filter_dash",
+                    "filter_colon",
+                    "filter_dotseq",
+                    "filter_pipe",
+                    "filter_other",
+                    "filter_blackhole",
+                ):
+                    if hasattr(prefs, attr):
+                        setattr(prefs, attr, True)
             except (AttributeError, ImportError, ModuleNotFoundError):
                 # best-effort persistence; ignore if prefs not reachable
                 pass
@@ -346,15 +362,16 @@ class EVE_OT_filters_hide_all(bpy.types.Operator):
             # Persist preference if available
             try:
                 prefs = get_prefs(bpy.context)
-                prefs.filter_dash = False
-                prefs.filter_colon = False
-                prefs.filter_dotseq = False
-                prefs.filter_pipe = False
-                prefs.filter_other = False
-                try:
-                    prefs.filter_blackhole = False
-                except AttributeError:
-                    pass
+                for attr in (
+                    "filter_dash",
+                    "filter_colon",
+                    "filter_dotseq",
+                    "filter_pipe",
+                    "filter_other",
+                    "filter_blackhole",
+                ):
+                    if hasattr(prefs, attr):
+                        setattr(prefs, attr, False)
             except (AttributeError, ImportError, ModuleNotFoundError):
                 pass
             return {"FINISHED"}

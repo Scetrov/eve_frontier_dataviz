@@ -53,7 +53,7 @@ def register():
                     traceback.print_exc()
         if not mods:
             print("[EVEVisualizer][warn] No modules loaded; preferences panel will be blank.")
-    except Exception as e:  # pragma: no cover
+    except Exception as e:  # pragma: no cover - top-level registration failure
         print(f"[EVEVisualizer][fatal] Top-level register failed: {e}")
         traceback.print_exc()
 
@@ -67,5 +67,7 @@ def unregister():
                     m.unregister()
                 except Exception as e:  # pragma: no cover - runtime diagnostics
                     print(f"[EVEVisualizer][error] unregister() failed in {m.__name__}: {e}")
-    except Exception as e:  # pragma: no cover
+                    traceback.print_exc()
+    except Exception as e:  # pragma: no cover - top-level unregister failure
         print(f"[EVEVisualizer][fatal] Top-level unregister failed: {e}")
+        traceback.print_exc()

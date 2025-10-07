@@ -4,7 +4,7 @@ from __future__ import annotations
 
 try:  # pragma: no cover
     import bpy  # type: ignore
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):  # noqa: BLE001
     bpy = None  # type: ignore
 
 
@@ -48,10 +48,9 @@ if bpy:
             hdri_found = False
             try:
                 hdri_path = Path(__file__).resolve().parents[3] / "hdris" / "HDR_multi_nebulae.hdr"
-                if hdri_path.exists():
-                    hdri_found = True
-            except Exception:
-                pass
+                hdri_found = hdri_path.exists()
+            except (OSError, RuntimeError):
+                hdri_found = False
 
             # If HDRI not found, use procedural space background instead
             if not hdri_found:
@@ -140,14 +139,16 @@ if bpy:
             if not img:
                 try:
                     img = bpy.data.images.load(str(hdri_path))
-                except Exception as e:
+                except (RuntimeError, FileNotFoundError, AttributeError) as e:
+                    # Image loading can raise RuntimeError on invalid files or missing path
                     self.report({"ERROR"}, f"Load failed: {e}")
                     return {"CANCELLED"}
             env.image = img
             try:
                 if hasattr(env.image, "colorspace_settings"):
                     env.image.colorspace_settings.name = "Linear"
-            except Exception:
+            except AttributeError:
+                # Some image objects may not have colorspace settings
                 pass
             # Rewire links
             try:
@@ -157,7 +158,8 @@ if bpy:
                     nt.links.remove(link)
                 links.new(env.outputs[0], bg.inputs[0])
                 links.new(bg.outputs[0], out.inputs[0])
-            except Exception:
+            except (AttributeError, RuntimeError):
+                # Node trees can raise on missing sockets or invalid node types
                 pass
             self.report({"INFO"}, f"Applied HDRI: {hdri_path.name}")
             return {"FINISHED"}
@@ -244,7 +246,11 @@ if bpy:
                 bpy.ops.object.select_all(action="DESELECT")
 
                 self.report({"INFO"}, f"Framed {len(systems)} systems in viewport")
-            except Exception as e:  # noqa: BLE001
+            except (
+                AttributeError,
+                RuntimeError,
+                TypeError,
+            ) as e:  # pragma: no cover - Blender UI failures
                 self.report({"ERROR"}, f"Failed to frame view: {e}")
                 return {"CANCELLED"}
 

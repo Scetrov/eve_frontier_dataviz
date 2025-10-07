@@ -258,7 +258,11 @@ class EVEVisualizerPreferences(_BasePrefs):
         layout = self.layout  # type: ignore[attr-defined]
         try:
             col = layout.column(align=True)  # type: ignore[attr-defined]
-        except Exception:  # pragma: no cover - safety in odd Blender states
+        except (
+            AttributeError,
+            RuntimeError,
+            TypeError,
+        ):  # pragma: no cover - safety in odd Blender states
             return
         # Draw DB path first with Locate just beneath
         if "db_path" in self.__class__.__dict__:
@@ -267,7 +271,7 @@ class EVEVisualizerPreferences(_BasePrefs):
                 row.enabled = False
             try:
                 row.prop(self, "db_path")
-            except Exception as e:  # pragma: no cover
+            except (AttributeError, RuntimeError, TypeError) as e:  # pragma: no cover
                 col.label(text=f"(Failed db_path: {e})", icon="ERROR")
             locate_row = col.row(align=True)
             locate_row.operator("eve.locate_static_db", text="Locate", icon="FILE_FOLDER")
@@ -289,7 +293,7 @@ class EVEVisualizerPreferences(_BasePrefs):
             if prop_name in self.__class__.__dict__:
                 try:
                     col.prop(self, prop_name)
-                except Exception as e:  # pragma: no cover
+                except (AttributeError, RuntimeError, TypeError) as e:  # pragma: no cover
                     col.label(text=f"(Failed prop {prop_name}: {e})", icon="ERROR")
         if _ENV_DB_PATH:
             col.label(text=f"Env {ENV_DB_VAR} in use (read-only)", icon="INFO")
@@ -507,7 +511,11 @@ def _register_prefs():  # internal helper
             f"[EVEVisualizer] Preferences registered: bl_idname='{getattr(EVEVisualizerPreferences, 'bl_idname', 'unknown')}', "
             f"folder='{Path(__file__).parent.name}', env_override={'yes' if _ENV_DB_PATH else 'no'}"
         )
-    except Exception as e:  # pragma: no cover - show why preferences might be blank
+    except (
+        RuntimeError,
+        AttributeError,
+        TypeError,
+    ) as e:  # pragma: no cover - show why preferences might be blank
         print(f"[EVEVisualizer][error] register_class(EVEVisualizerPreferences) failed: {e}")
         traceback.print_exc()
 

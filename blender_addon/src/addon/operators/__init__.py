@@ -14,7 +14,7 @@ from typing import List, Protocol, runtime_checkable
 
 try:  # pragma: no cover - only present in Blender runtime
     import bpy  # type: ignore
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):  # noqa: BLE001
     bpy = None  # type: ignore
 
 _SUBMODULES = [
@@ -48,8 +48,12 @@ def _load():  # pragma: no cover - trivial
     for rel in _SUBMODULES:
         try:
             mods.append(import_module(rel, __name__))
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # pragma: no cover - import errors should be rare but surfaced
+            # Import errors indicate a broken module; print traceback to aid debugging
+            import traceback as _tb
+
             print(f"[EVEVisualizer][operators][error] failed importing {rel}: {e}")
+            _tb.print_exc()
     _loaded = mods
     return _loaded
 
@@ -62,8 +66,11 @@ def register():  # pragma: no cover - Blender side effect
         if reg and hasattr(reg, "register"):
             try:  # noqa: SIM105
                 reg.register()  # type: ignore[attr-defined]
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:  # pragma: no cover - surface operator registration errors
+                import traceback as _tb
+
                 print(f"[EVEVisualizer][operators][error] register() failed in {m}: {e}")
+                _tb.print_exc()
 
 
 def unregister():  # pragma: no cover - Blender side effect
@@ -74,5 +81,8 @@ def unregister():  # pragma: no cover - Blender side effect
         if reg and hasattr(reg, "unregister"):
             try:  # noqa: SIM105
                 reg.unregister()  # type: ignore[attr-defined]
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:  # pragma: no cover - surface operator unregistration errors
+                import traceback as _tb
+
                 print(f"[EVEVisualizer][operators][error] unregister() failed in {m}: {e}")
+                _tb.print_exc()
