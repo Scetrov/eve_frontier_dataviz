@@ -4,7 +4,7 @@ from __future__ import annotations
 
 try:  # pragma: no cover
     import bpy  # type: ignore
-except Exception:  # noqa: BLE001
+except (ImportError, ModuleNotFoundError):  # noqa: BLE001
     bpy = None  # type: ignore
 
 from .. import data_state
