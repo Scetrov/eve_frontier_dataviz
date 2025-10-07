@@ -4,6 +4,7 @@ branch = True
 # in omit patterns match exactly what coverage records.
 source =
     blender_addon/src/addon
+    src/addon
 omit =
     # Keep the package __init__ but exclude heavy Blender runtime modules and folders
     blender_addon/src/addon/__init__.py
@@ -17,6 +18,15 @@ omit =
     blender_addon/src/addon/node_groups/*
     # HDRIs and other assets
     blender_addon/hdris/*
+    # Alternate paths when CI runs with working-directory=blender_addon (coverage records src/..)
+    src/addon/__init__.py
+    src/addon/panels.py
+    src/addon/preferences.py
+    src/addon/shaders_builtin.py
+    src/addon/shader_registry.py
+    src/addon/operators/*
+    src/addon/node_groups/*
+    hdris/*
 
 [report]
 show_missing = True
