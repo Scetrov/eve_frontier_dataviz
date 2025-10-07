@@ -91,7 +91,7 @@ class EVE_PT_main(Panel):
         # Inline controls (sampling, scale, radius, display)
         # Guard access to addon preferences - use explicit checks instead of broad
         # exception swallowing so we don't hide programming errors.
-        # Use clearer variable names: module_parts -> top-level package name
+        # Use clearer variable names: name_parts -> top-level package name
         name_parts = __name__.split(".")
         addon_key = name_parts[0] if name_parts else "addon"
         prefs_context = getattr(context, "preferences", None)
