@@ -11,7 +11,7 @@ from bpy.types import Panel
 try:
     # Normal relative import when running as the package `addon`
     from .preferences import get_prefs
-except Exception:
+except (ImportError, ModuleNotFoundError):
     try:
         # If this module was loaded as a submodule of another top-level package
         # (Blender copies the folder and the package name changes), try to
@@ -22,12 +22,12 @@ except Exception:
             get_prefs = mod.get_prefs
         else:
             raise ImportError("no package context")
-    except Exception:
+    except (ImportError, ModuleNotFoundError):
         try:
             # Last-resort: tests or dev environment may expose the package as
             # `addon.preferences` (src layout during pytest).
             from addon.preferences import get_prefs
-        except Exception:
+        except (ImportError, ModuleNotFoundError):
             # Fallback: provide a no-op that keeps panels working in very
             # limited contexts (will cause Show/Hide All persistence to be a
             # no-op).

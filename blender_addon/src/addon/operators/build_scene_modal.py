@@ -157,6 +157,14 @@ if bpy:
                 # Use get_or_create_subcollection to keep these under SystemsByName
                 child = get_or_create_subcollection(systems_by_name, name)
                 systems_by_name_children[idx] = child
+            # Determine and persist the BLACKHOLE pattern index so we avoid magic
+            # numbers later in the modal loop.
+            bh_idx = None
+            for idx, name in pattern_buckets.items():
+                if name == "BLACKHOLE":
+                    bh_idx = idx
+                    break
+            self._blackhole_pattern_idx = bh_idx if bh_idx is not None else 5
             # persist for modal linking
             self._systems_by_name_children = systems_by_name_children
             self._mesh = _ensure_mesh("ICO", self._radius)
@@ -335,7 +343,7 @@ if bpy:
                         # Black holes are a special-case bucket regardless of name pattern
                         is_bh = int(obj.get("eve_is_blackhole", 0) or 0)
                         if is_bh:
-                            pattern_idx = 5
+                            pattern_idx = getattr(self, "_blackhole_pattern_idx", 5)
                         else:
                             pattern_idx = obj.get("eve_name_pattern", 4)
                         pattern_coll = getattr(self, "_systems_by_name_children", {}).get(
