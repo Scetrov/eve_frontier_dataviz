@@ -51,7 +51,7 @@ if bpy:  # Only define classes when Blender API is present
             if not os.path.exists(db_path):
                 self.report({"ERROR"}, f"DB not found: {db_path}")
                 return {"CANCELLED"}
-            limit_val = int(getattr(self, "limit_systems", 0) or 0)
+            limit_val = int(getattr(self, "limit_systems", 0))
             limit_arg = limit_val if limit_val > 0 else None
             try:
                 systems = load_data(db_path, limit_systems=limit_arg)

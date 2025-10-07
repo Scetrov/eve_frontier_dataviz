@@ -158,13 +158,14 @@ if bpy:
                 child = get_or_create_subcollection(systems_by_name, name)
                 systems_by_name_children[idx] = child
             # Determine and persist the BLACKHOLE pattern index so we avoid magic
-            # numbers later in the modal loop.
-            bh_idx = None
-            for idx, name in pattern_buckets.items():
-                if name == "BLACKHOLE":
-                    bh_idx = idx
-                    break
-            self._blackhole_pattern_idx = bh_idx if bh_idx is not None else 5
+            # numbers later in the modal loop. Fall back to the max key if the
+            # expected bucket is missing (defensive but deterministic).
+            bh_idx = next(
+                (idx for idx, name in pattern_buckets.items() if name == "BLACKHOLE"), None
+            )
+            self._blackhole_pattern_idx = (
+                bh_idx if bh_idx is not None else max(pattern_buckets.keys())
+            )
             # persist for modal linking
             self._systems_by_name_children = systems_by_name_children
             self._mesh = _ensure_mesh("ICO", self._radius)
@@ -341,9 +342,10 @@ if bpy:
                     # Also link object into SystemsByName/<pattern> collection
                     try:
                         # Black holes are a special-case bucket regardless of name pattern
-                        is_bh = int(obj.get("eve_is_blackhole", 0) or 0)
+                        # simplify retrieval of the stored blackhole flag
+                        is_bh = int(obj.get("eve_is_blackhole", 0))
                         if is_bh:
-                            pattern_idx = getattr(self, "_blackhole_pattern_idx", 5)
+                            pattern_idx = self._blackhole_pattern_idx
                         else:
                             pattern_idx = obj.get("eve_name_pattern", 4)
                         pattern_coll = getattr(self, "_systems_by_name_children", {}).get(
